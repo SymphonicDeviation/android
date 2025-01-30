@@ -239,18 +239,17 @@ private fun LoginScreenContent(
             onValueChange = onPasswordInputChanged,
             label = stringResource(id = R.string.master_password),
             showPasswordTestTag = "PasswordVisibilityToggle",
-            supportingTextContent = {
+            supportingContentPadding = PaddingValues(),
+            supportingContent = {
                 BitwardenClickableText(
                     label = stringResource(id = R.string.get_master_passwordword_hint),
                     onClick = onMasterPasswordClick,
                     style = BitwardenTheme.typography.labelMedium,
-                    innerPadding = PaddingValues(
-                        top = 8.dp,
-                        bottom = 8.dp,
-                        start = 0.dp,
-                        end = 16.dp,
-                    ),
-                    modifier = Modifier.testTag("GetMasterPasswordHintLabel"),
+                    innerPadding = PaddingValues(all = 16.dp),
+                    cornerSize = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(tag = "GetMasterPasswordHintLabel"),
                 )
             },
             passwordFieldTestTag = "MasterPasswordEntry",
@@ -307,8 +306,8 @@ private fun LoginScreenContent(
                 state.environmentLabel,
             ),
             textAlign = TextAlign.Center,
-            style = BitwardenTheme.typography.bodyMedium,
-            color = BitwardenTheme.colorScheme.text.primary,
+            style = BitwardenTheme.typography.bodySmall,
+            color = BitwardenTheme.colorScheme.text.secondary,
             modifier = Modifier
                 .testTag("LoggingInAsLabel")
                 .standardHorizontalMargin()
@@ -318,7 +317,7 @@ private fun LoginScreenContent(
         BitwardenClickableText(
             label = stringResource(id = R.string.not_you),
             onClick = onNotYouButtonClick,
-            style = BitwardenTheme.typography.labelLarge,
+            style = BitwardenTheme.typography.labelMedium,
             innerPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
             modifier = Modifier
                 .standardHorizontalMargin()

@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -54,7 +54,6 @@ import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.x8bit.bitwarden.ui.platform.base.util.toAnnotatedString
 import com.x8bit.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.x8bit.bitwarden.ui.platform.components.button.BitwardenFilledButton
-import com.x8bit.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenBasicDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenLoadingDialog
 import com.x8bit.bitwarden.ui.platform.components.dropdown.EnvironmentSelector
@@ -157,30 +156,21 @@ fun StartRegistrationScreen(
             BitwardenTopAppBar(
                 title = stringResource(id = R.string.create_account),
                 scrollBehavior = scrollBehavior,
-                navigationIcon = rememberVectorPainter(id = R.drawable.ic_back),
-                navigationIconContentDescription = stringResource(id = R.string.back),
-                onNavigationIconClick = handler.onBackClick,
+                navigationIcon = rememberVectorPainter(id = R.drawable.ic_close),
+                navigationIconContentDescription = stringResource(id = R.string.close),
+                onNavigationIconClick = handler.onCloseClick,
             )
         },
     ) {
-        Column(
-            modifier = Modifier
-                .imePadding()
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-        ) {
-            StartRegistrationContent(
-                emailInput = state.emailInput,
-                selectedEnvironmentType = state.selectedEnvironmentType,
-                nameInput = state.nameInput,
-                isReceiveMarketingEmailsToggled = state.isReceiveMarketingEmailsToggled,
-                isContinueButtonEnabled = state.isContinueButtonEnabled,
-                isNewOnboardingUiEnabled = state.showNewOnboardingUi,
-                handler = handler,
-            )
-            Spacer(modifier = Modifier.height(height = 16.dp))
-            Spacer(modifier = Modifier.navigationBarsPadding())
-        }
+        StartRegistrationContent(
+            emailInput = state.emailInput,
+            selectedEnvironmentType = state.selectedEnvironmentType,
+            nameInput = state.nameInput,
+            isReceiveMarketingEmailsToggled = state.isReceiveMarketingEmailsToggled,
+            isContinueButtonEnabled = state.isContinueButtonEnabled,
+            isNewOnboardingUiEnabled = state.showNewOnboardingUi,
+            handler = handler,
+        )
     }
 }
 
@@ -196,70 +186,70 @@ private fun StartRegistrationContent(
     isNewOnboardingUiEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding()
+            .verticalScroll(rememberScrollState()),
+    ) {
         Spacer(modifier = Modifier.height(height = 12.dp))
+
         if (isNewOnboardingUiEnabled) {
+            Spacer(modifier = Modifier.weight(1f))
             Image(
-                painter = rememberVectorPainter(id = R.drawable.vault),
+                painter = rememberVectorPainter(id = R.drawable.bitwarden_logo),
+                colorFilter = ColorFilter.tint(BitwardenTheme.colorScheme.icon.secondary),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(132.dp)
-                    .align(Alignment.CenterHorizontally),
+                    .standardHorizontalMargin()
+                    .fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.weight(1f))
         }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        BitwardenTextField(
+            label = stringResource(id = R.string.email_address_required),
+            value = emailInput,
+            onValueChange = handler.onEmailInputChange,
+            keyboardType = KeyboardType.Email,
+            textFieldTestTag = "EmailAddressEntry",
+            supportingContentPadding = PaddingValues(),
+            supportingContent = {
+                EnvironmentSelector(
+                    labelText = stringResource(id = R.string.create_account_on_with_colon),
+                    dialogTitle = stringResource(id = R.string.create_account_on),
+                    selectedOption = selectedEnvironmentType,
+                    onOptionSelected = handler.onEnvironmentTypeSelect,
+                    onHelpClick = handler.onServerGeologyHelpClick,
+                    isHelpEnabled = isNewOnboardingUiEnabled,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(tag = "RegionSelectorDropdown"),
+                )
+            },
+            cardStyle = CardStyle.Full,
+            modifier = Modifier
+                .fillMaxWidth()
+                .standardHorizontalMargin(),
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         BitwardenTextField(
             label = stringResource(id = R.string.name),
             value = nameInput,
             onValueChange = handler.onNameInputChange,
             textFieldTestTag = "NameEntry",
-            cardStyle = CardStyle.Top(dividerPadding = 0.dp),
+            cardStyle = CardStyle.Full,
             modifier = Modifier
                 .fillMaxWidth()
                 .standardHorizontalMargin(),
         )
-        BitwardenTextField(
-            label = stringResource(id = R.string.email_address),
-            placeholder = stringResource(R.string.email_address_required),
-            value = emailInput,
-            onValueChange = handler.onEmailInputChange,
-            keyboardType = KeyboardType.Email,
-            textFieldTestTag = "EmailAddressEntry",
-            supportingTextContent = {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    EnvironmentSelector(
-                        labelText = stringResource(id = R.string.create_account_on_with_colon),
-                        dialogTitle = stringResource(id = R.string.create_account_on),
-                        selectedOption = selectedEnvironmentType,
-                        onOptionSelected = handler.onEnvironmentTypeSelect,
-                        modifier = Modifier.testTag("RegionSelectorDropdown"),
-                    )
-                    if (isNewOnboardingUiEnabled) {
-                        BitwardenStandardIconButton(
-                            vectorIconRes = R.drawable.ic_question_circle_small,
-                            contentDescription = stringResource(
-                                R.string.help_with_server_geolocations,
-                            ),
-                            onClick = handler.onServerGeologyHelpClick,
-                            contentColor = BitwardenTheme.colorScheme.icon.secondary,
-                            // Align with design but keep accessible touch target of IconButton.
-                            modifier = Modifier.offset(x = 16.dp),
-                        )
-                    }
-                }
-            },
-            cardStyle = CardStyle.Bottom,
-            modifier = Modifier
-                .fillMaxWidth()
-                .standardHorizontalMargin(),
-        )
-        Spacer(modifier = Modifier.height(24.dp))
 
         if (selectedEnvironmentType != Environment.Type.SELF_HOSTED) {
+            Spacer(modifier = Modifier.height(8.dp))
             ReceiveMarketingEmailsSwitch(
                 isChecked = isReceiveMarketingEmailsToggled,
                 onCheckedChange = handler.onReceiveMarketingEmailsToggle,
@@ -268,8 +258,9 @@ private fun StartRegistrationContent(
                     .fillMaxWidth()
                     .standardHorizontalMargin(),
             )
-            Spacer(modifier = Modifier.height(24.dp))
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         BitwardenFilledButton(
             label = stringResource(id = R.string.continue_text),
@@ -280,13 +271,17 @@ private fun StartRegistrationContent(
                 .standardHorizontalMargin()
                 .fillMaxWidth(),
         )
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         TermsAndPrivacyText(
             onTermsClick = handler.onTermsClick,
             onPrivacyPolicyClick = handler.onPrivacyPolicyClick,
             modifier = Modifier.standardHorizontalMargin(),
         )
-        Spacer(modifier = Modifier.height(4.dp))
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.navigationBarsPadding())
     }
 }
 
@@ -395,7 +390,7 @@ private fun StartRegistrationContentFilledOut_preview() {
                 onReceiveMarketingEmailsToggle = {},
                 onUnsubscribeMarketingEmailsClick = {},
                 onServerGeologyHelpClick = {},
-                onBackClick = {},
+                onCloseClick = {},
             ),
         )
     }
@@ -422,7 +417,7 @@ private fun StartRegistrationContentEmpty_preview() {
                 onReceiveMarketingEmailsToggle = {},
                 onUnsubscribeMarketingEmailsClick = {},
                 onServerGeologyHelpClick = {},
-                onBackClick = {},
+                onCloseClick = {},
             ),
         )
     }
@@ -449,7 +444,7 @@ private fun StartRegistrationContentNewOnboardingUi_preview() {
                 onReceiveMarketingEmailsToggle = {},
                 onUnsubscribeMarketingEmailsClick = {},
                 onServerGeologyHelpClick = {},
-                onBackClick = {},
+                onCloseClick = {},
             ),
         )
     }
