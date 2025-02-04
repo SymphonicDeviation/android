@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -141,6 +142,15 @@ fun Modifier.bottomDivider(
     alpha: Float = 1f,
 ): Modifier = drawWithCache {
     onDrawWithContent {
+        val (startX, endX) = when (layoutDirection) {
+            LayoutDirection.Ltr -> {
+                paddingStart.toPx() to (size.width - paddingEnd.toPx())
+            }
+
+            LayoutDirection.Rtl -> {
+                (size.width - paddingEnd.toPx()) to paddingStart.toPx()
+            }
+        }
         drawContent()
         if (enabled) {
             drawLine(
@@ -148,11 +158,11 @@ fun Modifier.bottomDivider(
                 color = color,
                 strokeWidth = thickness.toPx(),
                 start = Offset(
-                    x = paddingStart.toPx(),
+                    x = startX,
                     y = size.height - thickness.toPx() / 2,
                 ),
                 end = Offset(
-                    x = size.width - paddingEnd.toPx(),
+                    x = endX,
                     y = size.height - thickness.toPx() / 2,
                 ),
             )
@@ -257,6 +267,70 @@ private data class StandardHorizontalMarginElement(
 }
 
 /**
+ * This is a [Modifier] extension that applies a card style to the content.
+ */
+@OmitFromCoverage
+@Stable
+@Composable
+fun Modifier.cardStyle(
+    cardStyle: CardStyle?,
+    onClick: (() -> Unit)? = null,
+    clickEnabled: Boolean = true,
+    paddingHorizontal: Dp = 0.dp,
+    paddingVertical: Dp = 12.dp,
+    containerColor: Color = BitwardenTheme.colorScheme.background.secondary,
+    indicationColor: Color = BitwardenTheme.colorScheme.background.pressed,
+): Modifier =
+    this.cardStyle(
+        cardStyle = cardStyle,
+        onClick = onClick,
+        clickEnabled = clickEnabled,
+        paddingStart = paddingHorizontal,
+        paddingTop = paddingVertical,
+        paddingEnd = paddingHorizontal,
+        paddingBottom = paddingVertical,
+        containerColor = containerColor,
+        indicationColor = indicationColor,
+    )
+
+/**
+ * This is a [Modifier] extension that applies a card style to the content.
+ */
+@OmitFromCoverage
+@Stable
+@Composable
+fun Modifier.cardStyle(
+    cardStyle: CardStyle?,
+    onClick: (() -> Unit)? = null,
+    clickEnabled: Boolean = true,
+    paddingStart: Dp = 0.dp,
+    paddingTop: Dp = 12.dp,
+    paddingEnd: Dp = 0.dp,
+    paddingBottom: Dp = 12.dp,
+    containerColor: Color = BitwardenTheme.colorScheme.background.secondary,
+    indicationColor: Color = BitwardenTheme.colorScheme.background.pressed,
+): Modifier =
+    this
+        .cardBackground(
+            cardStyle = cardStyle,
+            color = containerColor,
+        )
+        .nullableClickable(
+            onClick = onClick,
+            enabled = clickEnabled,
+            indicationColor = indicationColor,
+        )
+        .cardPadding(
+            cardStyle = cardStyle,
+            paddingValues = PaddingValues(
+                start = paddingStart,
+                top = paddingTop,
+                end = paddingEnd,
+                bottom = paddingBottom,
+            ),
+        )
+
+/**
  * This is a [Modifier] extension that applies a card background to the content.
  */
 @OmitFromCoverage
@@ -297,30 +371,8 @@ fun Modifier.cardBackground(
 @Composable
 fun Modifier.cardPadding(
     cardStyle: CardStyle?,
-    start: Dp = 0.dp,
-    top: Dp = 12.dp,
-    end: Dp = 0.dp,
-    bottom: Dp = 12.dp,
+    paddingValues: PaddingValues = PaddingValues(vertical = 12.dp),
 ): Modifier {
     cardStyle ?: return this
-    return this.padding(start = start, top = top, end = end, bottom = bottom)
+    return this.padding(paddingValues = paddingValues)
 }
-
-/**
- * This is a [Modifier] extension that applies card padding to the content.
- */
-@OmitFromCoverage
-@Stable
-@Composable
-fun Modifier.cardPadding(
-    cardStyle: CardStyle?,
-    vertical: Dp = 12.dp,
-    horizontal: Dp = 0.dp,
-): Modifier =
-    this.cardPadding(
-        cardStyle = cardStyle,
-        start = horizontal,
-        top = vertical,
-        end = horizontal,
-        bottom = vertical,
-    )

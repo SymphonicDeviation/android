@@ -1,5 +1,6 @@
 package com.x8bit.bitwarden.ui.platform.components.coachmark
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -132,6 +133,14 @@ fun <T : Enum<T>> CoachMarkContainer(
                 }
             }
         }
+
+        // Consume system back event when the scrim is visible.
+        BackHandler(
+            enabled = state.isVisible.value,
+            onBack = {
+                // No-op
+            },
+        )
     }
 }
 
@@ -176,6 +185,8 @@ private fun BitwardenCoachMarkContainer_preview() {
                         key = Foo.Bar,
                         title = "1 of 3",
                         description = "Use this button to generate a new unique password.",
+                        onDismiss = null,
+                        leftAction = null,
                         rightAction = {
                             BitwardenClickableText(
                                 label = "Next",
@@ -202,6 +213,7 @@ private fun BitwardenCoachMarkContainer_preview() {
                     title = "Foo",
                     description = "Baz",
                     shape = CoachMarkHighlightShape.RoundedRectangle(radius = 50f),
+                    onDismiss = null,
                     leftAction = {
                         BitwardenClickableText(
                             label = "Back",
