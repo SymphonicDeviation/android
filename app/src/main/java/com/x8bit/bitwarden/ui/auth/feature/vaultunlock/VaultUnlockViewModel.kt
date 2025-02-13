@@ -177,11 +177,21 @@ class VaultUnlockViewModel @Inject constructor(
         mutableStateFlow.update { it.copy(dialog = null) }
         when {
             state.fido2GetCredentialsRequest != null -> {
-                sendEvent(VaultUnlockEvent.Fido2GetCredentialsError)
+                sendEvent(
+                    VaultUnlockEvent.Fido2GetCredentialsError(
+                        R.string.passkey_operation_failed_because_user_could_not_be_verified
+                            .asText(),
+                    ),
+                )
             }
 
             state.fido2CredentialAssertionRequest != null -> {
-                sendEvent(VaultUnlockEvent.Fido2CredentialAssertionError)
+                sendEvent(
+                    VaultUnlockEvent.Fido2CredentialAssertionError(
+                        R.string.passkey_operation_failed_because_user_could_not_be_verified
+                            .asText(),
+                    ),
+                )
             }
 
             else -> Unit
@@ -330,6 +340,19 @@ class VaultUnlockViewModel @Inject constructor(
                 }
             }
 
+            VaultUnlockResult.BiometricDecodingError -> {
+                biometricsEncryptionManager.clearBiometrics(userId = state.userId)
+                mutableStateFlow.update {
+                    it.copy(
+                        isBiometricsValid = false,
+                        dialog = VaultUnlockState.VaultUnlockDialog.Error(
+                            title = R.string.biometrics_failed.asText(),
+                            message = R.string.biometrics_decoding_failure.asText(),
+                        ),
+                    )
+                }
+            }
+
             VaultUnlockResult.GenericError,
             VaultUnlockResult.InvalidStateError,
                 -> {
@@ -381,6 +404,7 @@ class VaultUnlockViewModel @Inject constructor(
             val accountSummaries = userState.toAccountSummaries()
             val activeAccountSummary = userState.toActiveAccountSummary()
             it.copy(
+                userId = userState.activeUserId,
                 initials = activeAccountSummary.initials,
                 avatarColorString = activeAccountSummary.avatarColorHex,
                 accountSummaries = accountSummaries,
@@ -517,12 +541,12 @@ sealed class VaultUnlockEvent {
     /**
      * Completes the FIDO2 get credentials request with an error response.
      */
-    data object Fido2GetCredentialsError : VaultUnlockEvent()
+    data class Fido2GetCredentialsError(val message: Text) : VaultUnlockEvent()
 
     /**
      * Completes the FIDO2 credential assertion request with an error response.
      */
-    data object Fido2CredentialAssertionError : VaultUnlockEvent()
+    data class Fido2CredentialAssertionError(val message: Text) : VaultUnlockEvent()
 }
 
 /**

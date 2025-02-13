@@ -25,7 +25,7 @@ import com.x8bit.bitwarden.data.platform.repository.util.FakeEnvironmentReposito
 import com.x8bit.bitwarden.data.platform.repository.util.bufferedMutableSharedFlow
 import com.x8bit.bitwarden.data.platform.util.isBuildVersionBelow
 import com.x8bit.bitwarden.data.vault.datasource.network.model.PolicyTypeJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.SyncResponseJson
+import com.x8bit.bitwarden.data.vault.datasource.network.model.SyncResponseJson.Policy
 import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockPolicy
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
@@ -81,7 +81,8 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
         every { firstTimeStateFlow } returns mutableFirstTimeStateFlow
         every { storeShowUnlockSettingBadge(any()) } just runs
     }
-    private val mutableActivePolicyFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Policy>>()
+    private val mutableActivePolicyFlow = bufferedMutableSharedFlow<List<Policy>>()
+    private val mutableRemovePinPolicyFlow = bufferedMutableSharedFlow<List<Policy>>()
     private val biometricsEncryptionManager: BiometricsEncryptionManager = mockk {
         every { createCipherOrNull(DEFAULT_USER_STATE.activeUserId) } returns CIPHER
         every { getOrCreateCipher(DEFAULT_USER_STATE.activeUserId) } returns CIPHER
@@ -96,6 +97,9 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
         every {
             getActivePoliciesFlow(type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT)
         } returns mutableActivePolicyFlow
+        every {
+            getActivePoliciesFlow(type = PolicyTypeJson.REMOVE_UNLOCK_WITH_PIN)
+        } returns mutableRemovePinPolicyFlow
     }
     private val featureFlagManager: FeatureFlagManager = mockk(relaxed = true) {
         every { getFeatureFlag(FlagKey.AuthenticatorSync) } returns false
@@ -158,6 +162,29 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
                 DEFAULT_STATE.copy(
                     vaultTimeoutPolicyMinutes = 10,
                     vaultTimeoutPolicyAction = "lock",
+                ),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun `state updates when remove pin policies change`() = runTest {
+        val viewModel = createViewModel()
+
+        mutableRemovePinPolicyFlow.emit(
+            listOf(
+                createMockPolicy(
+                    isEnabled = true,
+                    type = PolicyTypeJson.REMOVE_UNLOCK_WITH_PIN,
+                ),
+            ),
+        )
+
+        viewModel.stateFlow.test {
+            assertEquals(
+                DEFAULT_STATE.copy(
+                    removeUnlockWithPinPolicyEnabled = true,
                 ),
                 awaitItem(),
             )
@@ -432,7 +459,9 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
         runTest {
             val initialState = DEFAULT_STATE.copy(isUnlockWithBiometricsEnabled = true)
             every { settingsRepository.isUnlockWithBiometricsEnabled } returns true
-            every { settingsRepository.clearBiometricsKey() } just runs
+            every {
+                biometricsEncryptionManager.clearBiometrics(userId = DEFAULT_USER_ID)
+            } just runs
             val viewModel = createViewModel(initialState)
             assertEquals(initialState, viewModel.stateFlow.value)
 
@@ -443,7 +472,7 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
                 viewModel.stateFlow.value,
             )
             verify(exactly = 1) {
-                settingsRepository.clearBiometricsKey()
+                biometricsEncryptionManager.clearBiometrics(userId = DEFAULT_USER_ID)
             }
         }
 
@@ -456,7 +485,9 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
                 isUnlockWithBiometricsEnabled = true,
             )
             every { settingsRepository.isUnlockWithBiometricsEnabled } returns true
-            every { settingsRepository.clearBiometricsKey() } just runs
+            every {
+                biometricsEncryptionManager.clearBiometrics(userId = DEFAULT_USER_ID)
+            } just runs
             every { settingsRepository.vaultTimeoutAction = VaultTimeoutAction.LOGOUT } just runs
             val viewModel = createViewModel(initialState)
             assertEquals(initialState, viewModel.stateFlow.value)
@@ -471,7 +502,7 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
                 viewModel.stateFlow.value,
             )
             verify(exactly = 1) {
-                settingsRepository.clearBiometricsKey()
+                biometricsEncryptionManager.clearBiometrics(userId = DEFAULT_USER_ID)
                 settingsRepository.vaultTimeoutAction = VaultTimeoutAction.LOGOUT
             }
         }
@@ -863,8 +894,9 @@ class AccountSecurityViewModelTest : BaseViewModelTest() {
 private val CIPHER = mockk<Cipher>()
 private const val FINGERPRINT: String = "fingerprint"
 
+private const val DEFAULT_USER_ID: String = "activeUserId"
 private val DEFAULT_USER_STATE = UserState(
-    activeUserId = "activeUserId",
+    activeUserId = DEFAULT_USER_ID,
     accounts = listOf(
         UserState.Account(
             userId = "activeUserId",
@@ -895,11 +927,12 @@ private val DEFAULT_STATE: AccountSecurityState = AccountSecurityState(
     isUnlockWithBiometricsEnabled = false,
     isUnlockWithPasswordEnabled = true,
     isUnlockWithPinEnabled = false,
-    userId = DEFAULT_USER_STATE.activeUserId,
+    userId = DEFAULT_USER_ID,
     vaultTimeout = VaultTimeout.ThirtyMinutes,
     vaultTimeoutAction = VaultTimeoutAction.LOCK,
     vaultTimeoutPolicyMinutes = null,
     vaultTimeoutPolicyAction = null,
     shouldShowEnableAuthenticatorSync = false,
     shouldShowUnlockActionCard = false,
+    removeUnlockWithPinPolicyEnabled = false,
 )

@@ -570,7 +570,12 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
             val viewModel = createViewModel(state = initialState)
             viewModel.trySendAction(VaultUnlockAction.DismissDialog)
             viewModel.eventFlow.test {
-                assertEquals(VaultUnlockEvent.Fido2GetCredentialsError, awaitItem())
+                assertEquals(
+                    VaultUnlockEvent.Fido2GetCredentialsError(
+                        R.string.passkey_operation_failed_because_user_could_not_be_verified.asText(),
+                    ),
+                    awaitItem(),
+                )
             }
         }
 
@@ -586,7 +591,13 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
             val viewModel = createViewModel(state = initialState)
             viewModel.trySendAction(VaultUnlockAction.DismissDialog)
             viewModel.eventFlow.test {
-                assertEquals(VaultUnlockEvent.Fido2CredentialAssertionError, awaitItem())
+                assertEquals(
+                    VaultUnlockEvent.Fido2CredentialAssertionError(
+                        R.string.passkey_operation_failed_because_user_could_not_be_verified
+                            .asText(),
+                    ),
+                    awaitItem(),
+                )
             }
         }
 
@@ -1091,6 +1102,37 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
             viewModel.stateFlow.value,
         )
         coVerify(exactly = 1) {
+            vaultRepository.unlockVaultWithBiometrics(cipher = CIPHER)
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `on BiometricsUnlockSuccess should disable biometrics and display error dialog on unlockVaultWithBiometrics BiometricDecodingError`() {
+        val initialState = DEFAULT_STATE.copy(isBiometricEnabled = true)
+        mutableUserStateFlow.value = DEFAULT_USER_STATE.copy(
+            accounts = listOf(DEFAULT_ACCOUNT.copy(isBiometricsEnabled = true)),
+        )
+        val viewModel = createViewModel(state = initialState)
+        coEvery {
+            vaultRepository.unlockVaultWithBiometrics(cipher = CIPHER)
+        } returns VaultUnlockResult.BiometricDecodingError
+        every { encryptionManager.clearBiometrics(userId = USER_ID) } just runs
+
+        viewModel.trySendAction(VaultUnlockAction.BiometricsUnlockSuccess(CIPHER))
+
+        assertEquals(
+            initialState.copy(
+                isBiometricsValid = false,
+                dialog = VaultUnlockState.VaultUnlockDialog.Error(
+                    title = R.string.biometrics_failed.asText(),
+                    message = R.string.biometrics_decoding_failure.asText(),
+                ),
+            ),
+            viewModel.stateFlow.value,
+        )
+        coVerify(exactly = 1) {
+            encryptionManager.clearBiometrics(userId = USER_ID)
             vaultRepository.unlockVaultWithBiometrics(cipher = CIPHER)
         }
     }

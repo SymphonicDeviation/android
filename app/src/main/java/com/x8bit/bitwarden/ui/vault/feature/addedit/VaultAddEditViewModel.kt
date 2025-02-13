@@ -306,8 +306,8 @@ class VaultAddEditViewModel @Inject constructor(
                 handleUserVerificationCancelled()
             }
 
-            VaultAddEditAction.Common.Fido2ErrorDialogDismissed -> {
-                handleFido2ErrorDialogDismissed()
+            is VaultAddEditAction.Common.Fido2ErrorDialogDismissed -> {
+                handleFido2ErrorDialogDismissed(action)
             }
 
             VaultAddEditAction.Common.UserVerificationNotSupported -> {
@@ -645,12 +645,16 @@ class VaultAddEditViewModel @Inject constructor(
         showFido2ErrorDialog()
     }
 
-    private fun handleFido2ErrorDialogDismissed() {
+    private fun handleFido2ErrorDialogDismissed(
+        action: VaultAddEditAction.Common.Fido2ErrorDialogDismissed,
+    ) {
         fido2CredentialManager.isUserVerified = false
         clearDialogState()
         sendEvent(
             VaultAddEditEvent.CompleteFido2Registration(
-                result = Fido2RegisterCredentialResult.Error,
+                result = Fido2RegisterCredentialResult.Error(
+                    message = action.message,
+                ),
             ),
         )
     }
@@ -990,6 +994,10 @@ class VaultAddEditViewModel @Inject constructor(
 
             VaultAddEditAction.ItemType.LoginType.StartLearnAboutLogins -> {
                 handleStartLearnAboutLogins()
+            }
+
+            VaultAddEditAction.ItemType.LoginType.AuthenticatorHelpToolTipClick -> {
+                handleAuthenticatorHelpToolTipClick()
             }
         }
     }
@@ -1823,6 +1831,10 @@ class VaultAddEditViewModel @Inject constructor(
 
         getRequestAndRegisterCredential()
     }
+
+    private fun handleAuthenticatorHelpToolTipClick() {
+        sendEvent(VaultAddEditEvent.NavigateToAuthenticatorKeyTooltipUri)
+    }
     //endregion Internal Type Handlers
 
     //region Utility Functions
@@ -2649,6 +2661,11 @@ sealed class VaultAddEditEvent {
      * Start the coach mark guided tour of the add login content.
      */
     data object StartAddLoginItemCoachMarkTour : VaultAddEditEvent()
+
+    /**
+     * Navigate the user to the tooltip URI for Authenticator key help.
+     */
+    data object NavigateToAuthenticatorKeyTooltipUri : VaultAddEditEvent()
 }
 
 /**
@@ -2824,7 +2841,7 @@ sealed class VaultAddEditAction {
         /**
          * The user has dismissed the FIDO 2 credential error dialog.
          */
-        data object Fido2ErrorDialogDismissed : Common()
+        data class Fido2ErrorDialogDismissed(val message: Text) : Common()
 
         /**
          * User verification cannot be performed with device biometrics or credentials.
@@ -2969,6 +2986,11 @@ sealed class VaultAddEditAction {
              * User has dismissed the learn about logins card.
              */
             data object LearnAboutLoginsDismissed : LoginType()
+
+            /**
+             * User has clicked the call to action on the authenticator help tooltip.
+             */
+            data object AuthenticatorHelpToolTipClick : LoginType()
         }
 
         /**
