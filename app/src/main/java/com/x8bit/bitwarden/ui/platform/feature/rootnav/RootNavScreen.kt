@@ -29,11 +29,12 @@ import com.x8bit.bitwarden.ui.auth.feature.auth.navigateToAuthGraph
 import com.x8bit.bitwarden.ui.auth.feature.completeregistration.navigateToCompleteRegistration
 import com.x8bit.bitwarden.ui.auth.feature.expiredregistrationlink.navigateToExpiredRegistrationLinkScreen
 import com.x8bit.bitwarden.ui.auth.feature.newdevicenotice.navigateToNewDeviceNoticeEmailAccess
+import com.x8bit.bitwarden.ui.auth.feature.preventaccountlockout.navigateToPreventAccountLockout
 import com.x8bit.bitwarden.ui.auth.feature.removepassword.REMOVE_PASSWORD_ROUTE
 import com.x8bit.bitwarden.ui.auth.feature.removepassword.navigateToRemovePassword
 import com.x8bit.bitwarden.ui.auth.feature.removepassword.removePasswordDestination
 import com.x8bit.bitwarden.ui.auth.feature.resetpassword.RESET_PASSWORD_ROUTE
-import com.x8bit.bitwarden.ui.auth.feature.resetpassword.navigateToResetPasswordGraph
+import com.x8bit.bitwarden.ui.auth.feature.resetpassword.navigateToResetPasswordScreen
 import com.x8bit.bitwarden.ui.auth.feature.resetpassword.resetPasswordDestination
 import com.x8bit.bitwarden.ui.auth.feature.setpassword.SET_PASSWORD_ROUTE
 import com.x8bit.bitwarden.ui.auth.feature.setpassword.navigateToSetPassword
@@ -58,6 +59,7 @@ import com.x8bit.bitwarden.ui.platform.theme.NonNullExitTransitionProvider
 import com.x8bit.bitwarden.ui.platform.theme.RootTransitionProviders
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.model.AddSendType
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.navigateToAddSend
+import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
 import com.x8bit.bitwarden.ui.vault.feature.addedit.navigateToVaultAddEdit
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.navigateToVaultItemListingAsRoot
 import com.x8bit.bitwarden.ui.vault.model.VaultAddEditType
@@ -94,7 +96,11 @@ fun RootNavScreen(
         splashDestination()
         authGraph(navController)
         removePasswordDestination()
-        resetPasswordDestination()
+        resetPasswordDestination(
+            onNavigateToPreventAccountLockOut = {
+                navController.navigateToPreventAccountLockout()
+            },
+        )
         trustedDeviceGraph(navController)
         vaultUnlockDestination()
         vaultUnlockedGraph(navController)
@@ -182,7 +188,10 @@ fun RootNavScreen(
             }
 
             RootNavState.RemovePassword -> navController.navigateToRemovePassword(rootNavOptions)
-            RootNavState.ResetPassword -> navController.navigateToResetPasswordGraph(rootNavOptions)
+            RootNavState.ResetPassword -> {
+                navController.navigateToResetPasswordScreen(rootNavOptions)
+            }
+
             RootNavState.SetPassword -> navController.navigateToSetPassword(rootNavOptions)
             RootNavState.Splash -> navController.navigateToSplash(rootNavOptions)
             RootNavState.TrustedDevice -> navController.navigateToTrustedDeviceGraph(rootNavOptions)
@@ -210,7 +219,8 @@ fun RootNavScreen(
             is RootNavState.VaultUnlockedForAutofillSave -> {
                 navController.navigateToVaultUnlockedGraph(rootNavOptions)
                 navController.navigateToVaultAddEdit(
-                    vaultAddEditType = VaultAddEditType.AddItem(
+                    args = VaultAddEditArgs(
+                        vaultAddEditType = VaultAddEditType.AddItem,
                         vaultItemCipherType = VaultItemCipherType.LOGIN,
                     ),
                     navOptions = rootNavOptions,

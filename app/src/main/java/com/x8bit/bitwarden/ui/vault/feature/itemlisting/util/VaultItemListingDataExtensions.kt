@@ -209,7 +209,9 @@ fun VaultData.toViewState(
                         R.string.no_notes
                     }
 
-                    else -> R.string.no_items
+                    VaultItemListingState.ItemListingType.Vault.SshKey -> {
+                        R.string.no_ssh_keys
+                    }
                 }
                     .asText()
             }
@@ -243,6 +245,10 @@ fun VaultData.toViewState(
 
                         VaultItemListingState.ItemListingType.Vault.SecureNote -> {
                             R.string.new_note
+                        }
+
+                        VaultItemListingState.ItemListingType.Vault.SshKey -> {
+                            R.string.new_ssh_key
                         }
 
                         else -> R.string.new_item
@@ -404,6 +410,7 @@ private fun CipherView.toDisplayItem(
         isTotp = isTotp,
         shouldShowMasterPasswordReprompt = (reprompt == CipherRepromptType.PASSWORD) &&
             hasMasterPassword,
+        type = this.type,
     )
 
 private fun CipherView.toSecondSubtitle(fido2CredentialRpId: String?): String? =
@@ -475,6 +482,7 @@ private fun SendView.toDisplayItem(
         shouldShowMasterPasswordReprompt = false,
         isFido2Creation = false,
         isTotp = false,
+        type = null,
     )
 
 @get:DrawableRes

@@ -1597,6 +1597,40 @@ class AuthRepositoryTest {
 
     @Test
     @Suppress("MaxLineLength")
+    fun `login get token should return InvalidType NewDeviceVerification when message is new device verification needed`() =
+        runTest {
+            coEvery {
+                identityService.preLogin(email = EMAIL)
+            } returns PRE_LOGIN_SUCCESS.asSuccess()
+            coEvery {
+                identityService.getToken(
+                    email = EMAIL,
+                    authModel = IdentityTokenAuthModel.MasterPassword(
+                        username = EMAIL,
+                        password = PASSWORD_HASH,
+                    ),
+                    captchaToken = null,
+                    uniqueAppId = UNIQUE_APP_ID,
+                )
+            } returns GetTokenResponseJson
+                .Invalid(
+                    errorModel = GetTokenResponseJson.Invalid.ErrorModel(
+                        errorMessage = "new device verification required",
+                    ),
+                    legacyErrorModel = null,
+                )
+                .asSuccess()
+
+            val result = repository.login(email = EMAIL, password = PASSWORD, captchaToken = null)
+            assertEquals(
+                LoginResult.NewDeviceVerification(errorMessage = "new device verification required"),
+                result,
+            )
+            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
+        }
+
+    @Test
+    @Suppress("MaxLineLength")
     fun `login get token succeeds should return Success, unlockVault, update AuthState, update stored keys, and sync`() =
         runTest {
             val successResponse = GET_TOKEN_RESPONSE_SUCCESS
@@ -6282,9 +6316,29 @@ class AuthRepositoryTest {
 
     @Test
     fun `setOnboardingStatus should save the onboarding status to disk`() {
-        val userId = "userId"
-        repository.setOnboardingStatus(userId = userId, status = OnboardingStatus.NOT_STARTED)
-        assertEquals(OnboardingStatus.NOT_STARTED, fakeAuthDiskSource.getOnboardingStatus(userId))
+        fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+        repository.setOnboardingStatus(status = OnboardingStatus.NOT_STARTED)
+        assertEquals(
+            OnboardingStatus.NOT_STARTED,
+            fakeAuthDiskSource.getOnboardingStatus(USER_ID_1),
+        )
+    }
+
+    @Test
+    fun `setOnboardingStatus with no userId does not change the onboarding state`() {
+        fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+        repository.setOnboardingStatus(status = OnboardingStatus.NOT_STARTED)
+        assertEquals(
+            OnboardingStatus.NOT_STARTED,
+            fakeAuthDiskSource.getOnboardingStatus(USER_ID_1),
+        )
+
+        fakeAuthDiskSource.userState = null
+        repository.setOnboardingStatus(status = OnboardingStatus.COMPLETE)
+        val activeUserId = SINGLE_USER_STATE_1.activeUserId
+        assertFalse(
+            fakeAuthDiskSource.getOnboardingStatus(activeUserId) == OnboardingStatus.COMPLETE,
+        )
     }
 
     @Test
@@ -6344,10 +6398,8 @@ class AuthRepositoryTest {
                 userId = USER_ID_1,
                 passwordHash = PASSWORD_HASH,
             )
-            assertEquals(
-                OnboardingStatus.NOT_STARTED,
-                fakeAuthDiskSource.getOnboardingStatus(USER_ID_1),
-            )
+            // This should only be set after they complete a registration and not based on login.
+            assertNull(fakeAuthDiskSource.getOnboardingStatus(USER_ID_1))
         }
 
     @Suppress("MaxLineLength")

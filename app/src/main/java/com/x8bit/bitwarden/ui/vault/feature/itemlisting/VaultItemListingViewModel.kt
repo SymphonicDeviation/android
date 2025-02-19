@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.bitwarden.fido.Fido2CredentialAutofillView
 import com.bitwarden.vault.CipherRepromptType
+import com.bitwarden.vault.CipherType
 import com.bitwarden.vault.CipherView
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
@@ -63,6 +64,7 @@ import com.x8bit.bitwarden.ui.platform.components.model.IconRes
 import com.x8bit.bitwarden.ui.platform.feature.search.SearchTypeData
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
 import com.x8bit.bitwarden.ui.platform.feature.search.util.filterAndOrganize
+import com.x8bit.bitwarden.ui.platform.util.persistentListOfNotNull
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.components.util.toVaultItemCipherTypeOrNull
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
@@ -78,7 +80,9 @@ import com.x8bit.bitwarden.ui.vault.feature.vault.util.toActiveAccountSummary
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toFilteredList
 import com.x8bit.bitwarden.ui.vault.model.TotpData
 import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
+import com.x8bit.bitwarden.ui.vault.util.toVaultItemCipherType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -271,8 +275,8 @@ class VaultItemListingViewModel @Inject constructor(
             }
 
             is VaultItemListingsAction.Internal -> handleInternalAction(action)
-            is VaultItemListingsAction.ItemToAddToFolderSelected -> {
-                handleItemToAddToFolderSelected(action)
+            is VaultItemListingsAction.ItemTypeToAddSelected -> {
+                handleItemTypeToAddSelected(action)
             }
         }
     }
@@ -547,58 +551,74 @@ class VaultItemListingViewModel @Inject constructor(
         }
     }
 
-    private fun handleItemToAddToFolderSelected(
-        action: VaultItemListingsAction.ItemToAddToFolderSelected,
+    private fun handleItemTypeToAddSelected(
+        action: VaultItemListingsAction.ItemTypeToAddSelected,
     ) {
-        (state.itemListingType as? VaultItemListingState.ItemListingType.Vault.Folder)
-            ?.let { folder ->
-                when (val vaultItemType = action.itemType) {
-                    CreateVaultItemType.LOGIN,
-                    CreateVaultItemType.CARD,
-                    CreateVaultItemType.IDENTITY,
-                    CreateVaultItemType.SECURE_NOTE,
-                    CreateVaultItemType.SSH_KEY,
-                        -> {
-                        vaultItemType
-                            .toVaultItemCipherTypeOrNull()
-                            ?.let {
-                                sendEvent(
-                                    VaultItemListingEvent.NavigateToAddVaultItem(
-                                        vaultItemCipherType = it,
-                                        selectedFolderId = folder.folderId,
-                                    ),
-                                )
-                            }
-                    }
-
-                    CreateVaultItemType.FOLDER -> {
+        val listingType = state.itemListingType
+        val collectionId = (listingType as? VaultItemListingState.ItemListingType.Vault.Collection)
+            ?.collectionId
+        val folderId = (listingType as? VaultItemListingState.ItemListingType.Vault.Folder)
+            ?.folderId
+        when (val vaultItemType = action.itemType) {
+            CreateVaultItemType.LOGIN,
+            CreateVaultItemType.CARD,
+            CreateVaultItemType.IDENTITY,
+            CreateVaultItemType.SECURE_NOTE,
+            CreateVaultItemType.SSH_KEY,
+                -> {
+                vaultItemType
+                    .toVaultItemCipherTypeOrNull()
+                    ?.let {
                         sendEvent(
-                            VaultItemListingEvent.NavigateToAddFolder(
-                                parentFolderName = folder.fullyQualifiedName,
+                            VaultItemListingEvent.NavigateToAddVaultItem(
+                                vaultItemCipherType = it,
+                                selectedCollectionId = collectionId,
+                                selectedFolderId = folderId,
                             ),
                         )
                     }
+            }
+
+            CreateVaultItemType.FOLDER -> {
+                if (listingType is VaultItemListingState.ItemListingType.Vault.Folder) {
+                    sendEvent(
+                        VaultItemListingEvent.NavigateToAddFolder(
+                            parentFolderName = listingType.fullyQualifiedName,
+                        ),
+                    )
+                } else {
+                    throw IllegalArgumentException("$listingType does not support adding a folder")
                 }
             }
+        }
     }
 
     private fun handleAddVaultItemClick() {
         when (val itemListingType = state.itemListingType) {
-            is VaultItemListingState.ItemListingType.Vault.Folder -> {
+            is VaultItemListingState.ItemListingType.Vault.Collection -> {
                 mutableStateFlow.update {
                     it.copy(
-                        dialogState = VaultItemListingState.DialogState.VaultItemTypeSelection,
+                        dialogState = VaultItemListingState.DialogState.VaultItemTypeSelection(
+                            excludedOptions = persistentListOfNotNull(
+                                CreateVaultItemType.SSH_KEY,
+                                CreateVaultItemType.FOLDER,
+                            ),
+                        ),
                     )
                 }
             }
 
-            is VaultItemListingState.ItemListingType.Vault.Collection -> {
-                sendEvent(
-                    VaultItemListingEvent.NavigateToAddVaultItem(
-                        vaultItemCipherType = itemListingType.toVaultItemCipherType(),
-                        selectedCollectionId = itemListingType.collectionId,
-                    ),
-                )
+            is VaultItemListingState.ItemListingType.Vault.Folder -> {
+                mutableStateFlow.update {
+                    it.copy(
+                        dialogState = VaultItemListingState.DialogState.VaultItemTypeSelection(
+                            excludedOptions = persistentListOfNotNull(
+                                CreateVaultItemType.SSH_KEY,
+                                CreateVaultItemType.FOLDER,
+                            ),
+                        ),
+                    )
+                }
             }
 
             is VaultItemListingState.ItemListingType.Vault -> {
@@ -638,7 +658,12 @@ class VaultItemListingViewModel @Inject constructor(
             return
         }
         state.totpData?.let {
-            sendEvent(VaultItemListingEvent.NavigateToEditCipher(cipherId = action.id))
+            sendEvent(
+                event = VaultItemListingEvent.NavigateToEditCipher(
+                    cipherId = action.id,
+                    cipherType = requireNotNull(action.cipherType).toVaultItemCipherType(),
+                ),
+            )
             return
         }
 
@@ -649,7 +674,10 @@ class VaultItemListingViewModel @Inject constructor(
 
         val event = when (state.itemListingType) {
             is VaultItemListingState.ItemListingType.Vault -> {
-                VaultItemListingEvent.NavigateToVaultItem(id = action.id)
+                VaultItemListingEvent.NavigateToVaultItem(
+                    id = action.id,
+                    type = requireNotNull(action.cipherType).toVaultItemCipherType(),
+                )
             }
 
             is VaultItemListingState.ItemListingType.Send -> {
@@ -888,7 +916,18 @@ class VaultItemListingViewModel @Inject constructor(
     }
 
     private fun handleEditCipherClick(action: ListingItemOverflowAction.VaultAction.EditClick) {
-        sendEvent(VaultItemListingEvent.NavigateToEditCipher(action.cipherId))
+        sendEvent(
+            event = VaultItemListingEvent.NavigateToEditCipher(
+                cipherId = action.cipherId,
+                cipherType = when (action.cipherType) {
+                    CipherType.LOGIN -> VaultItemCipherType.LOGIN
+                    CipherType.SECURE_NOTE -> VaultItemCipherType.SECURE_NOTE
+                    CipherType.CARD -> VaultItemCipherType.CARD
+                    CipherType.IDENTITY -> VaultItemCipherType.IDENTITY
+                    CipherType.SSH_KEY -> VaultItemCipherType.SSH_KEY
+                },
+            ),
+        )
     }
 
     private fun handleLaunchCipherUrlClick(
@@ -898,7 +937,18 @@ class VaultItemListingViewModel @Inject constructor(
     }
 
     private fun handleViewCipherClick(action: ListingItemOverflowAction.VaultAction.ViewClick) {
-        sendEvent(VaultItemListingEvent.NavigateToVaultItem(action.cipherId))
+        sendEvent(
+            event = VaultItemListingEvent.NavigateToVaultItem(
+                id = action.cipherId,
+                type = when (action.cipherType) {
+                    CipherType.LOGIN -> VaultItemCipherType.LOGIN
+                    CipherType.SECURE_NOTE -> VaultItemCipherType.SECURE_NOTE
+                    CipherType.CARD -> VaultItemCipherType.CARD
+                    CipherType.IDENTITY -> VaultItemCipherType.IDENTITY
+                    CipherType.SSH_KEY -> VaultItemCipherType.SSH_KEY
+                },
+            ),
+        )
     }
 
     private fun handleDismissDialogClick() {
@@ -1270,7 +1320,12 @@ class VaultItemListingViewModel @Inject constructor(
             }
 
             is MasterPasswordRepromptData.Totp -> {
-                sendEvent(VaultItemListingEvent.NavigateToEditCipher(data.cipherId))
+                sendEvent(
+                    VaultItemListingEvent.NavigateToEditCipher(
+                        cipherId = data.cipherId,
+                        cipherType = VaultItemCipherType.LOGIN,
+                    ),
+                )
             }
         }
     }
@@ -2016,7 +2071,9 @@ data class VaultItemListingState(
          * Represents a selection dialog to choose a vault item type to add to folder.
          */
         @Parcelize
-        data object VaultItemTypeSelection : DialogState()
+        data class VaultItemTypeSelection(
+            val excludedOptions: ImmutableList<CreateVaultItemType>,
+        ) : DialogState()
     }
 
     /**
@@ -2062,9 +2119,6 @@ data class VaultItemListingState(
             val displayCollectionList: List<CollectionDisplayItem>,
         ) : ViewState() {
             override val isPullToRefreshEnabled: Boolean get() = true
-            val shouldShowDivider: Boolean
-                get() = displayItemList.isNotEmpty() &&
-                    (displayFolderList.isNotEmpty() || displayCollectionList.isNotEmpty())
         }
 
         /**
@@ -2097,6 +2151,7 @@ data class VaultItemListingState(
      * @property isFido2Creation whether or not this screen is part of fido2 creation flow.
      * @property shouldShowMasterPasswordReprompt whether or not a master password reprompt is
      * required for various secure actions.
+     * @property type Indicates the type of cipher this is or null if it is not a cipher.
      */
     data class DisplayItem(
         val id: String,
@@ -2115,6 +2170,7 @@ data class VaultItemListingState(
         val isFido2Creation: Boolean,
         val isTotp: Boolean,
         val shouldShowMasterPasswordReprompt: Boolean,
+        val type: CipherType?,
     )
 
     /**
@@ -2326,13 +2382,17 @@ sealed class VaultItemListingEvent {
      *
      * @property id the id of the item to navigate to.
      */
-    data class NavigateToVaultItem(val id: String) : VaultItemListingEvent()
+    data class NavigateToVaultItem(
+        val id: String,
+        val type: VaultItemCipherType,
+    ) : VaultItemListingEvent()
 
     /**
      * Navigates to view a cipher.
      */
     data class NavigateToEditCipher(
         val cipherId: String,
+        val cipherType: VaultItemCipherType,
     ) : VaultItemListingEvent()
 
     /**
@@ -2529,7 +2589,10 @@ sealed class VaultItemListingsAction {
      *
      * @property id the id of the item that has been clicked.
      */
-    data class ItemClick(val id: String) : VaultItemListingsAction()
+    data class ItemClick(
+        val id: String,
+        val cipherType: CipherType?,
+    ) : VaultItemListingsAction()
 
     /**
      * Click on the collection.
@@ -2599,7 +2662,7 @@ sealed class VaultItemListingsAction {
     /**
      * Indicated a selection was made to add a new item to the vault.
      */
-    data class ItemToAddToFolderSelected(
+    data class ItemTypeToAddSelected(
         val itemType: CreateVaultItemType,
     ) : VaultItemListingsAction()
 

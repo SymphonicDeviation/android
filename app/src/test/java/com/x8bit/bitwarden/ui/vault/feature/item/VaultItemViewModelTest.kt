@@ -34,6 +34,7 @@ import com.x8bit.bitwarden.ui.vault.feature.item.util.createLoginContent
 import com.x8bit.bitwarden.ui.vault.feature.item.util.toViewState
 import com.x8bit.bitwarden.ui.vault.feature.verificationcode.util.createVerificationCodeItem
 import com.x8bit.bitwarden.ui.vault.model.VaultCardBrand
+import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import com.x8bit.bitwarden.ui.vault.model.VaultLinkedFieldType
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -2002,6 +2003,21 @@ class VaultItemViewModelTest : BaseViewModelTest() {
         }
 
         @Test
+        fun `on AuthenticatorHelpToolTipClick should emit NavigateToUri`() = runTest {
+            viewModel.eventFlow.test {
+                viewModel.trySendAction(
+                    action = VaultItemAction.ItemType.Login.AuthenticatorHelpToolTipClick,
+                )
+                assertEquals(
+                    VaultItemEvent.NavigateToUri(
+                        "https://bitwarden.com/help/integrated-authenticator",
+                    ),
+                    awaitItem(),
+                )
+            }
+        }
+
+        @Test
         fun `on PasswordHistoryClick should show password dialog when re-prompt is required`() =
             runTest {
                 val loginState = DEFAULT_STATE.copy(viewState = DEFAULT_VIEW_STATE)
@@ -3134,6 +3150,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
     private fun createViewModel(
         state: VaultItemState?,
         vaultItemId: String = VAULT_ITEM_ID,
+        vaultItemCipherType: VaultItemCipherType = VaultItemCipherType.LOGIN,
         bitwardenClipboardManager: BitwardenClipboardManager = clipboardManager,
         authRepository: AuthRepository = authRepo,
         vaultRepository: VaultRepository = vaultRepo,
@@ -3144,6 +3161,16 @@ class VaultItemViewModelTest : BaseViewModelTest() {
         savedStateHandle = SavedStateHandle().apply {
             set("state", state)
             set("vault_item_id", vaultItemId)
+            set(
+                "vault_item_cipher_type",
+                when (vaultItemCipherType) {
+                    VaultItemCipherType.LOGIN -> "login"
+                    VaultItemCipherType.CARD -> "card"
+                    VaultItemCipherType.IDENTITY -> "identity"
+                    VaultItemCipherType.SECURE_NOTE -> "secure_note"
+                    VaultItemCipherType.SSH_KEY -> "ssh_key"
+                },
+            )
             set("tempAttachmentFile", tempAttachmentFile)
         },
         clipboardManager = bitwardenClipboardManager,
@@ -3177,6 +3204,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
 
         private val DEFAULT_STATE: VaultItemState = VaultItemState(
             vaultItemId = VAULT_ITEM_ID,
+            cipherType = VaultItemCipherType.LOGIN,
             viewState = VaultItemState.ViewState.Loading,
             dialog = null,
         )

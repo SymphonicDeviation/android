@@ -38,8 +38,11 @@ import com.x8bit.bitwarden.ui.util.isProgressBar
 import com.x8bit.bitwarden.ui.util.onFirstNodeWithTextAfterScroll
 import com.x8bit.bitwarden.ui.util.onNodeWithContentDescriptionAfterScroll
 import com.x8bit.bitwarden.ui.util.onNodeWithTextAfterScroll
+import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
 import com.x8bit.bitwarden.ui.vault.feature.item.model.TotpCodeItemData
+import com.x8bit.bitwarden.ui.vault.model.VaultAddEditType
 import com.x8bit.bitwarden.ui.vault.model.VaultCardBrand
+import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import com.x8bit.bitwarden.ui.vault.model.VaultLinkedFieldType
 import io.mockk.every
 import io.mockk.just
@@ -58,7 +61,7 @@ import java.time.Instant
 class VaultItemScreenTest : BaseComposeTest() {
 
     private var onNavigateBackCalled = false
-    private var onNavigateToVaultEditItemId: String? = null
+    private var onNavigateToVaultEditItemArgs: VaultAddEditArgs? = null
     private var onNavigateToMoveToOrganizationItemId: String? = null
     private var onNavigateToAttachmentsId: String? = null
     private var onNavigateToPasswordHistoryId: String? = null
@@ -78,7 +81,7 @@ class VaultItemScreenTest : BaseComposeTest() {
             VaultItemScreen(
                 viewModel = viewModel,
                 onNavigateBack = { onNavigateBackCalled = true },
-                onNavigateToVaultAddEditItem = { id, _ -> onNavigateToVaultEditItemId = id },
+                onNavigateToVaultAddEditItem = { onNavigateToVaultEditItemArgs = it },
                 onNavigateToMoveToOrganization = { id, _ ->
                     onNavigateToMoveToOrganizationItemId = id
                 },
@@ -94,7 +97,13 @@ class VaultItemScreenTest : BaseComposeTest() {
     fun `NavigateToEdit event should invoke onNavigateToVaultEditItem`() {
         val id = "id1234"
         mutableEventFlow.tryEmit(VaultItemEvent.NavigateToAddEdit(itemId = id, isClone = false))
-        assertEquals(id, onNavigateToVaultEditItemId)
+        assertEquals(
+            VaultAddEditArgs(
+                vaultAddEditType = VaultAddEditType.EditItem(vaultItemId = id),
+                vaultItemCipherType = VaultItemCipherType.LOGIN,
+            ),
+            onNavigateToVaultEditItemArgs,
+        )
     }
 
     @Test
@@ -1728,6 +1737,21 @@ class VaultItemScreenTest : BaseComposeTest() {
     }
 
     @Test
+    fun `in login state, on totp help tooltip click should send AuthenticatorHelpToolTipClick`() {
+        mutableStateFlow.update { currentState ->
+            currentState.copy(viewState = DEFAULT_LOGIN_VIEW_STATE)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescriptionAfterScroll("Authenticator key help")
+            .performClick()
+
+        verify {
+            viewModel.trySendAction(VaultItemAction.ItemType.Login.AuthenticatorHelpToolTipClick)
+        }
+    }
+
+    @Test
     fun `in login state, launch uri button should be displayed according to state`() {
         val uriData = VaultItemState.ViewState.Content.ItemType.Login.UriData(
             uri = "www.example.com",
@@ -2705,6 +2729,7 @@ private const val VAULT_ITEM_ID = "vault_item_id"
 
 private val DEFAULT_STATE: VaultItemState = VaultItemState(
     vaultItemId = VAULT_ITEM_ID,
+    cipherType = VaultItemCipherType.LOGIN,
     viewState = VaultItemState.ViewState.Loading,
     dialog = null,
 )
