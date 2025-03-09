@@ -31,7 +31,6 @@ sealed class FlagKey<out T : Any> {
                 OnboardingFlow,
                 OnboardingCarousel,
                 ImportLoginsFlow,
-                SshKeyCipherItems,
                 VerifiedSsoDomainEndpoint,
                 CredentialExchangeProtocolImport,
                 CredentialExchangeProtocolExport,
@@ -90,15 +89,6 @@ sealed class FlagKey<out T : Any> {
      */
     data object ImportLoginsFlow : FlagKey<Boolean>() {
         override val keyName: String = "import-logins-flow"
-        override val defaultValue: Boolean = false
-        override val isRemotelyConfigured: Boolean = true
-    }
-
-    /**
-     * Data object holding the feature flag key for the SSH key cipher items feature.
-     */
-    data object SshKeyCipherItems : FlagKey<Boolean>() {
-        override val keyName: String = "ssh-key-vault-item"
         override val defaultValue: Boolean = false
         override val isRemotelyConfigured: Boolean = true
     }
@@ -228,7 +218,7 @@ sealed class FlagKey<out T : Any> {
      * autofill.
      */
     data object ChromeAutofill : FlagKey<Boolean>() {
-        override val keyName: String = "enable-pm-chrome-autofill"
+        override val keyName: String = "android-chrome-autofill"
         override val defaultValue: Boolean = false
         override val isRemotelyConfigured: Boolean = true
     }
