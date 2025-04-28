@@ -7,7 +7,10 @@ import app.cash.turbine.test
 import com.bitwarden.core.InitOrgCryptoRequest
 import com.bitwarden.core.InitUserCryptoMethod
 import com.bitwarden.core.InitUserCryptoRequest
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
 import com.bitwarden.crypto.HashPurpose
+import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
@@ -16,16 +19,14 @@ import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
 import com.x8bit.bitwarden.data.auth.manager.model.LogoutEvent
+import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
-import com.x8bit.bitwarden.data.platform.base.FakeDispatcherManager
 import com.x8bit.bitwarden.data.platform.manager.model.AppCreationState
 import com.x8bit.bitwarden.data.platform.manager.model.AppForegroundState
 import com.x8bit.bitwarden.data.platform.manager.util.FakeAppStateManager
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeout
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.InitializeCryptoResult
 import com.x8bit.bitwarden.data.vault.manager.model.VaultStateEvent
@@ -83,8 +84,8 @@ class VaultLockManagerTest {
 
     private val mutableLogoutResultFlow = MutableSharedFlow<LogoutEvent>()
     private val userLogoutManager: UserLogoutManager = mockk {
-        every { logout(any()) } just runs
-        every { softLogout(any()) } just runs
+        every { logout(userId = any(), reason = any()) } just runs
+        every { softLogout(userId = any(), reason = any()) } just runs
         every { logoutEventFlow } returns mutableLogoutResultFlow.asSharedFlow()
     }
     private val trustedDeviceManager: TrustedDeviceManager = mockk()
@@ -260,7 +261,9 @@ class VaultLockManagerTest {
                 }
             }
 
-            verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+            verify(exactly = 0) {
+                userLogoutManager.softLogout(userId = any(), reason = any())
+            }
         }
 
         // Test Logout action
@@ -281,7 +284,9 @@ class VaultLockManagerTest {
                 VaultTimeout.FourHours,
                 is VaultTimeout.Custom,
                     -> {
-                    verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+                    verify(exactly = 0) {
+                        userLogoutManager.softLogout(userId = any(), reason = any())
+                    }
                 }
 
                 // Before 6 minutes
@@ -289,7 +294,12 @@ class VaultLockManagerTest {
                 VaultTimeout.OneMinute,
                 VaultTimeout.FiveMinutes,
                     -> {
-                    verify(exactly = 1) { userLogoutManager.softLogout(USER_ID) }
+                    verify(exactly = 1) {
+                        userLogoutManager.softLogout(
+                            userId = USER_ID,
+                            reason = LogoutReason.Timeout,
+                        )
+                    }
                 }
             }
         }
@@ -405,7 +415,6 @@ class VaultLockManagerTest {
             testDispatcher.scheduler.advanceTimeBy(delayTimeMillis = 6 * 60 * 1000L)
 
             when (vaultTimeout) {
-
                 VaultTimeout.OnAppRestart -> assertFalse(vaultLockManager.isVaultUnlocked(USER_ID))
                 is VaultTimeout.Custom,
                 VaultTimeout.FifteenMinutes,
@@ -420,7 +429,7 @@ class VaultLockManagerTest {
                     assertTrue(vaultLockManager.isVaultUnlocked(USER_ID))
                 }
             }
-            verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+            verify(exactly = 0) { userLogoutManager.softLogout(userId = any(), reason = any()) }
         }
 
         // Test Logout action
@@ -435,9 +444,10 @@ class VaultLockManagerTest {
 
             assertTrue(vaultLockManager.isVaultUnlocked(USER_ID))
             when (vaultTimeout) {
-
                 VaultTimeout.OnAppRestart -> {
-                    verify(exactly = 1) { userLogoutManager.softLogout(any()) }
+                    verify(exactly = 1) {
+                        userLogoutManager.softLogout(userId = any(), reason = LogoutReason.Timeout)
+                    }
                 }
 
                 is VaultTimeout.Custom,
@@ -450,7 +460,9 @@ class VaultLockManagerTest {
                 VaultTimeout.OneMinute,
                 VaultTimeout.ThirtyMinutes,
                     -> {
-                    verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+                    verify(exactly = 0) {
+                        userLogoutManager.softLogout(userId = any(), reason = any())
+                    }
                 }
             }
         }
@@ -485,7 +497,7 @@ class VaultLockManagerTest {
             testDispatcher.scheduler.advanceTimeBy(delayTimeMillis = 6 * 60 * 1000L)
 
             assertTrue(vaultLockManager.isVaultUnlocked(USER_ID))
-            verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+            verify(exactly = 0) { userLogoutManager.softLogout(userId = any(), reason = any()) }
         }
 
         // Test Logout action
@@ -499,7 +511,7 @@ class VaultLockManagerTest {
             testDispatcher.scheduler.advanceTimeBy(delayTimeMillis = 6 * 60 * 1000L)
 
             assertTrue(vaultLockManager.isVaultUnlocked(USER_ID))
-            verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+            verify(exactly = 0) { userLogoutManager.softLogout(userId = any(), reason = any()) }
         }
     }
 
@@ -565,7 +577,7 @@ class VaultLockManagerTest {
                 }
             }
 
-            verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+            verify(exactly = 0) { userLogoutManager.softLogout(userId = any(), reason = any()) }
         }
 
         // Test Logout action
@@ -592,7 +604,9 @@ class VaultLockManagerTest {
                 VaultTimeout.FourHours,
                 is VaultTimeout.Custom,
                     -> {
-                    verify(exactly = 0) { userLogoutManager.softLogout(any()) }
+                    verify(exactly = 0) {
+                        userLogoutManager.softLogout(userId = any(), reason = any())
+                    }
                 }
 
                 // Before 6 minutes
@@ -600,8 +614,12 @@ class VaultLockManagerTest {
                 VaultTimeout.OneMinute,
                 VaultTimeout.FiveMinutes,
                     -> {
-                    verify(exactly = 0) { userLogoutManager.softLogout(activeUserId) }
-                    verify(exactly = 1) { userLogoutManager.softLogout(inactiveUserId) }
+                    verify(exactly = 0) {
+                        userLogoutManager.softLogout(userId = activeUserId, reason = any())
+                    }
+                    verify(exactly = 1) {
+                        userLogoutManager.softLogout(userId = inactiveUserId, reason = any())
+                    }
                 }
             }
         }
@@ -1415,7 +1433,12 @@ class VaultLockManagerTest {
                 userId = USER_ID,
                 invalidUnlockAttempts = 5,
             )
-            verify { userLogoutManager.logout(userId = USER_ID) }
+            verify(exactly = 1) {
+                userLogoutManager.logout(
+                    userId = USER_ID,
+                    reason = LogoutReason.TooManyUnlockAttempts,
+                )
+            }
 
             assertEquals(VaultUnlockResult.GenericError(error = error), result)
             assertEquals(

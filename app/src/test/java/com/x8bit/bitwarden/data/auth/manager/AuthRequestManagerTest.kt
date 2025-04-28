@@ -2,16 +2,18 @@ package com.x8bit.bitwarden.data.auth.manager
 
 import app.cash.turbine.test
 import com.bitwarden.core.AuthRequestResponse
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
+import com.bitwarden.network.model.AuthRequestTypeJson
+import com.bitwarden.network.model.AuthRequestsResponseJson
+import com.bitwarden.network.model.KdfTypeJson
+import com.bitwarden.network.service.AuthRequestsService
+import com.bitwarden.network.service.NewAuthRequestService
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.PendingAuthRequestJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
-import com.x8bit.bitwarden.data.auth.datasource.network.model.AuthRequestTypeJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.AuthRequestsResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.KdfTypeJson
-import com.x8bit.bitwarden.data.auth.datasource.network.service.AuthRequestsService
-import com.x8bit.bitwarden.data.auth.datasource.network.service.NewAuthRequestService
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequest
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequestResult
@@ -20,8 +22,6 @@ import com.x8bit.bitwarden.data.auth.manager.model.AuthRequestUpdatesResult
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequestsResult
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequestsUpdatesResult
 import com.x8bit.bitwarden.data.auth.manager.model.CreateAuthRequestResult
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import io.mockk.coEvery
 import io.mockk.coVerify

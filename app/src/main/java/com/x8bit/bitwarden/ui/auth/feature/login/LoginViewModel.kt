@@ -10,13 +10,14 @@ import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.KnownDeviceResult
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
+import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.util.CaptchaCallbackTokenResult
 import com.x8bit.bitwarden.data.auth.repository.util.generateUriForCaptcha
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
-import com.x8bit.bitwarden.ui.platform.base.util.Text
-import com.x8bit.bitwarden.ui.platform.base.util.asText
+import com.bitwarden.ui.util.Text
+import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.ui.platform.components.model.AccountSummary
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toAccountSummaries
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -112,7 +113,10 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun handleLogoutAccountClicked(action: LoginAction.LogoutAccountClick) {
-        authRepository.logout(userId = action.accountSummary.userId)
+        authRepository.logout(
+            userId = action.accountSummary.userId,
+            reason = LogoutReason.Click(source = "LoginViewModel"),
+        )
     }
 
     private fun handleSwitchAccountClicked(action: LoginAction.SwitchAccountClick) {
@@ -164,6 +168,9 @@ class LoginViewModel @Inject constructor(
                     ),
                 )
             }
+
+            // NO-OP: This result should not be possible here
+            is LoginResult.ConfirmKeyConnectorDomain -> Unit
 
             is LoginResult.Error -> {
                 mutableStateFlow.update {

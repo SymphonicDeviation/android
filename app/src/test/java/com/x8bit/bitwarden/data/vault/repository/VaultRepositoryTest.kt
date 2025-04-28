@@ -7,8 +7,37 @@ import app.cash.turbine.turbineScope
 import com.bitwarden.core.DateTime
 import com.bitwarden.core.InitOrgCryptoRequest
 import com.bitwarden.core.InitUserCryptoMethod
+import com.bitwarden.core.data.repository.model.DataState
+import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
+import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
+import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.exporters.ExportFormat
 import com.bitwarden.fido.Fido2CredentialAutofillView
+import com.bitwarden.network.model.CreateFileSendResponse
+import com.bitwarden.network.model.CreateSendJsonResponse
+import com.bitwarden.network.model.FolderJsonRequest
+import com.bitwarden.network.model.SendTypeJson
+import com.bitwarden.network.model.SyncResponseJson
+import com.bitwarden.network.model.UpdateFolderResponseJson
+import com.bitwarden.network.model.UpdateSendResponseJson
+import com.bitwarden.network.model.createMockCipher
+import com.bitwarden.network.model.createMockCollection
+import com.bitwarden.network.model.createMockDomains
+import com.bitwarden.network.model.createMockFileSendResponseJson
+import com.bitwarden.network.model.createMockFolder
+import com.bitwarden.network.model.createMockOrganization
+import com.bitwarden.network.model.createMockOrganizationKeys
+import com.bitwarden.network.model.createMockPolicy
+import com.bitwarden.network.model.createMockProfile
+import com.bitwarden.network.model.createMockSend
+import com.bitwarden.network.model.createMockSendJsonRequest
+import com.bitwarden.network.model.createMockSyncResponse
+import com.bitwarden.network.service.CiphersService
+import com.bitwarden.network.service.FolderService
+import com.bitwarden.network.service.SendsService
+import com.bitwarden.network.service.SyncService
 import com.bitwarden.sdk.Fido2CredentialStore
 import com.bitwarden.send.SendType
 import com.bitwarden.send.SendView
@@ -22,49 +51,21 @@ import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
+import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
-import com.x8bit.bitwarden.data.platform.base.FakeDispatcherManager
 import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
 import com.x8bit.bitwarden.data.platform.error.MissingPropertyException
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
 import com.x8bit.bitwarden.data.platform.manager.DatabaseSchemeManager
 import com.x8bit.bitwarden.data.platform.manager.PushManager
 import com.x8bit.bitwarden.data.platform.manager.ReviewPromptManager
-import com.x8bit.bitwarden.data.platform.manager.dispatcher.DispatcherManager
 import com.x8bit.bitwarden.data.platform.manager.model.SyncCipherDeleteData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncCipherUpsertData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncFolderDeleteData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncFolderUpsertData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncSendDeleteData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncSendUpsertData
-import com.x8bit.bitwarden.data.platform.repository.model.DataState
-import com.x8bit.bitwarden.data.platform.repository.util.bufferedMutableSharedFlow
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
-import com.x8bit.bitwarden.data.vault.datasource.network.model.CreateFileSendResponse
-import com.x8bit.bitwarden.data.vault.datasource.network.model.CreateSendJsonResponse
-import com.x8bit.bitwarden.data.vault.datasource.network.model.FolderJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.SendTypeJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.SyncResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.UpdateFolderResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.UpdateSendResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockCipher
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockCollection
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockDomains
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockFileSendResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockFolder
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockOrganization
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockOrganizationKeys
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockPolicy
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockProfile
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockSend
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockSendJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockSyncResponse
-import com.x8bit.bitwarden.data.vault.datasource.network.service.CiphersService
-import com.x8bit.bitwarden.data.vault.datasource.network.service.FolderService
-import com.x8bit.bitwarden.data.vault.datasource.network.service.SendsService
-import com.x8bit.bitwarden.data.vault.datasource.network.service.SyncService
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.InitializeCryptoResult
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
@@ -930,8 +931,8 @@ class VaultRepositoryTest {
 
             vaultRepository.sync()
 
-            coVerify {
-                userLogoutManager.softLogout(userId = userId, isExpired = true)
+            coVerify(exactly = 1) {
+                userLogoutManager.softLogout(userId = userId, reason = LogoutReason.SecurityStamp)
             }
 
             coVerify(exactly = 0) {

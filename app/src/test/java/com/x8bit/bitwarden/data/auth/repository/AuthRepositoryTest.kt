@@ -8,52 +8,64 @@ import com.bitwarden.core.KeyConnectorResponse
 import com.bitwarden.core.RegisterKeyResponse
 import com.bitwarden.core.RegisterTdeKeyResponse
 import com.bitwarden.core.UpdatePasswordResponse
+import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
 import com.bitwarden.crypto.HashPurpose
 import com.bitwarden.crypto.Kdf
 import com.bitwarden.crypto.RsaKeyPair
 import com.bitwarden.crypto.TrustDeviceResponse
+import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
+import com.bitwarden.data.datasource.disk.model.EnvironmentUrlDataJson
+import com.bitwarden.data.datasource.disk.model.ServerConfig
+import com.bitwarden.data.datasource.disk.util.FakeConfigDiskSource
+import com.bitwarden.data.manager.DispatcherManager
+import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.network.model.ConfigResponseJson
+import com.bitwarden.network.model.DeleteAccountResponseJson
+import com.bitwarden.network.model.GetTokenResponseJson
+import com.bitwarden.network.model.IdentityTokenAuthModel
+import com.bitwarden.network.model.KdfTypeJson
+import com.bitwarden.network.model.KeyConnectorMasterKeyResponseJson
+import com.bitwarden.network.model.OrganizationAutoEnrollStatusResponseJson
+import com.bitwarden.network.model.OrganizationDomainSsoDetailsResponseJson
+import com.bitwarden.network.model.OrganizationKeysResponseJson
+import com.bitwarden.network.model.OrganizationType
+import com.bitwarden.network.model.PasswordHintResponseJson
+import com.bitwarden.network.model.PolicyTypeJson
+import com.bitwarden.network.model.PreLoginResponseJson
+import com.bitwarden.network.model.PrevalidateSsoResponseJson
+import com.bitwarden.network.model.RefreshTokenResponseJson
+import com.bitwarden.network.model.RegisterFinishRequestJson
+import com.bitwarden.network.model.RegisterRequestJson
+import com.bitwarden.network.model.RegisterResponseJson
+import com.bitwarden.network.model.ResendEmailRequestJson
+import com.bitwarden.network.model.ResetPasswordRequestJson
+import com.bitwarden.network.model.SendVerificationEmailRequestJson
+import com.bitwarden.network.model.SendVerificationEmailResponseJson
+import com.bitwarden.network.model.SetPasswordRequestJson
+import com.bitwarden.network.model.SyncResponseJson
+import com.bitwarden.network.model.TrustedDeviceUserDecryptionOptionsJson
+import com.bitwarden.network.model.TwoFactorAuthMethod
+import com.bitwarden.network.model.TwoFactorDataModel
+import com.bitwarden.network.model.UserDecryptionOptionsJson
+import com.bitwarden.network.model.VerifiedOrganizationDomainSsoDetailsResponse
+import com.bitwarden.network.model.VerifyEmailTokenRequestJson
+import com.bitwarden.network.model.VerifyEmailTokenResponseJson
+import com.bitwarden.network.model.createMockOrganization
+import com.bitwarden.network.model.createMockPolicy
+import com.bitwarden.network.service.AccountsService
+import com.bitwarden.network.service.DevicesService
+import com.bitwarden.network.service.HaveIBeenPwnedService
+import com.bitwarden.network.service.IdentityService
+import com.bitwarden.network.service.OrganizationService
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
-import com.x8bit.bitwarden.data.auth.datasource.disk.model.EnvironmentUrlDataJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.ForcePasswordResetReason
-import com.x8bit.bitwarden.data.auth.datasource.disk.model.NewDeviceNoticeDisplayStatus
-import com.x8bit.bitwarden.data.auth.datasource.disk.model.NewDeviceNoticeState
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.PendingAuthRequestJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
-import com.x8bit.bitwarden.data.auth.datasource.network.model.DeleteAccountResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.GetTokenResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.IdentityTokenAuthModel
-import com.x8bit.bitwarden.data.auth.datasource.network.model.KdfTypeJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.KeyConnectorMasterKeyResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.OrganizationAutoEnrollStatusResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.OrganizationDomainSsoDetailsResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.OrganizationKeysResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.PasswordHintResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.PreLoginResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.PrevalidateSsoResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.RefreshTokenResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.RegisterFinishRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.RegisterRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.RegisterResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.ResendEmailRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.ResetPasswordRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.SendVerificationEmailRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.SendVerificationEmailResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.SetPasswordRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.TrustedDeviceUserDecryptionOptionsJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.TwoFactorAuthMethod
-import com.x8bit.bitwarden.data.auth.datasource.network.model.TwoFactorDataModel
-import com.x8bit.bitwarden.data.auth.datasource.network.model.UserDecryptionOptionsJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.VerifiedOrganizationDomainSsoDetailsResponse
-import com.x8bit.bitwarden.data.auth.datasource.network.model.VerifyEmailTokenRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.VerifyEmailTokenResponseJson
-import com.x8bit.bitwarden.data.auth.datasource.network.service.AccountsService
-import com.x8bit.bitwarden.data.auth.datasource.network.service.DevicesService
-import com.x8bit.bitwarden.data.auth.datasource.network.service.HaveIBeenPwnedService
-import com.x8bit.bitwarden.data.auth.datasource.network.service.IdentityService
-import com.x8bit.bitwarden.data.auth.datasource.network.service.OrganizationService
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.model.PasswordStrength.LEVEL_0
 import com.x8bit.bitwarden.data.auth.datasource.sdk.model.PasswordStrength.LEVEL_1
@@ -70,7 +82,9 @@ import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.DeleteAccountResult
 import com.x8bit.bitwarden.data.auth.repository.model.EmailTokenResult
 import com.x8bit.bitwarden.data.auth.repository.model.KnownDeviceResult
+import com.x8bit.bitwarden.data.auth.repository.model.LeaveOrganizationResult
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
+import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.NewSsoUserResult
 import com.x8bit.bitwarden.data.auth.repository.model.OrganizationDomainSsoDetailsResult
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordHintResult
@@ -101,10 +115,6 @@ import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.auth.repository.util.toUserState
 import com.x8bit.bitwarden.data.auth.util.YubiKeyResult
 import com.x8bit.bitwarden.data.auth.util.toSdkParams
-import com.x8bit.bitwarden.data.platform.base.FakeDispatcherManager
-import com.x8bit.bitwarden.data.platform.datasource.disk.model.ServerConfig
-import com.x8bit.bitwarden.data.platform.datasource.disk.util.FakeConfigDiskSource
-import com.x8bit.bitwarden.data.platform.datasource.network.model.ConfigResponseJson
 import com.x8bit.bitwarden.data.platform.error.MissingPropertyException
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
@@ -112,21 +122,11 @@ import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.LogsManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.PushManager
-import com.x8bit.bitwarden.data.platform.manager.dispatcher.DispatcherManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
 import com.x8bit.bitwarden.data.platform.manager.model.NotificationLogoutData
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
-import com.x8bit.bitwarden.data.platform.repository.model.Environment
 import com.x8bit.bitwarden.data.platform.repository.util.FakeEnvironmentRepository
-import com.x8bit.bitwarden.data.platform.repository.util.bufferedMutableSharedFlow
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
-import com.x8bit.bitwarden.data.vault.datasource.network.model.OrganizationType
-import com.x8bit.bitwarden.data.vault.datasource.network.model.PolicyTypeJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.SyncResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockOrganization
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockPolicy
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
@@ -152,11 +152,11 @@ import kotlinx.serialization.json.put
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
 import java.time.ZonedDateTime
 import javax.net.ssl.SSLHandshakeException
 
@@ -253,8 +253,6 @@ class AuthRepositoryTest {
     }
 
     private val featureFlagManager: FeatureFlagManager = mockk(relaxed = true) {
-        every { getFeatureFlag(FlagKey.NewDeviceTemporaryDismiss) } returns true
-        every { getFeatureFlag(FlagKey.NewDevicePermanentDismiss) } returns true
         every { getFeatureFlag(FlagKey.OnboardingFlow) } returns false
         every { getFeatureFlag(FlagKey.IgnoreEnvironmentCheck) } returns false
     }
@@ -1580,7 +1578,6 @@ class AuthRepositoryTest {
             coVerify { identityService.preLogin(email = EMAIL) }
         }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `prelogin fails should return CertificateError when SSLHandshakeException is thrown`() =
         runTest {
@@ -1753,7 +1750,6 @@ class AuthRepositoryTest {
         }
 
     @Test
-    @Suppress("MaxLineLength")
     fun `login should return Error result when get token succeeds but unlock vault fails`() =
         runTest {
             val successResponse = GET_TOKEN_RESPONSE_SUCCESS
@@ -3290,6 +3286,7 @@ class AuthRepositoryTest {
                     environmentUrlData = EnvironmentUrlDataJson.DEFAULT_US,
                 )
             } returns SINGLE_USER_STATE_1
+            repository.rememberedOrgIdentifier = ORGANIZATION_IDENTIFIER
 
             val result = repository.login(
                 email = EMAIL,
@@ -3300,7 +3297,10 @@ class AuthRepositoryTest {
                 organizationIdentifier = ORGANIZATION_IDENTIFIER,
             )
 
-            assertEquals(LoginResult.Error(errorMessage = null, error = error), result)
+            assertEquals(LoginResult.ConfirmKeyConnectorDomain(keyConnectorUrl), result)
+
+            val continueResult = repository.continueKeyConnectorLogin()
+            assertEquals(LoginResult.Error(errorMessage = null, error = error), continueResult)
             fakeAuthDiskSource.assertPrivateKey(userId = USER_ID_1, privateKey = null)
             fakeAuthDiskSource.assertUserKey(userId = USER_ID_1, userKey = null)
             coVerify(exactly = 1) {
@@ -3391,6 +3391,7 @@ class AuthRepositoryTest {
                     environmentUrlData = EnvironmentUrlDataJson.DEFAULT_US,
                 )
             } returns SINGLE_USER_STATE_1
+            repository.rememberedOrgIdentifier = ORGANIZATION_IDENTIFIER
             val result = repository.login(
                 email = EMAIL,
                 ssoCode = SSO_CODE,
@@ -3400,7 +3401,10 @@ class AuthRepositoryTest {
                 organizationIdentifier = ORGANIZATION_IDENTIFIER,
             )
 
-            assertEquals(LoginResult.Success, result)
+            assertEquals(LoginResult.ConfirmKeyConnectorDomain(keyConnectorUrl), result)
+
+            val continueResult = repository.continueKeyConnectorLogin()
+            assertEquals(LoginResult.Success, continueResult)
             assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertPrivateKey(userId = USER_ID_1, privateKey = PRIVATE_KEY)
             fakeAuthDiskSource.assertUserKey(userId = USER_ID_1, userKey = ENCRYPTED_USER_KEY)
@@ -3434,6 +3438,155 @@ class AuthRepositoryTest {
                         masterKey = masterKey,
                         userKey = ENCRYPTED_USER_KEY,
                     ),
+                )
+                vaultRepository.syncIfNecessary()
+            }
+            assertEquals(SINGLE_USER_STATE_1, fakeAuthDiskSource.userState)
+            verify(exactly = 1) {
+                settingsRepository.setDefaultsIfNecessary(userId = USER_ID_1)
+            }
+        }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `SSO login get token succeeds with key connector when key, privateKey and master password are null should return ConfirmKeyConnectorDomain`() =
+        runTest {
+            val keyConnectorUrl = "www.example.com"
+            val successResponse = GET_TOKEN_RESPONSE_SUCCESS.copy(
+                keyConnectorUrl = keyConnectorUrl,
+                userDecryptionOptions = USER_DECRYPTION_OPTIONS.copy(
+                    hasMasterPassword = false,
+                    trustedDeviceUserDecryptionOptions = null,
+                ),
+                key = null,
+                privateKey = null,
+            )
+            coEvery {
+                identityService.getToken(
+                    email = EMAIL,
+                    authModel = IdentityTokenAuthModel.SingleSignOn(
+                        ssoCode = SSO_CODE,
+                        ssoCodeVerifier = SSO_CODE_VERIFIER,
+                        ssoRedirectUri = SSO_REDIRECT_URI,
+                    ),
+                    captchaToken = null,
+                    uniqueAppId = UNIQUE_APP_ID,
+                )
+            } returns successResponse.asSuccess()
+            every {
+                successResponse.toUserState(
+                    previousUserState = null,
+                    environmentUrlData = EnvironmentUrlDataJson.DEFAULT_US,
+                )
+            } returns SINGLE_USER_STATE_1
+            val result = repository.login(
+                email = EMAIL,
+                ssoCode = SSO_CODE,
+                ssoCodeVerifier = SSO_CODE_VERIFIER,
+                ssoRedirectUri = SSO_REDIRECT_URI,
+                captchaToken = null,
+                organizationIdentifier = ORGANIZATION_IDENTIFIER,
+            )
+            assertEquals(LoginResult.ConfirmKeyConnectorDomain(keyConnectorUrl), result)
+        }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `ContinueKeyConnectorLogin should return Success and unlock the vault after login returns ConfirmKeyConnector`() =
+        runTest {
+            val keyConnectorUrl = "www.example.com"
+            val successResponse = GET_TOKEN_RESPONSE_SUCCESS.copy(
+                keyConnectorUrl = keyConnectorUrl,
+                userDecryptionOptions = USER_DECRYPTION_OPTIONS.copy(
+                    hasMasterPassword = false,
+                    trustedDeviceUserDecryptionOptions = null,
+                ),
+                key = null,
+                privateKey = null,
+            )
+
+            val masterKey = "masterKey"
+            val keyConnectorResponse = mockk<KeyConnectorResponse> {
+                every {
+                    this@mockk.keys
+                } returns RsaKeyPair(public = PUBLIC_KEY, private = PRIVATE_KEY)
+                every { this@mockk.masterKey } returns masterKey
+                every { this@mockk.encryptedUserKey } returns ENCRYPTED_USER_KEY
+            }
+
+            coEvery {
+                identityService.getToken(
+                    email = EMAIL,
+                    authModel = IdentityTokenAuthModel.SingleSignOn(
+                        ssoCode = SSO_CODE,
+                        ssoCodeVerifier = SSO_CODE_VERIFIER,
+                        ssoRedirectUri = SSO_REDIRECT_URI,
+                    ),
+                    captchaToken = null,
+                    uniqueAppId = UNIQUE_APP_ID,
+                )
+            } returns successResponse.asSuccess()
+            coEvery { vaultRepository.syncIfNecessary() } just runs
+            every {
+                successResponse.toUserState(
+                    previousUserState = null,
+                    environmentUrlData = EnvironmentUrlDataJson.DEFAULT_US,
+                )
+            } returns SINGLE_USER_STATE_1
+
+            coEvery {
+                keyConnectorManager.migrateNewUserToKeyConnector(
+                    url = keyConnectorUrl,
+                    accessToken = ACCESS_TOKEN,
+                    kdfType = PROFILE_1.kdfType!!,
+                    kdfIterations = PROFILE_1.kdfIterations,
+                    kdfMemory = PROFILE_1.kdfMemory,
+                    kdfParallelism = PROFILE_1.kdfParallelism,
+                    organizationIdentifier = ORGANIZATION_IDENTIFIER,
+                )
+            } returns keyConnectorResponse.asSuccess()
+
+            coEvery {
+                vaultRepository.unlockVault(
+                    userId = USER_ID_1,
+                    email = EMAIL,
+                    kdf = ACCOUNT_1.profile.toSdkParams(),
+                    privateKey = PRIVATE_KEY,
+                    organizationKeys = null,
+                    initUserCryptoMethod = InitUserCryptoMethod.KeyConnector(
+                        masterKey = masterKey,
+                        userKey = ENCRYPTED_USER_KEY,
+                    ),
+                )
+            } returns VaultUnlockResult.Success
+
+            repository.rememberedOrgIdentifier = ORGANIZATION_IDENTIFIER
+
+            val loginResult = repository.login(
+                email = EMAIL,
+                ssoCode = SSO_CODE,
+                ssoCodeVerifier = SSO_CODE_VERIFIER,
+                ssoRedirectUri = SSO_REDIRECT_URI,
+                captchaToken = null,
+                organizationIdentifier = ORGANIZATION_IDENTIFIER,
+            )
+            assertEquals(LoginResult.ConfirmKeyConnectorDomain(keyConnectorUrl), loginResult)
+
+            val result = repository.continueKeyConnectorLogin()
+            assertEquals(LoginResult.Success, result)
+            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
+            fakeAuthDiskSource.assertPrivateKey(userId = USER_ID_1, privateKey = "privateKey")
+            fakeAuthDiskSource.assertUserKey(userId = USER_ID_1, userKey = "encryptedUserKey")
+            coVerify(exactly = 1) {
+                identityService.getToken(
+                    email = EMAIL,
+                    authModel = IdentityTokenAuthModel.SingleSignOn(
+                        ssoCode = SSO_CODE,
+                        ssoCodeVerifier = SSO_CODE_VERIFIER,
+                        ssoRedirectUri = SSO_REDIRECT_URI,
+                    ),
+                    captchaToken = null,
+                    uniqueAppId = UNIQUE_APP_ID,
                 )
                 vaultRepository.syncIfNecessary()
             }
@@ -5389,7 +5542,6 @@ class AuthRepositoryTest {
         )
     }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `getVerifiedOrganizationDomainSsoDetails Success should return Success`() = runTest {
         val email = "test@gmail.com"
@@ -5408,6 +5560,7 @@ class AuthRepositoryTest {
         assertEquals(
             VerifiedOrganizationDomainSsoDetailsResult.Success(
                 verifiedOrganizationDomainSsoDetails = listOf(
+                    @Suppress("MaxLineLength")
                     VerifiedOrganizationDomainSsoDetailsResponse.VerifiedOrganizationDomainSsoDetail(
                         organizationIdentifier = "Test Identifier",
                         organizationName = "Bitwarden",
@@ -5474,15 +5627,15 @@ class AuthRepositoryTest {
         assertEquals(PrevalidateSsoResult.Success(token = "token"), result)
     }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `logout for an inactive account should call logout on the UserLogoutManager`() {
         val userId = USER_ID_2
+        val reason = LogoutReason.Timeout
         fakeAuthDiskSource.userState = MULTI_USER_STATE
 
-        repository.logout(userId = userId)
+        repository.logout(userId = userId, reason = reason)
 
-        verify { userLogoutManager.logout(userId = userId) }
+        verify { userLogoutManager.logout(userId = userId, reason = reason) }
     }
 
     @Test
@@ -6114,25 +6267,25 @@ class AuthRepositoryTest {
         mutableLogoutFlow.tryEmit(NotificationLogoutData(userId = userId))
 
         coVerify(exactly = 1) {
-            userLogoutManager.logout(userId = userId)
+            userLogoutManager.logout(userId = userId, reason = LogoutReason.Notification)
         }
     }
 
     @Test
-    fun `syncOrgKeysFlow emissions should refresh access token and sync`() {
+    fun `syncOrgKeysFlow emissions should refresh access token and force sync`() {
         fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
         fakeAuthDiskSource.storeAccountTokens(userId = USER_ID_1, accountTokens = ACCOUNT_TOKENS_1)
         coEvery {
             identityService.refreshTokenSynchronously(REFRESH_TOKEN)
         } returns REFRESH_TOKEN_RESPONSE_JSON.asSuccess()
 
-        coEvery { vaultRepository.sync() } just runs
+        coEvery { vaultRepository.sync(forced = true) } just runs
 
         mutableSyncOrgKeysFlow.tryEmit(Unit)
 
         coVerify(exactly = 1) {
             identityService.refreshTokenSynchronously(REFRESH_TOKEN)
-            vaultRepository.sync()
+            vaultRepository.sync(forced = true)
         }
     }
 
@@ -6229,7 +6382,7 @@ class AuthRepositoryTest {
                 ),
             )
         } returns SendVerificationEmailResponseJson
-            .Invalid(invalidMessage = errorMessage, validationErrors = null)
+            .Invalid(errorMessage = errorMessage, validationErrors = null)
             .asSuccess()
 
         val result = repository.sendVerificationEmail(
@@ -6484,7 +6637,6 @@ class AuthRepositoryTest {
             assertNull(fakeAuthDiskSource.getOnboardingStatus(USER_ID_1))
         }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `on successful login does not set onboarding status if feature flag is off`() =
         runTest {
@@ -6606,371 +6758,57 @@ class AuthRepositoryTest {
         }
 
     @Test
-    fun `getNewDeviceNoticeState should return device notice state if an account is active`() =
+    fun `cancelKeyConnectorLogin should clear keyConnectorResponse`() =
         runTest {
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            val deviceNoticeState = repository.getNewDeviceNoticeState()
-            assertNotNull(deviceNoticeState)
+            assertDoesNotThrow { repository.cancelKeyConnectorLogin() }
         }
 
     @Test
-    fun `getNewDeviceNoticeState should return null if no account is active`() =
+    fun `continueKeyConnectorLogin returns error if keyConnectorResponse is null`() =
         runTest {
-            val deviceNoticeState = repository.getNewDeviceNoticeState()
-            assertNull(deviceNoticeState)
-        }
-
-    @Test
-    fun `setNewDeviceNoticeState should update disk source`() =
-        runTest {
-            val userId = "2a135b23-e1fb-42c9-bec3-573857bc8181"
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            repository.setNewDeviceNoticeState(
-                NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_SEEN,
-                    lastSeenDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
-                ),
-            )
+            val continueResult = repository.continueKeyConnectorLogin()
             assertEquals(
-                NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_SEEN,
-                    lastSeenDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+                LoginResult.Error(
+                    errorMessage = null,
+                    error = MissingPropertyException("Key Connector Response"),
                 ),
-                fakeAuthDiskSource.getNewDeviceNoticeState(userId),
+                continueResult,
             )
         }
 
     @Test
     @Suppress("MaxLineLength")
-    fun `setNewDeviceNoticeState without an active account should not update disk source and return default`() =
+    fun `leaveOrganization should return success when organizationService leaveOrganization succeeds`() =
         runTest {
-            val userId = "2a135b23-e1fb-42c9-bec3-573857bc8181"
-            repository.setNewDeviceNoticeState(
-                NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_SEEN,
-                    lastSeenDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
-                ),
-            )
+            coEvery {
+                organizationService.leaveOrganization(any())
+            } returns Unit.asSuccess()
+
+            val continueResult = repository.leaveOrganization("mockId-1")
+            coVerify {
+                organizationService.leaveOrganization(any())
+            }
             assertEquals(
-                NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_NOT_SEEN,
-                    lastSeenDate = null,
-                ),
-                fakeAuthDiskSource.getNewDeviceNoticeState(userId),
+                LeaveOrganizationResult.Success, continueResult,
             )
         }
 
     @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice flags on, is cloud user, profile at least week old, no required sso policy, no two factor enable returns true`() =
+    fun `leaveOrganization should return error when organizationService leaveOrganization fails`() =
         runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
+            val error = Throwable("Fail")
+            coEvery {
+                organizationService.leaveOrganization(any())
+            } returns error.asFailure()
 
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertTrue(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice NewDeviceTemporaryDismiss and NewDevicePermanentDismiss flags are off returns false`() =
-        runTest {
-            every {
-                featureFlagManager.getFeatureFlag(FlagKey.NewDevicePermanentDismiss)
-            } returns false
-            every {
-                featureFlagManager.getFeatureFlag(FlagKey.NewDeviceTemporaryDismiss)
-            } returns false
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice IgnoreEnvironmentCheck flag enabled should not check for a cloud environment and return true`() =
-        runTest {
-            every {
-                featureFlagManager.getFeatureFlag(FlagKey.IgnoreEnvironmentCheck)
-            } returns true
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.SelfHosted(
-                EnvironmentUrlDataJson(base = "https://myselfhosted.environment.com"),
+            val continueResult = repository.leaveOrganization("mockId-1")
+            coVerify {
+                organizationService.leaveOrganization(any())
+            }
+            assertEquals(
+                LeaveOrganizationResult.Error(error = error),
+                continueResult,
             )
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertTrue(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice if environment is selfhosted return false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.SelfHosted(
-                EnvironmentUrlDataJson(base = "https://myselfhosted.environment.com"),
-            )
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    fun `checkUserNeedsNewDeviceTwoFactorNotice has required SSO policy returns false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf(
-                createMockPolicy(
-                    type = PolicyTypeJson.REQUIRE_SSO,
-                    isEnabled = true,
-                ),
-            )
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with two factor enable returns false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_2
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    fun `checkUserNeedsNewDeviceTwoFactorNotice account less than a week old returns false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = UserStateJson(
-                activeUserId = USER_ID_1,
-                accounts = mapOf(
-                    USER_ID_1 to ACCOUNT_1.copy(
-                        profile = ACCOUNT_1.profile.copy(
-                            creationDate = ZonedDateTime.now().minusDays(2),
-                        ),
-                    ),
-                ),
-            )
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with NewDeviceNoticeDisplayStatus CAN_ACCESS_EMAIL_PERMANENT return false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            fakeAuthDiskSource.storeNewDeviceNoticeState(
-                userId = USER_ID_1,
-                newState = NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.CAN_ACCESS_EMAIL_PERMANENT,
-                    lastSeenDate = null,
-                ),
-            )
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with NewDeviceNoticeDisplayStatus HAS_NOT_SEEN return true`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            fakeAuthDiskSource.storeNewDeviceNoticeState(
-                userId = USER_ID_1,
-                newState = NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_NOT_SEEN,
-                    lastSeenDate = null,
-                ),
-            )
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertTrue(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with NewDeviceNoticeDisplayStatus HAS_SEEN return true if date is older than 7 days`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            fakeAuthDiskSource.storeNewDeviceNoticeState(
-                userId = USER_ID_1,
-                newState = NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_SEEN,
-                    lastSeenDate = ZonedDateTime.now().minusDays(10),
-                ),
-            )
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertTrue(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with NewDeviceNoticeDisplayStatus HAS_SEEN return false if date is not older than 7 days`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            fakeAuthDiskSource.storeNewDeviceNoticeState(
-                userId = USER_ID_1,
-                newState = NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.HAS_SEEN,
-                    lastSeenDate = ZonedDateTime.now().minusDays(2),
-                ),
-            )
-
-            val shouldShowNewDeviceNotice = repository.checkUserNeedsNewDeviceTwoFactorNotice()
-
-            assertFalse(shouldShowNewDeviceNotice)
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with NewDeviceNoticeDisplayStatus CAN_ACCESS_EMAIL return permanent flag value`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            fakeAuthDiskSource.storeNewDeviceNoticeState(
-                userId = USER_ID_1,
-                newState = NewDeviceNoticeState(
-                    displayStatus = NewDeviceNoticeDisplayStatus.CAN_ACCESS_EMAIL,
-                    lastSeenDate = ZonedDateTime.now().minusDays(2),
-                ),
-            )
-
-            assertTrue(repository.checkUserNeedsNewDeviceTwoFactorNotice())
-
-            every {
-                featureFlagManager.getFeatureFlag(FlagKey.NewDevicePermanentDismiss)
-            } returns false
-
-            assertFalse(repository.checkUserNeedsNewDeviceTwoFactorNotice())
-        }
-
-    @Test
-    fun `checkUserNeedsNewDeviceTwoFactorNotice with no active user returns false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = null
-
-            assertFalse(repository.checkUserNeedsNewDeviceTwoFactorNotice())
-        }
-
-    @Test
-    fun `checkUserNeedsNewDeviceTwoFactorNotice account with null creationDate returns false`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = UserStateJson(
-                activeUserId = USER_ID_1,
-                accounts = mapOf(
-                    USER_ID_1 to ACCOUNT_1.copy(
-                        profile = ACCOUNT_1.profile.copy(
-                            creationDate = null,
-                        ),
-                    ),
-                ),
-            )
-            assertFalse(repository.checkUserNeedsNewDeviceTwoFactorNotice())
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `checkUserNeedsNewDeviceTwoFactorNotice account with null isTwoFactorEnabled returns true`() =
-        runTest {
-            every {
-                policyManager.getActivePolicies(type = PolicyTypeJson.REQUIRE_SSO)
-            } returns listOf()
-            fakeEnvironmentRepository.environment = Environment.Us
-
-            fakeAuthDiskSource.userState = UserStateJson(
-                activeUserId = USER_ID_1,
-                accounts = mapOf(
-                    USER_ID_1 to ACCOUNT_1.copy(
-                        profile = ACCOUNT_1.profile.copy(
-                            isTwoFactorEnabled = null,
-                        ),
-                    ),
-                ),
-            )
-
-            assertTrue(repository.checkUserNeedsNewDeviceTwoFactorNotice())
         }
 
     companion object {

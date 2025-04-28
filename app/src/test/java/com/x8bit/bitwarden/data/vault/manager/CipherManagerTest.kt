@@ -2,6 +2,20 @@ package com.x8bit.bitwarden.data.vault.manager
 
 import android.net.Uri
 import androidx.core.net.toUri
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
+import com.bitwarden.network.model.AttachmentJsonRequest
+import com.bitwarden.network.model.CreateCipherInOrganizationJsonRequest
+import com.bitwarden.network.model.ShareCipherJsonRequest
+import com.bitwarden.network.model.SyncResponseJson
+import com.bitwarden.network.model.UpdateCipherCollectionsJsonRequest
+import com.bitwarden.network.model.UpdateCipherResponseJson
+import com.bitwarden.network.model.createMockAttachment
+import com.bitwarden.network.model.createMockAttachmentJsonResponse
+import com.bitwarden.network.model.createMockAttachmentResponse
+import com.bitwarden.network.model.createMockCipher
+import com.bitwarden.network.model.createMockCipherJsonRequest
+import com.bitwarden.network.service.CiphersService
 import com.bitwarden.vault.Attachment
 import com.bitwarden.vault.AttachmentView
 import com.bitwarden.vault.Cipher
@@ -11,20 +25,7 @@ import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
 import com.x8bit.bitwarden.data.platform.manager.ReviewPromptManager
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
-import com.x8bit.bitwarden.data.vault.datasource.network.model.AttachmentJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.CreateCipherInOrganizationJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.ShareCipherJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.SyncResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.UpdateCipherCollectionsJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.UpdateCipherResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockAttachment
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockAttachmentJsonResponse
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockCipher
-import com.x8bit.bitwarden.data.vault.datasource.network.model.createMockCipherJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.service.CiphersService
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockAttachmentView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
@@ -896,7 +897,7 @@ class CipherManagerTest {
             } returns mockAttachmentJsonResponse.asSuccess()
             coEvery {
                 ciphersService.uploadAttachment(
-                    attachmentJsonResponse = mockAttachmentJsonResponse,
+                    attachment = createMockAttachmentResponse(number = 1),
                     encryptedFile = File("${cacheFile.absolutePath}.enc"),
                 )
             } returns mockNetworkCipher.asSuccess()
@@ -1174,7 +1175,13 @@ class CipherManagerTest {
                 fileUri = mockk(),
             )
 
-            assertEquals(CreateAttachmentResult.Error(NoActiveUserException()), result)
+            assertEquals(
+                CreateAttachmentResult.Error(
+                    error = NoActiveUserException(),
+                    message = "No current active user!",
+                ),
+                result,
+            )
         }
 
     @Suppress("MaxLineLength")
@@ -1389,7 +1396,7 @@ class CipherManagerTest {
             } returns mockAttachmentJsonResponse.asSuccess()
             coEvery {
                 ciphersService.uploadAttachment(
-                    attachmentJsonResponse = mockAttachmentJsonResponse,
+                    attachment = createMockAttachmentResponse(number = 1),
                     encryptedFile = File("${mockFile.absoluteFile}.enc"),
                 )
             } returns error.asFailure()
@@ -1458,7 +1465,7 @@ class CipherManagerTest {
             } returns mockAttachmentJsonResponse.asSuccess()
             coEvery {
                 ciphersService.uploadAttachment(
-                    attachmentJsonResponse = mockAttachmentJsonResponse,
+                    attachment = createMockAttachmentResponse(number = 1),
                     encryptedFile = File("${mockFile.absoluteFile}.enc"),
                 )
             } returns mockCipherResponse.asSuccess()
@@ -1535,7 +1542,7 @@ class CipherManagerTest {
             } returns mockAttachmentJsonResponse.asSuccess()
             coEvery {
                 ciphersService.uploadAttachment(
-                    attachmentJsonResponse = mockAttachmentJsonResponse,
+                    attachment = createMockAttachmentResponse(number = 1),
                     encryptedFile = File("${mockFile.absolutePath}.enc"),
                 )
             } returns mockCipherResponse.asSuccess()
@@ -1610,7 +1617,7 @@ class CipherManagerTest {
         } returns mockAttachmentJsonResponse.asSuccess()
         coEvery {
             ciphersService.uploadAttachment(
-                attachmentJsonResponse = mockAttachmentJsonResponse,
+                attachment = createMockAttachmentResponse(number = 1),
                 encryptedFile = File("${mockFile.absolutePath}.enc"),
             )
         } returns mockCipherResponse.asSuccess()
@@ -1683,7 +1690,7 @@ class CipherManagerTest {
         } returns mockAttachmentJsonResponse.asSuccess()
         coEvery {
             ciphersService.uploadAttachment(
-                attachmentJsonResponse = mockAttachmentJsonResponse,
+                attachment = createMockAttachmentResponse(number = 1),
                 encryptedFile = File("${mockFile.absolutePath}.enc"),
             )
         } returns Throwable("Fail").asFailure()
@@ -1707,6 +1714,7 @@ class CipherManagerTest {
 
         val attachmentId = "mockId-1"
         val cipher = mockk<Cipher> {
+            every { key } returns "key"
             every { attachments } returns emptyList()
             every { id } returns "mockId-1"
         }
@@ -1747,6 +1755,7 @@ class CipherManagerTest {
                 every { id } returns attachmentId
             }
             val cipher = mockk<Cipher> {
+                every { key } returns "key"
                 every { attachments } returns listOf(attachment)
                 every { id } returns "mockId-1"
             }
@@ -1792,6 +1801,7 @@ class CipherManagerTest {
             every { id } returns attachmentId
         }
         val cipher = mockk<Cipher> {
+            every { key } returns "key"
             every { attachments } returns listOf(attachment)
             every { id } returns "mockId-1"
         }
@@ -1839,6 +1849,7 @@ class CipherManagerTest {
             every { id } returns attachmentId
         }
         val cipher = mockk<Cipher> {
+            every { key } returns "key"
             every { attachments } returns listOf(attachment)
             every { id } returns "mockId-1"
         }
@@ -1892,6 +1903,7 @@ class CipherManagerTest {
                 every { id } returns attachmentId
             }
             val cipher = mockk<Cipher> {
+                every { key } returns "key"
                 every { attachments } returns listOf(attachment)
                 every { id } returns "mockId-1"
             }
@@ -1967,6 +1979,7 @@ class CipherManagerTest {
                 every { id } returns attachmentId
             }
             val cipher = mockk<Cipher> {
+                every { key } returns "key"
                 every { attachments } returns listOf(attachment)
                 every { id } returns "mockId-1"
             }

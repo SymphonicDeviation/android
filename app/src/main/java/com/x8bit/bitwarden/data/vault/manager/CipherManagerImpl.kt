@@ -2,21 +2,22 @@ package com.x8bit.bitwarden.data.vault.manager
 
 import android.net.Uri
 import androidx.core.net.toUri
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
+import com.bitwarden.core.data.util.flatMap
+import com.bitwarden.network.model.AttachmentJsonResponse
+import com.bitwarden.network.model.CreateCipherInOrganizationJsonRequest
+import com.bitwarden.network.model.ShareCipherJsonRequest
+import com.bitwarden.network.model.UpdateCipherCollectionsJsonRequest
+import com.bitwarden.network.model.UpdateCipherResponseJson
+import com.bitwarden.network.service.CiphersService
 import com.bitwarden.vault.AttachmentView
 import com.bitwarden.vault.Cipher
 import com.bitwarden.vault.CipherView
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
 import com.x8bit.bitwarden.data.platform.manager.ReviewPromptManager
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
-import com.x8bit.bitwarden.data.platform.util.flatMap
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
-import com.x8bit.bitwarden.data.vault.datasource.network.model.CreateCipherInOrganizationJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.ShareCipherJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.UpdateCipherCollectionsJsonRequest
-import com.x8bit.bitwarden.data.vault.datasource.network.model.UpdateCipherResponseJson
-import com.x8bit.bitwarden.data.vault.datasource.network.service.CiphersService
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.manager.model.DownloadResult
 import com.x8bit.bitwarden.data.vault.repository.model.CreateAttachmentResult
@@ -327,7 +328,15 @@ class CipherManagerImpl(
             fileUri = fileUri,
         )
             .fold(
-                onFailure = { CreateAttachmentResult.Error(error = it) },
+                onFailure = {
+                    CreateAttachmentResult.Error(
+                        error = it,
+                        message = when (it) {
+                            is IllegalStateException -> it.message
+                            else -> null
+                        },
+                    )
+                },
                 onSuccess = { CreateAttachmentResult.Success(cipherView = it) },
             )
 
@@ -371,11 +380,22 @@ class CipherManagerImpl(
                                         cipherId = cipherId,
                                         body = attachment.toNetworkAttachmentRequest(),
                                     )
-                                    .flatMap { attachmentJsonResponse ->
-                                        val encryptedFile = File("${cacheFile.absolutePath}.enc")
+                            }
+                            .flatMap { attachmentResponse ->
+                                when (attachmentResponse) {
+                                    is AttachmentJsonResponse.Invalid -> {
+                                        return IllegalStateException(
+                                            attachmentResponse.message,
+                                        ).asFailure()
+                                    }
+
+                                    is AttachmentJsonResponse.Success -> {
+                                        val encryptedFile = File(
+                                            "${cacheFile.absolutePath}.enc",
+                                        )
                                         ciphersService
                                             .uploadAttachment(
-                                                attachmentJsonResponse = attachmentJsonResponse,
+                                                attachment = attachmentResponse,
                                                 encryptedFile = encryptedFile,
                                             )
                                             .onSuccess {
@@ -385,6 +405,7 @@ class CipherManagerImpl(
                                                 fileManager.delete(cacheFile, encryptedFile)
                                             }
                                     }
+                                }
                             }
                     }
             }
@@ -474,30 +495,39 @@ class CipherManagerImpl(
         userId: String,
         cipherId: String,
     ): Result<Cipher> =
-        if (this.key == null) {
-            vaultSdkSource
-                .encryptCipher(userId = userId, cipherView = this)
-                .flatMap {
-                    ciphersService.updateCipher(
-                        cipherId = cipherId,
-                        body = it.toEncryptedNetworkCipher(),
-                    )
-                }
-                .flatMap { response ->
-                    when (response) {
-                        is UpdateCipherResponseJson.Invalid -> {
-                            IllegalStateException(response.message).asFailure()
-                        }
+        vaultSdkSource
+            .encryptCipher(userId = userId, cipherView = this)
+            .flatMap {
+                // We only migrate the cipher if the original cipher did not have a key and the
+                // new cipher does. This means the SDK created the key and migration is required.
+                if (it.key != null && this.key == null) {
+                    ciphersService
+                        .updateCipher(
+                            cipherId = cipherId,
+                            body = it.toEncryptedNetworkCipher(),
+                        )
+                        .flatMap { response ->
+                            when (response) {
+                                is UpdateCipherResponseJson.Invalid -> {
+                                    IllegalStateException(
+                                        response.message,
+                                    )
+                                        .asFailure()
+                                }
 
-                        is UpdateCipherResponseJson.Success -> {
-                            vaultDiskSource.saveCipher(userId = userId, cipher = response.cipher)
-                            response.cipher.toEncryptedSdkCipher().asSuccess()
+                                is UpdateCipherResponseJson.Success -> {
+                                    vaultDiskSource.saveCipher(
+                                        userId = userId,
+                                        cipher = response.cipher,
+                                    )
+                                    response.cipher.toEncryptedSdkCipher().asSuccess()
+                                }
+                            }
                         }
-                    }
+                } else {
+                    it.asSuccess()
                 }
-        } else {
-            vaultSdkSource.encryptCipher(userId = userId, cipherView = this)
-        }
+            }
 
     private suspend fun migrateAttachments(
         userId: String,

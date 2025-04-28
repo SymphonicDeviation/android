@@ -1,11 +1,14 @@
 package com.x8bit.bitwarden.data.auth.manager
 
 import com.bitwarden.core.AuthRequestResponse
+import com.bitwarden.core.data.util.asFailure
+import com.bitwarden.core.data.util.asSuccess
+import com.bitwarden.core.data.util.flatMap
+import com.bitwarden.network.model.AuthRequestTypeJson
+import com.bitwarden.network.service.AuthRequestsService
+import com.bitwarden.network.service.NewAuthRequestService
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.PendingAuthRequestJson
-import com.x8bit.bitwarden.data.auth.datasource.network.model.AuthRequestTypeJson
-import com.x8bit.bitwarden.data.auth.datasource.network.service.AuthRequestsService
-import com.x8bit.bitwarden.data.auth.datasource.network.service.NewAuthRequestService
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequest
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequestResult
@@ -17,9 +20,6 @@ import com.x8bit.bitwarden.data.auth.manager.model.CreateAuthRequestResult
 import com.x8bit.bitwarden.data.auth.manager.util.isSso
 import com.x8bit.bitwarden.data.auth.manager.util.toAuthRequestTypeJson
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
-import com.x8bit.bitwarden.data.platform.util.asFailure
-import com.x8bit.bitwarden.data.platform.util.asSuccess
-import com.x8bit.bitwarden.data.platform.util.flatMap
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
