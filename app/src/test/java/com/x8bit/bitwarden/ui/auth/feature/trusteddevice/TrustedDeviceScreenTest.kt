@@ -6,15 +6,14 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.ui.util.asText
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
+import com.x8bit.bitwarden.ui.util.assertNoDialogExists
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -24,7 +23,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
-class TrustedDeviceScreenTest : BaseComposeTest() {
+class TrustedDeviceScreenTest : BitwardenComposeTest() {
 
     private var onNavigateToAdminApprovalEmail: String? = null
     private var onNavigateToLoginWithOtherDeviceEmail: String? = null
@@ -247,17 +246,17 @@ class TrustedDeviceScreenTest : BaseComposeTest() {
 
     @Test
     fun `dialog should update according to state`() {
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
 
         mutableStateFlow.update {
             it.copy(
                 dialogState = TrustedDeviceState.DialogState.Loading(message = "Loading".asText()),
             )
         }
-        composeTestRule.onNode(isPopup()).assertIsDisplayed()
+        composeTestRule.onNode(isDialog()).assertIsDisplayed()
         composeTestRule
             .onNodeWithText(text = "Loading")
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
             .assertIsDisplayed()
 
         mutableStateFlow.update {
@@ -280,7 +279,7 @@ class TrustedDeviceScreenTest : BaseComposeTest() {
             .assertIsDisplayed()
 
         mutableStateFlow.update { it.copy(dialogState = null) }
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
     }
 }
 

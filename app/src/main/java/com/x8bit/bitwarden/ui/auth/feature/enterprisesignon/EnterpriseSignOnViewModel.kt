@@ -5,6 +5,8 @@ import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.bitwarden.data.repository.util.baseIdentityUrl
+import com.bitwarden.data.repository.util.baseWebVaultUrlOrDefault
+import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
@@ -22,9 +24,9 @@ import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
 import com.x8bit.bitwarden.data.platform.manager.network.NetworkConnectionManager
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
+import com.x8bit.bitwarden.data.platform.util.toUriOrNull
 import com.x8bit.bitwarden.data.tools.generator.repository.GeneratorRepository
 import com.x8bit.bitwarden.data.tools.generator.repository.utils.generateRandomString
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -154,6 +156,7 @@ class EnterpriseSignOnViewModel @Inject constructor(
         prevalidateSso()
     }
 
+    @Suppress("LongMethod")
     private fun handleOnLoginResult(action: EnterpriseSignOnAction.Internal.OnLoginResult) {
         when (val loginResult = action.loginResult) {
             is LoginResult.CaptchaRequired -> {
@@ -191,9 +194,23 @@ class EnterpriseSignOnViewModel @Inject constructor(
                 mutableStateFlow.update { it.copy(dialogState = null) }
                 sendEvent(
                     EnterpriseSignOnEvent.NavigateToTwoFactorLogin(
-                        emailAddress = EnterpriseSignOnArgs(savedStateHandle).emailAddress,
+                        emailAddress = savedStateHandle.toEnterpriseSignOnArgs().emailAddress,
                         orgIdentifier = state.orgIdentifierInput,
                     ),
+                )
+            }
+
+            is LoginResult.EncryptionKeyMigrationRequired -> {
+                val vaultUrl =
+                    environmentRepository
+                        .environment
+                        .environmentUrlData
+                        .baseWebVaultUrlOrDefault
+
+                showError(
+                    message = R.string
+                        .this_account_will_soon_be_deleted_log_in_at_x_to_continue_using_bitwarden
+                        .asText(vaultUrl.toUriOrNull()?.host ?: vaultUrl),
                 )
             }
 
@@ -434,7 +451,7 @@ class EnterpriseSignOnViewModel @Inject constructor(
                     viewModelScope.launch {
                         val result = authRepository
                             .login(
-                                email = EnterpriseSignOnArgs(savedStateHandle).emailAddress,
+                                email = savedStateHandle.toEnterpriseSignOnArgs().emailAddress,
                                 ssoCode = ssoCallbackResult.code,
                                 ssoCodeVerifier = ssoData.codeVerifier,
                                 ssoRedirectUri = SSO_URI,
@@ -459,7 +476,7 @@ class EnterpriseSignOnViewModel @Inject constructor(
         viewModelScope.launch {
             if (featureFlagManager.getFeatureFlag(key = FlagKey.VerifiedSsoDomainEndpoint)) {
                 val result = authRepository.getVerifiedOrganizationDomainSsoDetails(
-                    email = EnterpriseSignOnArgs(savedStateHandle).emailAddress,
+                    email = savedStateHandle.toEnterpriseSignOnArgs().emailAddress,
                 )
                 sendAction(
                     EnterpriseSignOnAction.Internal.OnVerifiedOrganizationDomainSsoDetailsReceive(
@@ -468,7 +485,7 @@ class EnterpriseSignOnViewModel @Inject constructor(
                 )
             } else {
                 val result = authRepository.getOrganizationDomainSsoDetails(
-                    email = EnterpriseSignOnArgs(savedStateHandle).emailAddress,
+                    email = savedStateHandle.toEnterpriseSignOnArgs().emailAddress,
                 )
                 sendAction(
                     EnterpriseSignOnAction.Internal.OnOrganizationDomainSsoDetailsReceive(result),

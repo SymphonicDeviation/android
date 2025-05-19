@@ -4,13 +4,11 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.printToLog
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -20,7 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class DebugMenuScreenTest : BaseComposeTest() {
+class DebugMenuScreenTest : BitwardenComposeTest() {
     private var onNavigateBackCalled = false
     private val mutableEventFlow = bufferedMutableSharedFlow<DebugMenuEvent>()
     private val mutableStateFlow = MutableStateFlow(
@@ -49,12 +47,31 @@ class DebugMenuScreenTest : BaseComposeTest() {
 
     @Test
     fun `onNavigateBack should send action to viewModel`() {
-        composeTestRule.onRoot().printToLog("djf")
         composeTestRule
             .onNodeWithContentDescription("Back")
             .performClick()
 
         verify { viewModel.trySendAction(DebugMenuAction.NavigateBack) }
+    }
+
+    @Test
+    fun `on generate crash click should send GenerateCrashClick action`() {
+        composeTestRule
+            .onNodeWithText(text = "Generate crash")
+            .performScrollTo()
+            .performClick()
+
+        verify { viewModel.trySendAction(DebugMenuAction.GenerateCrashClick) }
+    }
+
+    @Test
+    fun `on generate error report click should send GenerateErrorReportClick action`() {
+        composeTestRule
+            .onNodeWithText(text = "Generate error report")
+            .performScrollTo()
+            .performClick()
+
+        verify { viewModel.trySendAction(DebugMenuAction.GenerateErrorReportClick) }
     }
 
     @Test
@@ -151,13 +168,6 @@ class DebugMenuScreenTest : BaseComposeTest() {
 
     @Test
     fun `Show onboarding carousel should send action when enabled and clicked`() {
-        mutableStateFlow.tryEmit(
-            DebugMenuState(
-                featureFlags = persistentMapOf(
-                    FlagKey.OnboardingCarousel to true,
-                ),
-            ),
-        )
         composeTestRule
             .onNodeWithText("Show Onboarding Carousel", ignoreCase = true)
             .performScrollTo()
@@ -165,25 +175,6 @@ class DebugMenuScreenTest : BaseComposeTest() {
             .performClick()
 
         verify(exactly = 1) { viewModel.trySendAction(DebugMenuAction.RestartOnboardingCarousel) }
-    }
-
-    @Test
-    fun `show onboarding carousel should not send action when not enabled`() {
-        mutableStateFlow.tryEmit(
-            DebugMenuState(
-                featureFlags = persistentMapOf(
-                    FlagKey.OnboardingCarousel to false,
-                ),
-            ),
-        )
-
-        composeTestRule
-            .onNodeWithText("Show Onboarding Carousel", ignoreCase = true)
-            .performScrollTo()
-            .assertIsNotEnabled()
-            .performClick()
-
-        verify(exactly = 0) { viewModel.trySendAction(DebugMenuAction.RestartOnboardingCarousel) }
     }
 
     @Test

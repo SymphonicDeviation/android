@@ -25,7 +25,7 @@ import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.util.advanceTimeByAndRunCurrent
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.components.model.AccountSummary
 import com.x8bit.bitwarden.ui.platform.components.snackbar.BitwardenSnackbarData
 import com.x8bit.bitwarden.ui.platform.manager.exit.ExitManager
@@ -35,7 +35,6 @@ import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
 import com.x8bit.bitwarden.ui.util.assertLockOrLogoutDialogIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertLogoutConfirmationDialogIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertNoDialogExists
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
 import com.x8bit.bitwarden.ui.util.assertRemovalConfirmationDialogIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertScrollableNodeDoesNotExist
 import com.x8bit.bitwarden.ui.util.assertSwitcherIsDisplayed
@@ -74,7 +73,7 @@ import org.junit.Before
 import org.junit.Test
 
 @Suppress("LargeClass")
-class VaultScreenTest : BaseComposeTest() {
+class VaultScreenTest : BitwardenComposeTest() {
     private var onNavigateToAboutCalled = false
     private var onNavigateToImportLoginsCalled = false
     private var onNavigateToVaultAddItemScreenCalled = false
@@ -581,7 +580,7 @@ class VaultScreenTest : BaseComposeTest() {
 
     @Test
     fun `syncing dialog should be displayed according to state`() {
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
         composeTestRule.onNodeWithText("Loading").assertDoesNotExist()
 
         mutableStateFlow.update {
@@ -591,7 +590,7 @@ class VaultScreenTest : BaseComposeTest() {
         composeTestRule
             .onNodeWithText("Syncing...")
             .assertIsDisplayed()
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
     }
 
     @Test

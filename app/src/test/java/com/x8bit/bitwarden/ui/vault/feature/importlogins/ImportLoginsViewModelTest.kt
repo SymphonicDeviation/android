@@ -4,13 +4,13 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.SyncVaultDataResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.components.snackbar.BitwardenSnackbarData
 import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
 import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManagerImpl
@@ -48,7 +48,10 @@ class ImportLoginsViewModelTest : BaseViewModelTest() {
 
     @BeforeEach
     fun setUp() {
-        mockkStatic(Uri::parse)
+        mockkStatic(
+            SavedStateHandle::toImportLoginsArgs,
+            Uri::parse,
+        )
         every { Uri.parse(Environment.Us.environmentUrlData.base) } returns mockk {
             every { host } returns DEFAULT_VAULT_URL
         }
@@ -56,7 +59,10 @@ class ImportLoginsViewModelTest : BaseViewModelTest() {
 
     @AfterEach
     fun tearDown() {
-        unmockkStatic(Uri::parse)
+        unmockkStatic(
+            SavedStateHandle::toImportLoginsArgs,
+            Uri::parse,
+        )
     }
 
     private val snackbarRelayManager: SnackbarRelayManagerImpl = mockk {
@@ -521,11 +527,9 @@ class ImportLoginsViewModelTest : BaseViewModelTest() {
     private fun createViewModel(
         snackbarRelay: SnackbarRelay = SnackbarRelay.MY_VAULT_RELAY,
     ): ImportLoginsViewModel = ImportLoginsViewModel(
-        savedStateHandle = SavedStateHandle(
-            mapOf(
-                "snackbarRelay" to snackbarRelay.name,
-            ),
-        ),
+        savedStateHandle = SavedStateHandle().apply {
+            every { toImportLoginsArgs() } returns ImportLoginsArgs(snackBarRelay = snackbarRelay)
+        },
         vaultRepository = vaultRepository,
         firstTimeActionManager = firstTimeActionManager,
         environmentRepository = environmentRepository,

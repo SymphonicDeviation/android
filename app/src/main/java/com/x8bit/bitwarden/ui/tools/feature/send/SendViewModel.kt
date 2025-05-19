@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.data.repository.util.baseWebSendUrl
 import com.bitwarden.network.model.PolicyTypeJson
+import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
@@ -19,8 +20,8 @@ import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.SendData
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
+import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
 import com.x8bit.bitwarden.ui.tools.feature.send.util.toViewState
 import com.x8bit.bitwarden.ui.vault.feature.item.VaultItemScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -91,6 +92,8 @@ class SendViewModel @Inject constructor(
         is SendAction.CopyClick -> handleCopyClick(action)
         SendAction.FileTypeClick -> handleFileTypeClick()
         is SendAction.SendClick -> handleSendClick(action)
+        is SendAction.EditClick -> handleEditSendClick(action)
+        is SendAction.ViewClick -> handleViewSendClick(action)
         is SendAction.ShareClick -> handleShareClick(action)
         SendAction.TextTypeClick -> handleTextTypeClick()
         is SendAction.DeleteSendClick -> handleDeleteSendClick(action)
@@ -300,7 +303,31 @@ class SendViewModel @Inject constructor(
     }
 
     private fun handleSendClick(action: SendAction.SendClick) {
-        sendEvent(SendEvent.NavigateToEditSend(action.sendItem.id))
+        sendEvent(
+            event = SendEvent.NavigateToViewSend(
+                sendId = action.sendItem.id,
+                sendType = when (action.sendItem.type) {
+                    SendState.ViewState.Content.SendItem.Type.FILE -> SendItemType.FILE
+                    SendState.ViewState.Content.SendItem.Type.TEXT -> SendItemType.TEXT
+                },
+            ),
+        )
+    }
+
+    private fun handleEditSendClick(action: SendAction.EditClick) {
+        sendEvent(SendEvent.NavigateToEditSend(sendId = action.sendItem.id))
+    }
+
+    private fun handleViewSendClick(action: SendAction.ViewClick) {
+        sendEvent(
+            event = SendEvent.NavigateToViewSend(
+                sendId = action.sendItem.id,
+                sendType = when (action.sendItem.type) {
+                    SendState.ViewState.Content.SendItem.Type.FILE -> SendItemType.FILE
+                    SendState.ViewState.Content.SendItem.Type.TEXT -> SendItemType.TEXT
+                },
+            ),
+        )
     }
 
     private fun handleShareClick(action: SendAction.ShareClick) {
@@ -531,6 +558,20 @@ sealed class SendAction {
     ) : SendAction()
 
     /**
+     * User clicked the edit item row.
+     */
+    data class EditClick(
+        val sendItem: SendState.ViewState.Content.SendItem,
+    ) : SendAction()
+
+    /**
+     * User clicked the view item row.
+     */
+    data class ViewClick(
+        val sendItem: SendState.ViewState.Content.SendItem,
+    ) : SendAction()
+
+    /**
      * User clicked the copy item button.
      */
     data class CopyClick(
@@ -623,6 +664,14 @@ sealed class SendEvent {
      * Navigate to the edit send screen.
      */
     data class NavigateToEditSend(val sendId: String) : SendEvent()
+
+    /**
+     * Navigate to the view send screen.
+     */
+    data class NavigateToViewSend(
+        val sendId: String,
+        val sendType: SendItemType,
+    ) : SendEvent()
 
     /**
      * Navigate to the about send screen.

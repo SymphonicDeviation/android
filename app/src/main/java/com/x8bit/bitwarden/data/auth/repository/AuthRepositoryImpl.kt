@@ -11,6 +11,7 @@ import com.bitwarden.crypto.Kdf
 import com.bitwarden.data.datasource.disk.ConfigDiskSource
 import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.data.repository.util.toEnvironmentUrls
+import com.bitwarden.data.repository.util.toEnvironmentUrlsOrDefault
 import com.bitwarden.network.model.DeleteAccountResponseJson
 import com.bitwarden.network.model.GetTokenResponseJson
 import com.bitwarden.network.model.IdentityTokenAuthModel
@@ -54,6 +55,7 @@ import com.x8bit.bitwarden.data.auth.manager.AuthRequestManager
 import com.x8bit.bitwarden.data.auth.manager.KeyConnectorManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
+import com.x8bit.bitwarden.data.auth.manager.model.MigrateExistingUserToKeyConnectorResult
 import com.x8bit.bitwarden.data.auth.repository.model.AuthState
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.DeleteAccountResult
@@ -116,7 +118,6 @@ import com.x8bit.bitwarden.data.platform.manager.LogsManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.PushManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
-import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
 import com.x8bit.bitwarden.data.platform.manager.util.getActivePolicies
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
@@ -283,6 +284,7 @@ class AuthRepositoryImpl(
         merge(
             mutableHasPendingAccountDeletionStateFlow,
             mutableUserStateTransactionCountStateFlow,
+            vaultRepository.isActiveUserUnlockingFlow,
         ),
     ) { array ->
         val userStateJson = array[0] as UserStateJson?
@@ -306,8 +308,11 @@ class AuthRepositoryImpl(
             firstTimeState = firstTimeState,
         )
     }
-        .filterNot { mutableHasPendingAccountDeletionStateFlow.value }
-        .filterNot { mutableUserStateTransactionCountStateFlow.value > 0 }
+        .filterNot {
+            mutableHasPendingAccountDeletionStateFlow.value ||
+                mutableUserStateTransactionCountStateFlow.value > 0 ||
+                vaultRepository.isActiveUserUnlockingFlow.value
+        }
         .stateIn(
             scope = unconfinedScope,
             started = SharingStarted.Eagerly,
@@ -352,7 +357,7 @@ class AuthRepositoryImpl(
         get() = activeUserId?.let { authDiskSource.getIsTdeLoginComplete(userId = it) }
 
     override var shouldTrustDevice: Boolean
-        get() = activeUserId?.let { authDiskSource.getShouldTrustDevice(userId = it) } ?: false
+        get() = activeUserId?.let { authDiskSource.getShouldTrustDevice(userId = it) } == true
         set(value) {
             activeUserId?.let {
                 authDiskSource.storeShouldTrustDevice(userId = it, shouldTrustDevice = value)
@@ -376,8 +381,7 @@ class AuthRepositoryImpl(
         get() = activeUserId?.let { authDiskSource.getOrganizations(it) }.orEmpty()
 
     override val showWelcomeCarousel: Boolean
-        get() = !settingsRepository.hasUserLoggedInOrCreatedAccount &&
-            featureFlagManager.getFeatureFlag(FlagKey.OnboardingCarousel)
+        get() = !settingsRepository.hasUserLoggedInOrCreatedAccount
 
     init {
         combine(
@@ -819,14 +823,25 @@ class AuthRepositoryImpl(
     override fun switchAccount(userId: String): SwitchAccountResult {
         val currentUserState = authDiskSource.userState ?: return SwitchAccountResult.NoChange
         val previousActiveUserId = currentUserState.activeUserId
+        val updateEnvironment: () -> Unit = {
+            environmentRepository.environment = currentUserState
+                .activeAccount
+                .settings
+                .environmentUrlData
+                .toEnvironmentUrlsOrDefault()
+        }
 
         if (userId == previousActiveUserId) {
+            // We need to make sure that the environment is set back to the correct spot.
+            updateEnvironment()
             // No switching to do but clear any pending account additions
             hasPendingAccountAddition = false
             return SwitchAccountResult.NoChange
         }
 
         if (userId !in currentUserState.accounts.keys) {
+            // We need to make sure that the environment is set back to the correct spot.
+            updateEnvironment()
             // The requested user is not currently stored
             return SwitchAccountResult.NoChange
         }
@@ -981,17 +996,29 @@ class AuthRepositoryImpl(
                 masterPassword = masterPassword,
                 kdf = profile.toSdkParams(),
             )
-            .onSuccess {
-                authDiskSource.userState = authDiskSource
-                    .userState
-                    ?.toRemovedPasswordUserStateJson(userId = userId)
-                vaultRepository.sync()
-                settingsRepository.setDefaultsIfNecessary(userId = userId)
+            .map { migrateResult: MigrateExistingUserToKeyConnectorResult ->
+                when (migrateResult) {
+                    is MigrateExistingUserToKeyConnectorResult.Error -> {
+                        RemovePasswordResult.Error(error = migrateResult.error)
+                    }
+
+                    MigrateExistingUserToKeyConnectorResult.Success -> {
+                        authDiskSource.userState = authDiskSource
+                            .userState
+                            ?.toRemovedPasswordUserStateJson(userId = userId)
+                        vaultRepository.sync()
+                        settingsRepository.setDefaultsIfNecessary(userId = userId)
+                        RemovePasswordResult.Success
+                    }
+
+                    MigrateExistingUserToKeyConnectorResult.WrongPasswordError -> {
+                        RemovePasswordResult.WrongPasswordError
+                    }
+                }
             }
-            .fold(
-                onFailure = { RemovePasswordResult.Error(error = it) },
-                onSuccess = { RemovePasswordResult.Success },
-            )
+            .getOrElse {
+                RemovePasswordResult.Error(error = it)
+            }
     }
 
     override suspend fun resetPassword(
@@ -1598,7 +1625,7 @@ class AuthRepositoryImpl(
      * A helper function to extract the common logic of logging in through
      * any of the available methods.
      */
-    @Suppress("LongMethod")
+    @Suppress("LongMethod", "MaxLineLength")
     private suspend fun loginCommon(
         email: String,
         password: String? = null,
@@ -1661,6 +1688,10 @@ class AuthRepositoryImpl(
                                     authModel = authModel,
                                     error = loginResponse.errorMessage,
                                 )
+
+                            is GetTokenResponseJson.Invalid.InvalidType.EncryptionKeyMigrationRequired -> {
+                                LoginResult.EncryptionKeyMigrationRequired
+                            }
 
                             is GetTokenResponseJson.Invalid.InvalidType.GenericInvalid -> {
                                 LoginResult.Error(

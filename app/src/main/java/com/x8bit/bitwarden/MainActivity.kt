@@ -17,13 +17,14 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
-import com.bitwarden.core.annotation.OmitFromCoverage
+import com.bitwarden.annotation.OmitFromCoverage
+import com.bitwarden.ui.platform.base.util.EventsEffect
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilityCompletionManager
 import com.x8bit.bitwarden.data.autofill.manager.AutofillActivityManager
 import com.x8bit.bitwarden.data.autofill.manager.AutofillCompletionManager
 import com.x8bit.bitwarden.data.platform.manager.util.ObserveScreenDataEffect
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
-import com.x8bit.bitwarden.ui.platform.base.util.EventsEffect
 import com.x8bit.bitwarden.ui.platform.components.util.rememberBitwardenNavController
 import com.x8bit.bitwarden.ui.platform.composition.LocalManagerProvider
 import com.x8bit.bitwarden.ui.platform.feature.debugmenu.debugMenuDestination
@@ -32,7 +33,6 @@ import com.x8bit.bitwarden.ui.platform.feature.debugmenu.navigateToDebugMenuScre
 import com.x8bit.bitwarden.ui.platform.feature.rootnav.ROOT_ROUTE
 import com.x8bit.bitwarden.ui.platform.feature.rootnav.rootNavDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.ui.platform.util.appLanguage
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -124,7 +124,10 @@ class MainActivity : AppCompatActivity() {
                         }
                     },
                 )
-                BitwardenTheme(theme = state.theme) {
+                BitwardenTheme(
+                    theme = state.theme,
+                    dynamicColor = state.isDynamicColorsEnabled,
+                ) {
                     NavHost(
                         navController = navController,
                         startDestination = ROOT_ROUTE,

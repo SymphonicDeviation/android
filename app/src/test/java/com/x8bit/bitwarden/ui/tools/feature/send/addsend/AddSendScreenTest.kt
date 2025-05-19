@@ -24,13 +24,13 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
 import com.bitwarden.ui.util.asText
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.manager.exit.ExitManager
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
 import com.x8bit.bitwarden.ui.platform.manager.permissions.FakePermissionManager
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.model.AddSendType
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
+import com.x8bit.bitwarden.ui.util.assertNoDialogExists
 import com.x8bit.bitwarden.ui.util.isEditableText
 import com.x8bit.bitwarden.ui.util.isProgressBar
 import io.mockk.every
@@ -41,14 +41,16 @@ import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.ZonedDateTime
 
 @Suppress("LargeClass")
-class AddSendScreenTest : BaseComposeTest() {
+class AddSendScreenTest : BitwardenComposeTest() {
 
     private var onNavigateBackCalled = false
+    private var onNavigateUpToRootCalled = false
 
     private val exitManager: ExitManager = mockk(relaxed = true) {
         every { exitApplication() } just runs
@@ -74,6 +76,7 @@ class AddSendScreenTest : BaseComposeTest() {
             AddSendScreen(
                 viewModel = viewModel,
                 onNavigateBack = { onNavigateBackCalled = true },
+                onNavigateUpToRoot = { onNavigateUpToRootCalled = true },
             )
         }
     }
@@ -81,7 +84,13 @@ class AddSendScreenTest : BaseComposeTest() {
     @Test
     fun `on NavigateBack should call onNavigateBack`() {
         mutableEventFlow.tryEmit(AddSendEvent.NavigateBack)
-        assert(onNavigateBackCalled)
+        assertTrue(onNavigateBackCalled)
+    }
+
+    @Test
+    fun `on NavigateToRoot should call onNavigateUpToRoot`() {
+        mutableEventFlow.tryEmit(AddSendEvent.NavigateToRoot)
+        assertTrue(onNavigateUpToRootCalled)
     }
 
     @Test
@@ -153,14 +162,10 @@ class AddSendScreenTest : BaseComposeTest() {
             .onNodeWithText("Share link")
             .assert(hasAnyAncestor(isPopup()))
             .isDisplayed()
-        composeTestRule
-            .onNodeWithText("Delete")
-            .assert(hasAnyAncestor(isPopup()))
-            .isDisplayed()
     }
 
     @Test
-    fun `on overflow button click should only display delete when policy disables send`() {
+    fun `on overflow button should not be present when policy disables send`() {
         mutableStateFlow.value = DEFAULT_STATE.copy(
             addSendType = AddSendType.EditItem(sendItemId = "sendId"),
             policyDisablesSend = true,
@@ -168,21 +173,7 @@ class AddSendScreenTest : BaseComposeTest() {
 
         composeTestRule
             .onNodeWithContentDescription("More")
-            .performClick()
-
-        composeTestRule
-            .onNodeWithText("Remove password")
             .assertDoesNotExist()
-        composeTestRule
-            .onNodeWithText("Copy link")
-            .assertDoesNotExist()
-        composeTestRule
-            .onNodeWithText("Share link")
-            .assertDoesNotExist()
-        composeTestRule
-            .onNodeWithText("Delete")
-            .assert(hasAnyAncestor(isPopup()))
-            .isDisplayed()
     }
 
     @Test
@@ -242,50 +233,6 @@ class AddSendScreenTest : BaseComposeTest() {
     }
 
     @Test
-    fun `on overflow Delete button click should Display delete confirmation dialog`() {
-        mutableStateFlow.value = DEFAULT_STATE.copy(
-            addSendType = AddSendType.EditItem(sendItemId = "sendId"),
-        )
-
-        composeTestRule
-            .onNodeWithContentDescription("More")
-            .performClick()
-
-        composeTestRule
-            .onNodeWithText("Delete")
-            .performClick()
-
-        composeTestRule
-            .onNodeWithText("Are you sure you want to delete this Send?")
-            .assert(hasAnyAncestor(isDialog()))
-            .assertIsDisplayed()
-    }
-
-    @Test
-    fun `on delete confirmation dialog yes click should send DeleteClick`() {
-        mutableStateFlow.value = DEFAULT_STATE.copy(
-            addSendType = AddSendType.EditItem(sendItemId = "sendId"),
-        )
-
-        composeTestRule
-            .onNodeWithContentDescription("More")
-            .performClick()
-
-        composeTestRule
-            .onNodeWithText("Delete")
-            .performClick()
-
-        composeTestRule
-            .onNodeWithText("Yes")
-            .assert(hasAnyAncestor(isDialog()))
-            .performClick()
-
-        verify(exactly = 1) {
-            viewModel.trySendAction(AddSendAction.DeleteClick)
-        }
-    }
-
-    @Test
     fun `on overflow remove Copy link button click should send CopyLinkClick`() {
         mutableStateFlow.value = DEFAULT_STATE.copy(
             addSendType = AddSendType.EditItem(sendItemId = "sendId"),
@@ -301,6 +248,44 @@ class AddSendScreenTest : BaseComposeTest() {
 
         verify(exactly = 1) {
             viewModel.trySendAction(AddSendAction.CopyLinkClick)
+        }
+    }
+
+    @Test
+    fun `on Delete button click should Display delete confirmation dialog`() {
+        mutableStateFlow.value = DEFAULT_STATE.copy(
+            addSendType = AddSendType.EditItem(sendItemId = "sendId"),
+        )
+
+        composeTestRule
+            .onNodeWithText(text = "Delete send")
+            .performScrollTo()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(text = "Are you sure you want to delete this Send?")
+            .assert(hasAnyAncestor(isDialog()))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `on delete confirmation dialog yes click should send DeleteClick`() {
+        mutableStateFlow.value = DEFAULT_STATE.copy(
+            addSendType = AddSendType.EditItem(sendItemId = "sendId"),
+        )
+
+        composeTestRule
+            .onNodeWithText(text = "Delete send")
+            .performScrollTo()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(text = "Yes")
+            .assert(hasAnyAncestor(isDialog()))
+            .performClick()
+
+        verify(exactly = 1) {
+            viewModel.trySendAction(AddSendAction.DeleteClick)
         }
     }
 
@@ -842,7 +827,7 @@ class AddSendScreenTest : BaseComposeTest() {
     @Test
     fun `loading dialog should be displayed according to state`() {
         val loadingMessage = "syncing"
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
         composeTestRule.onNodeWithText(loadingMessage).assertDoesNotExist()
 
         mutableStateFlow.update {
@@ -852,7 +837,7 @@ class AddSendScreenTest : BaseComposeTest() {
         composeTestRule
             .onNodeWithText(loadingMessage)
             .assertIsDisplayed()
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
     }
 
     @Test

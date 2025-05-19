@@ -18,10 +18,6 @@ class FlagKeyTest {
             "email-verification",
         )
         assertEquals(
-            FlagKey.OnboardingCarousel.keyName,
-            "native-carousel-flow",
-        )
-        assertEquals(
             FlagKey.OnboardingFlow.keyName,
             "native-create-account-flow",
         )
@@ -54,10 +50,6 @@ class FlagKeyTest {
             "single-tap-passkey-authentication",
         )
         assertEquals(
-            FlagKey.IgnoreEnvironmentCheck.keyName,
-            "ignore-environment-check",
-        )
-        assertEquals(
             FlagKey.MutualTls.keyName,
             "mutual-tls",
         )
@@ -78,6 +70,10 @@ class FlagKeyTest {
             "enable-pm-flight-recorder",
         )
         assertEquals(
+            FlagKey.RestrictCipherItemDeletion.keyName,
+            "pm-15493-restrict-item-deletion-to-can-manage-permission",
+        )
+        assertEquals(
             FlagKey.PreAuthSettings.keyName,
             "enable-pm-prelogin-settings",
         )
@@ -89,7 +85,6 @@ class FlagKeyTest {
             listOf(
                 FlagKey.AuthenticatorSync,
                 FlagKey.EmailVerification,
-                FlagKey.OnboardingCarousel,
                 FlagKey.OnboardingFlow,
                 FlagKey.ImportLoginsFlow,
                 FlagKey.VerifiedSsoDomainEndpoint,
@@ -103,6 +98,7 @@ class FlagKeyTest {
                 FlagKey.ChromeAutofill,
                 FlagKey.MobileErrorReporting,
                 FlagKey.FlightRecorder,
+                FlagKey.RestrictCipherItemDeletion,
                 FlagKey.PreAuthSettings,
             ).all {
                 !it.defaultValue
@@ -116,7 +112,6 @@ class FlagKeyTest {
             listOf(
                 FlagKey.AuthenticatorSync,
                 FlagKey.EmailVerification,
-                FlagKey.OnboardingCarousel,
                 FlagKey.OnboardingFlow,
                 FlagKey.ImportLoginsFlow,
                 FlagKey.VerifiedSsoDomainEndpoint,
@@ -130,6 +125,7 @@ class FlagKeyTest {
                 FlagKey.SimpleLoginSelfHostAlias,
                 FlagKey.ChromeAutofill,
                 FlagKey.MobileErrorReporting,
+                FlagKey.RestrictCipherItemDeletion,
             ).all {
                 it.isRemotelyConfigured
             },
@@ -137,7 +133,6 @@ class FlagKeyTest {
 
         assertTrue(
             listOf(
-                FlagKey.IgnoreEnvironmentCheck,
                 FlagKey.FlightRecorder,
                 FlagKey.PreAuthSettings,
             ).all {

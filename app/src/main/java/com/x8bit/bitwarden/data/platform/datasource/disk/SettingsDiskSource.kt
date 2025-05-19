@@ -1,11 +1,11 @@
 package com.x8bit.bitwarden.data.platform.datasource.disk
 
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.data.platform.datasource.disk.model.FlightRecorderDataSet
 import com.x8bit.bitwarden.data.platform.manager.model.AppResumeScreenData
 import com.x8bit.bitwarden.data.platform.repository.model.UriMatchType
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -49,6 +49,16 @@ interface SettingsDiskSource {
      * Emits updates that track [appTheme].
      */
     val appThemeFlow: Flow<AppTheme>
+
+    /**
+     * The currently persisted dynamic colors setting (or `null` if not set).
+     */
+    var isDynamicColorsEnabled: Boolean?
+
+    /**
+     * Emits updates that track [isDynamicColorsEnabled].
+     */
+    val isDynamicColorsEnabledFlow: Flow<Boolean?>
 
     /**
      * The currently persisted biometric integrity source for the system.

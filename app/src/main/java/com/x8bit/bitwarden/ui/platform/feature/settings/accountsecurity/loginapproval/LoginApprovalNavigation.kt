@@ -1,27 +1,32 @@
-@file:OmitFromCoverage
-
 package com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.loginapproval
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
-import com.bitwarden.core.annotation.OmitFromCoverage
-import com.x8bit.bitwarden.ui.platform.base.util.composableWithSlideTransitions
+import androidx.navigation.toRoute
+import com.bitwarden.ui.platform.base.util.composableWithSlideTransitions
+import kotlinx.serialization.Serializable
 
-private const val FINGERPRINT: String = "fingerprint"
-private const val LOGIN_APPROVAL_PREFIX = "login_approval"
-private const val LOGIN_APPROVAL_ROUTE = "$LOGIN_APPROVAL_PREFIX?$FINGERPRINT={$FINGERPRINT}"
+/**
+ * The type-safe route for the login approval screen.
+ */
+@Serializable
+data class LoginApprovalRoute(
+    val fingerprint: String?,
+)
 
 /**
  * Class to retrieve login approval arguments from the [SavedStateHandle].
  */
-data class LoginApprovalArgs(val fingerprint: String?) {
-    constructor(savedStateHandle: SavedStateHandle) : this(
-        fingerprint = savedStateHandle.get<String>(FINGERPRINT),
-    )
+data class LoginApprovalArgs(val fingerprint: String?)
+
+/**
+ * Constructs a [LoginApprovalArgs] from the [SavedStateHandle] and internal route data.
+ */
+fun SavedStateHandle.toLoginApprovalArgs(): LoginApprovalArgs {
+    val route = this.toRoute<LoginApprovalRoute>()
+    return LoginApprovalArgs(fingerprint = route.fingerprint)
 }
 
 /**
@@ -30,16 +35,7 @@ data class LoginApprovalArgs(val fingerprint: String?) {
 fun NavGraphBuilder.loginApprovalDestination(
     onNavigateBack: () -> Unit,
 ) {
-    composableWithSlideTransitions(
-        route = LOGIN_APPROVAL_ROUTE,
-        arguments = listOf(
-            navArgument(FINGERPRINT) {
-                type = NavType.StringType
-                nullable = true
-                defaultValue = null
-            },
-        ),
-    ) {
+    composableWithSlideTransitions<LoginApprovalRoute> {
         LoginApprovalScreen(
             onNavigateBack = onNavigateBack,
         )
@@ -53,5 +49,5 @@ fun NavController.navigateToLoginApproval(
     fingerprint: String?,
     navOptions: NavOptions? = null,
 ) {
-    navigate("$LOGIN_APPROVAL_PREFIX?$FINGERPRINT=$fingerprint", navOptions)
+    this.navigate(route = LoginApprovalRoute(fingerprint = fingerprint), navOptions = navOptions)
 }

@@ -1,11 +1,13 @@
 package com.x8bit.bitwarden.ui.platform.feature.debugmenu
 
 import app.cash.turbine.test
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.platform.manager.LogsManager
 import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
 import com.x8bit.bitwarden.data.platform.repository.DebugMenuRepository
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
+import com.x8bit.bitwarden.data.util.assertCoroutineThrows
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -42,6 +44,10 @@ class DebugMenuViewModelTest : BaseViewModelTest() {
         }
     }
 
+    private val logsManager = mockk<LogsManager> {
+        every { trackNonFatalException(throwable = any()) } just runs
+    }
+
     @Test
     fun `initial state should be correct`() {
         val viewModel = createViewModel()
@@ -71,6 +77,23 @@ class DebugMenuViewModelTest : BaseViewModelTest() {
         viewModel.trySendAction(DebugMenuAction.NavigateBack)
         viewModel.eventFlow.test {
             assertEquals(DebugMenuEvent.NavigateBack, awaitItem())
+        }
+    }
+
+    @Test
+    fun `GenerateCrashClick should throw an IllegalStateException`() {
+        val viewModel = createViewModel()
+        assertCoroutineThrows<IllegalStateException> {
+            viewModel.trySendAction(DebugMenuAction.GenerateCrashClick)
+        }
+    }
+
+    @Test
+    fun `GenerateErrorReportClick should log an IllegalStateException`() {
+        val viewModel = createViewModel()
+        viewModel.trySendAction(DebugMenuAction.GenerateErrorReportClick)
+        verify(exactly = 1) {
+            logsManager.trackNonFatalException(throwable = any())
         }
     }
 
@@ -116,19 +139,18 @@ class DebugMenuViewModelTest : BaseViewModelTest() {
         featureFlagManager = mockFeatureFlagManager,
         debugMenuRepository = mockDebugMenuRepository,
         authRepository = mockAuthRepository,
+        logsManager = logsManager,
     )
 }
 
 private val DEFAULT_MAP_VALUE: ImmutableMap<FlagKey<Any>, Any> = persistentMapOf(
     FlagKey.AuthenticatorSync to true,
     FlagKey.EmailVerification to true,
-    FlagKey.OnboardingCarousel to true,
     FlagKey.OnboardingFlow to true,
     FlagKey.ImportLoginsFlow to true,
     FlagKey.VerifiedSsoDomainEndpoint to true,
     FlagKey.CredentialExchangeProtocolImport to true,
     FlagKey.CredentialExchangeProtocolExport to true,
-    FlagKey.IgnoreEnvironmentCheck to true,
     FlagKey.MutualTls to true,
     FlagKey.SingleTapPasskeyCreation to true,
     FlagKey.SingleTapPasskeyAuthentication to true,
@@ -137,19 +159,18 @@ private val DEFAULT_MAP_VALUE: ImmutableMap<FlagKey<Any>, Any> = persistentMapOf
     FlagKey.ChromeAutofill to true,
     FlagKey.MobileErrorReporting to true,
     FlagKey.FlightRecorder to true,
+    FlagKey.RestrictCipherItemDeletion to true,
     FlagKey.PreAuthSettings to true,
 )
 
 private val UPDATED_MAP_VALUE: ImmutableMap<FlagKey<Any>, Any> = persistentMapOf(
     FlagKey.AuthenticatorSync to false,
     FlagKey.EmailVerification to false,
-    FlagKey.OnboardingCarousel to true,
     FlagKey.OnboardingFlow to false,
     FlagKey.ImportLoginsFlow to false,
     FlagKey.VerifiedSsoDomainEndpoint to false,
     FlagKey.CredentialExchangeProtocolImport to false,
     FlagKey.CredentialExchangeProtocolExport to false,
-    FlagKey.IgnoreEnvironmentCheck to false,
     FlagKey.MutualTls to false,
     FlagKey.SingleTapPasskeyCreation to false,
     FlagKey.SingleTapPasskeyAuthentication to false,
@@ -158,6 +179,7 @@ private val UPDATED_MAP_VALUE: ImmutableMap<FlagKey<Any>, Any> = persistentMapOf
     FlagKey.ChromeAutofill to false,
     FlagKey.MobileErrorReporting to false,
     FlagKey.FlightRecorder to false,
+    FlagKey.RestrictCipherItemDeletion to false,
     FlagKey.PreAuthSettings to false,
 )
 

@@ -8,7 +8,6 @@ import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isDisplayed
-import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -16,9 +15,8 @@ import androidx.compose.ui.test.performScrollTo
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.util.assertNoDialogExists
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -29,7 +27,7 @@ import kotlinx.coroutines.flow.update
 import org.junit.Before
 import org.junit.Test
 
-class RemovePasswordScreenTest : BaseComposeTest() {
+class RemovePasswordScreenTest : BitwardenComposeTest() {
     private val mutableStateFlow = MutableStateFlow(DEFAULT_STATE)
     val viewModel = mockk<RemovePasswordViewModel>(relaxed = true) {
         every { eventFlow } returns bufferedMutableSharedFlow()
@@ -83,12 +81,12 @@ class RemovePasswordScreenTest : BaseComposeTest() {
 
         composeTestRule
             .onNodeWithText(text = loadingMessage)
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
             .isDisplayed()
 
         mutableStateFlow.update { it.copy(dialogState = null) }
 
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
     }
 
     @Test

@@ -1,20 +1,22 @@
-@file:OmitFromCoverage
-
 package com.x8bit.bitwarden.ui.auth.feature.landing
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
-import com.bitwarden.core.annotation.OmitFromCoverage
-import com.x8bit.bitwarden.ui.platform.base.util.composableWithStayTransitions
+import com.bitwarden.ui.platform.base.util.composableWithStayTransitions
+import kotlinx.serialization.Serializable
 
-const val LANDING_ROUTE: String = "landing"
+/**
+ * The type-safe route for the landing screen.
+ */
+@Serializable
+data object LandingRoute
 
 /**
  * Navigate to the landing screen.
  */
 fun NavController.navigateToLanding(navOptions: NavOptions? = null) {
-    this.navigate(LANDING_ROUTE, navOptions)
+    this.navigate(route = LandingRoute, navOptions = navOptions)
 }
 
 /**
@@ -27,9 +29,7 @@ fun NavGraphBuilder.landingDestination(
     onNavigateToStartRegistration: () -> Unit,
     onNavigateToPreAuthSettings: () -> Unit,
 ) {
-    composableWithStayTransitions(
-        route = LANDING_ROUTE,
-    ) {
+    composableWithStayTransitions<LandingRoute> {
         LandingScreen(
             onNavigateToCreateAccount = onNavigateToCreateAccount,
             onNavigateToLogin = onNavigateToLogin,

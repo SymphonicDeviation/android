@@ -9,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -19,11 +18,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import com.bitwarden.ui.platform.components.model.CardStyle
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.components.button.BitwardenTextButton
 import com.x8bit.bitwarden.ui.platform.components.field.BitwardenTextField
-import com.x8bit.bitwarden.ui.platform.components.model.CardStyle
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 
 /**
  * Represents a Bitwarden-styled dialog that is used to enter text.
@@ -35,7 +34,6 @@ import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
  * @param autoFocus When set to true, the view will request focus after the first recomposition.
  * @param initialText The text that will be visible at the start of text entry.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BitwardenTextEntryDialog(
     title: String?,

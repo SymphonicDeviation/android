@@ -2,13 +2,13 @@ package com.x8bit.bitwarden.data.platform.datasource.disk.util
 
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.decodeFromStringOrNull
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
 import com.x8bit.bitwarden.data.platform.datasource.disk.model.FlightRecorderDataSet
 import com.x8bit.bitwarden.data.platform.manager.model.AppResumeScreenData
 import com.x8bit.bitwarden.data.platform.repository.model.UriMatchType
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onSubscription
@@ -86,6 +86,7 @@ class FakeSettingsDiskSource : SettingsDiskSource {
     private var hasSeenAddLoginCoachMark: Boolean? = null
     private var hasSeenGeneratorCoachMark: Boolean? = null
     private var storedFlightRecorderData: FlightRecorderDataSet? = null
+    private var storedIsDynamicColorsEnabled: Boolean? = null
 
     private val mutableShowAutoFillSettingBadgeFlowMap =
         mutableMapOf<String, MutableSharedFlow<Boolean?>>()
@@ -98,6 +99,9 @@ class FakeSettingsDiskSource : SettingsDiskSource {
 
     private val mutableVaultRegisteredForExportFlowMap =
         mutableMapOf<String, MutableSharedFlow<Boolean?>>()
+
+    private val mutableIsDynamicColorsEnabled =
+        bufferedMutableSharedFlow<Boolean?>()
 
     override var appLanguage: AppLanguage?
         get() = storedAppLanguage
@@ -119,6 +123,18 @@ class FakeSettingsDiskSource : SettingsDiskSource {
     override val appThemeFlow: Flow<AppTheme>
         get() = mutableAppThemeFlow.onSubscription {
             emit(appTheme)
+        }
+
+    override var isDynamicColorsEnabled: Boolean?
+        get() = storedIsDynamicColorsEnabled
+        set(value) {
+            storedIsDynamicColorsEnabled = value
+            mutableIsDynamicColorsEnabled.tryEmit(value)
+        }
+
+    override val isDynamicColorsEnabledFlow: Flow<Boolean?>
+        get() = mutableIsDynamicColorsEnabled.onSubscription {
+            emit(isDynamicColorsEnabled)
         }
 
     override var screenCaptureAllowed: Boolean?
@@ -378,9 +394,9 @@ class FakeSettingsDiskSource : SettingsDiskSource {
     override fun getVaultRegisteredForExport(userId: String): Boolean =
         vaultRegisteredForExport[userId] ?: false
 
-    override fun storeVaultRegisteredForExport(userId: String, registered: Boolean?) {
-        vaultRegisteredForExport[userId] = registered
-        getMutableVaultRegisteredForExportFlow(userId = userId).tryEmit(registered)
+    override fun storeVaultRegisteredForExport(userId: String, isRegistered: Boolean?) {
+        vaultRegisteredForExport[userId] = isRegistered
+        getMutableVaultRegisteredForExportFlow(userId = userId).tryEmit(isRegistered)
     }
 
     override fun getVaultRegisteredForExportFlow(userId: String): Flow<Boolean?> =

@@ -25,6 +25,7 @@ import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCollectionView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockFolderView
+import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkCipherPermissions
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkFido2CredentialList
 import com.x8bit.bitwarden.ui.platform.manager.resource.ResourceManager
 import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditState
@@ -565,6 +566,7 @@ class CipherViewExtensionsTest {
                     shouldUseKeyConnector = false,
                     role = OrganizationType.ADMIN,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
             ),
             isBiometricsEnabled = true,
@@ -635,6 +637,7 @@ private val DEFAULT_BASE_CIPHER_VIEW: CipherView = CipherView(
             lastUsedDate = FIXED_CLOCK.instant(),
         ),
     ),
+    permissions = createMockSdkCipherPermissions(),
     creationDate = FIXED_CLOCK.instant(),
     deletedDate = null,
     revisionDate = FIXED_CLOCK.instant(),

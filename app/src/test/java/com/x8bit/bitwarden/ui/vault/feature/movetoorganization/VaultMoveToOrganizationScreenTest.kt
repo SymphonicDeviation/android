@@ -7,18 +7,15 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.printToLog
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
 import com.bitwarden.ui.util.asText
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.util.onNodeWithContentDescriptionAfterScroll
 import com.x8bit.bitwarden.ui.vault.feature.movetoorganization.util.createMockOrganizationList
 import com.x8bit.bitwarden.ui.vault.model.VaultCollection
@@ -31,7 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class VaultMoveToOrganizationScreenTest : BaseComposeTest() {
+class VaultMoveToOrganizationScreenTest : BitwardenComposeTest() {
 
     private var onNavigateBackCalled = false
 
@@ -123,7 +120,6 @@ class VaultMoveToOrganizationScreenTest : BaseComposeTest() {
 
     @Test
     fun `the organization option field description should update according to state`() {
-        composeTestRule.onRoot().printToLog("Brian")
         composeTestRule
             .onNodeWithContentDescription(label = "Choose an organization that", substring = true)
             .assertIsDisplayed()
@@ -172,7 +168,6 @@ class VaultMoveToOrganizationScreenTest : BaseComposeTest() {
 
     @Test
     fun `selecting an organization should send OrganizationSelect action`() {
-        composeTestRule.onRoot().printToLog("Brian")
         composeTestRule
             .onNodeWithContentDescriptionAfterScroll(
                 label = "mockOrganizationName-1. Organization. " +
@@ -268,8 +263,7 @@ class VaultMoveToOrganizationScreenTest : BaseComposeTest() {
                     organizations = createMockOrganizationList()
                         .map { organization ->
                             organization.copy(
-                                collections =
-                                if (organization.id == "mockOrganizationId-1") {
+                                collections = if (organization.id == "mockOrganizationId-1") {
                                     organization
                                         .collections
                                         .map { collection ->
@@ -296,7 +290,7 @@ class VaultMoveToOrganizationScreenTest : BaseComposeTest() {
     fun `loading dialog should display according to state`() {
         composeTestRule
             .onAllNodesWithText("loading")
-            .filterToOne(hasAnyAncestor(isPopup()))
+            .filterToOne(hasAnyAncestor(isDialog()))
             .assertIsNotDisplayed()
 
         mutableStateFlow.update {
@@ -307,7 +301,7 @@ class VaultMoveToOrganizationScreenTest : BaseComposeTest() {
 
         composeTestRule
             .onAllNodesWithText("loading")
-            .filterToOne(hasAnyAncestor(isPopup()))
+            .filterToOne(hasAnyAncestor(isDialog()))
             .assertIsDisplayed()
     }
 

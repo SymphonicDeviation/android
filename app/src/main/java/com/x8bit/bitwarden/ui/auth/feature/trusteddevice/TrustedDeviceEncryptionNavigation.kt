@@ -1,5 +1,3 @@
-@file:OmitFromCoverage
-
 package com.x8bit.bitwarden.ui.auth.feature.trusteddevice
 
 import androidx.navigation.NavController
@@ -7,7 +5,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.navigation
-import com.bitwarden.core.annotation.OmitFromCoverage
 import com.x8bit.bitwarden.ui.auth.feature.loginwithdevice.loginWithDeviceDestination
 import com.x8bit.bitwarden.ui.auth.feature.loginwithdevice.model.LoginWithDeviceType
 import com.x8bit.bitwarden.ui.auth.feature.loginwithdevice.navigateToLoginWithDevice
@@ -15,16 +12,20 @@ import com.x8bit.bitwarden.ui.auth.feature.twofactorlogin.navigateToTwoFactorLog
 import com.x8bit.bitwarden.ui.auth.feature.twofactorlogin.twoFactorLoginDestination
 import com.x8bit.bitwarden.ui.auth.feature.vaultunlock.navigateToTdeVaultUnlock
 import com.x8bit.bitwarden.ui.auth.feature.vaultunlock.tdeVaultUnlockDestination
+import kotlinx.serialization.Serializable
 
-const val TRUSTED_DEVICE_GRAPH_ROUTE: String = "trusted_device_graph"
+/**
+ * The type-safe route for the trusted device graph.
+ */
+@Serializable
+data object TrustedDeviceGraphRoute
 
 /**
  * Add trusted device destinations to the nav graph.
  */
 fun NavGraphBuilder.trustedDeviceGraph(navController: NavHostController) {
-    navigation(
-        startDestination = TRUSTED_DEVICE_ROUTE,
-        route = TRUSTED_DEVICE_GRAPH_ROUTE,
+    navigation<TrustedDeviceGraphRoute>(
+        startDestination = TrustedDeviceRoute,
     ) {
         loginWithDeviceDestination(
             onNavigateBack = { navController.popBackStack() },
@@ -66,5 +67,5 @@ fun NavGraphBuilder.trustedDeviceGraph(navController: NavHostController) {
 fun NavController.navigateToTrustedDeviceGraph(
     navOptions: NavOptions? = null,
 ) {
-    navigate(TRUSTED_DEVICE_GRAPH_ROUTE, navOptions)
+    navigate(route = TrustedDeviceGraphRoute, navOptions = navOptions)
 }

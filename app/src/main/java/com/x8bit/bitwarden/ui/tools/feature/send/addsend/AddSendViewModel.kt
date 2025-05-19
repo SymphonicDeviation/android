@@ -9,6 +9,8 @@ import com.bitwarden.core.data.repository.util.takeUntilLoaded
 import com.bitwarden.data.repository.util.baseWebSendUrl
 import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.send.SendView
+import com.bitwarden.ui.platform.base.BackgroundEvent
+import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
@@ -27,8 +29,6 @@ import com.x8bit.bitwarden.data.vault.repository.model.CreateSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.UpdateSendResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
-import com.x8bit.bitwarden.ui.platform.base.util.BackgroundEvent
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.model.AddSendType
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.util.shouldFinishOnComplete
@@ -78,7 +78,7 @@ class AddSendViewModel @Inject constructor(
         // Check to see if we are navigating here from an external source
         val specialCircumstance = specialCircumstanceManager.specialCircumstance
         val shareSendType = specialCircumstance.toSendType()
-        val sendAddType = AddSendArgs(savedStateHandle).sendAddType
+        val sendAddType = savedStateHandle.toAddSendArgs().sendAddType
         AddSendState(
             shouldFinishOnComplete = specialCircumstance.shouldFinishOnComplete(),
             isShared = shareSendType != null,
@@ -259,7 +259,7 @@ class AddSendViewModel @Inject constructor(
 
             is DeleteSendResult.Success -> {
                 mutableStateFlow.update { it.copy(dialogState = null) }
-                navigateBack()
+                navigateBack(isDeleted = true)
                 sendEvent(AddSendEvent.ShowToast(message = R.string.send_deleted.asText()))
             }
         }
@@ -628,11 +628,15 @@ class AddSendViewModel @Inject constructor(
         }
     }
 
-    private fun navigateBack() {
+    private fun navigateBack(isDeleted: Boolean = false) {
         specialCircumstanceManager.specialCircumstance = null
         sendEvent(
             event = if (state.shouldFinishOnComplete) {
                 AddSendEvent.ExitApp
+            } else if (isDeleted) {
+                // We need to make sure we don't land on the View Send screen
+                // since it has now been deleted.
+                AddSendEvent.NavigateToRoot
             } else {
                 AddSendEvent.NavigateBack
             },
@@ -866,6 +870,11 @@ sealed class AddSendEvent {
      * Navigate back.
      */
     data object NavigateBack : AddSendEvent()
+
+    /**
+     * Navigate up to the root.
+     */
+    data object NavigateToRoot : AddSendEvent()
 
     /**
      * Show file chooser sheet.

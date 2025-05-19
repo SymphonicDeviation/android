@@ -31,6 +31,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.bitwarden.ui.platform.components.model.CardStyle
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.base.util.cardStyle
 import com.x8bit.bitwarden.ui.platform.base.util.nullableTestTag
@@ -38,10 +40,8 @@ import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.x8bit.bitwarden.ui.platform.components.field.BitwardenTextField
 import com.x8bit.bitwarden.ui.platform.components.header.BitwardenExpandingHeader
 import com.x8bit.bitwarden.ui.platform.components.icon.BitwardenIcon
-import com.x8bit.bitwarden.ui.platform.components.model.CardStyle
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.platform.components.util.rememberVectorPainter
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.ui.vault.feature.item.model.VaultItemLocation
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -202,6 +202,28 @@ fun LazyListScope.itemHeader(
         return
     }
 
+    // When the item is assigned to a single folder and not a collection we display the folder name.
+    if (folderLocations.isNotEmpty() && collectionLocations.isEmpty()) {
+        val folderLocation = folderLocations.first()
+        item(key = "folder") {
+            ItemLocationListItem(
+                vectorPainter = rememberVectorPainter(folderLocation.icon),
+                iconTestTag = "ItemLocationIcon",
+                text = folderLocation.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .standardHorizontalMargin()
+                    .animateItem()
+                    .cardStyle(
+                        cardStyle = CardStyle.Bottom,
+                        paddingVertical = 0.dp,
+                        paddingHorizontal = 16.dp,
+                    ),
+            )
+        }
+        return
+    }
+
     // When the item is assigned to multiple collections we only display the first collection by
     // default and collapse the remaining locations.
     collectionLocations.firstOrNull()
@@ -348,7 +370,7 @@ private fun LazyItemScope.ItemLocationListItem(
 //region Previews
 @Composable
 @Preview
-private fun ItemHeader_LocalIcon_Preview() {
+private fun ItemHeaderWithLocalIcon_Preview() {
     var isExpanded by remember { mutableStateOf(false) }
     BitwardenTheme {
         LazyColumn {
@@ -369,7 +391,7 @@ private fun ItemHeader_LocalIcon_Preview() {
 
 @Composable
 @Preview
-private fun ItemHeader_NetworkIcon_Preview() {
+private fun ItemHeaderWithNetworkIcon_Preview() {
     var isExpanded by remember { mutableStateOf(false) }
     BitwardenTheme {
         LazyColumn {
@@ -391,7 +413,7 @@ private fun ItemHeader_NetworkIcon_Preview() {
 
 @Composable
 @Preview
-private fun ItemHeader_Organization_Preview() {
+private fun ItemHeaderWithOrganization_Preview() {
     var isExpanded by remember { mutableStateOf(false) }
     BitwardenTheme {
         LazyColumn {
@@ -414,7 +436,7 @@ private fun ItemHeader_Organization_Preview() {
 
 @Composable
 @Preview
-private fun ItemNameField_Org_SingleCollection_Preview() {
+private fun ItemHeaderWithOrgAndSingleCollection_Preview() {
     var isExpanded by remember { mutableStateOf(false) }
     BitwardenTheme {
         LazyColumn {
@@ -438,7 +460,7 @@ private fun ItemNameField_Org_SingleCollection_Preview() {
 
 @Composable
 @Preview
-private fun ItemNameField_Org_MultiCollection_Preview() {
+private fun ItemHeaderWithOrgAndMultiCollection_Preview() {
     var isExpanded by remember { mutableStateOf(false) }
     BitwardenTheme {
         LazyColumn {
@@ -463,7 +485,7 @@ private fun ItemNameField_Org_MultiCollection_Preview() {
 
 @Composable
 @Preview
-private fun ItemNameField_Org_SingleCollection_Folder_Preview() {
+private fun ItemHeaderWithOrgSingleCollectionAndFolder_Preview() {
     var isExpanded by remember { mutableStateOf(false) }
     BitwardenTheme {
         LazyColumn {
@@ -476,6 +498,29 @@ private fun ItemNameField_Org_SingleCollection_Folder_Preview() {
                 relatedLocations = persistentListOf(
                     VaultItemLocation.Organization("Stark Industries"),
                     VaultItemLocation.Collection("Marketing"),
+                    VaultItemLocation.Folder("Competition"),
+                ),
+                isExpanded = isExpanded,
+                onExpandClick = { isExpanded = !isExpanded },
+                applyIconBackground = true,
+            )
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun ItemHeaderFolderOnly_Preview() {
+    var isExpanded by remember { mutableStateOf(false) }
+    BitwardenTheme {
+        LazyColumn {
+            itemHeader(
+                value = "SSH key in a folder",
+                isFavorite = true,
+                iconData = IconData.Local(
+                    iconRes = R.drawable.ic_ssh_key,
+                ),
+                relatedLocations = persistentListOf(
                     VaultItemLocation.Folder("Competition"),
                 ),
                 isExpanded = isExpanded,

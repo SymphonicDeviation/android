@@ -46,11 +46,13 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
-import com.bitwarden.core.annotation.OmitFromCoverage
-import com.x8bit.bitwarden.ui.platform.components.model.CardStyle
-import com.x8bit.bitwarden.ui.platform.model.WindowSize
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
-import com.x8bit.bitwarden.ui.platform.util.getWindowSize
+import com.bitwarden.annotation.OmitFromCoverage
+import com.bitwarden.ui.platform.base.util.toScrolledContainerColor
+import com.bitwarden.ui.platform.base.util.toScrolledContainerDividerAlpha
+import com.bitwarden.ui.platform.components.model.CardStyle
+import com.bitwarden.ui.platform.model.WindowSize
+import com.bitwarden.ui.platform.theme.BitwardenTheme
+import com.bitwarden.ui.platform.util.getWindowSize
 
 /**
  * Adds a performance-optimized background color specified by the given [topAppBarScrollBehavior]
@@ -364,10 +366,10 @@ fun Modifier.cardStyle(
         cardStyle = cardStyle,
         onClick = onClick,
         clickEnabled = clickEnabled,
-        paddingStart = paddingHorizontal,
-        paddingTop = paddingVertical,
-        paddingEnd = paddingHorizontal,
-        paddingBottom = paddingVertical,
+        padding = PaddingValues(
+            horizontal = paddingHorizontal,
+            vertical = paddingVertical,
+        ),
         containerColor = containerColor,
         indicationColor = indicationColor,
     )
@@ -389,6 +391,34 @@ fun Modifier.cardStyle(
     containerColor: Color = BitwardenTheme.colorScheme.background.secondary,
     indicationColor: Color = BitwardenTheme.colorScheme.background.pressed,
 ): Modifier =
+    this.cardStyle(
+        cardStyle = cardStyle,
+        onClick = onClick,
+        clickEnabled = clickEnabled,
+        padding = PaddingValues(
+            start = paddingStart,
+            top = paddingTop,
+            end = paddingEnd,
+            bottom = paddingBottom,
+        ),
+        containerColor = containerColor,
+        indicationColor = indicationColor,
+    )
+
+/**
+ * This is a [Modifier] extension that applies a card style to the content.
+ */
+@OmitFromCoverage
+@Stable
+@Composable
+fun Modifier.cardStyle(
+    cardStyle: CardStyle?,
+    onClick: (() -> Unit)? = null,
+    clickEnabled: Boolean = true,
+    padding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 12.dp),
+    containerColor: Color = BitwardenTheme.colorScheme.background.secondary,
+    indicationColor: Color = BitwardenTheme.colorScheme.background.pressed,
+): Modifier =
     this
         .cardBackground(
             cardStyle = cardStyle,
@@ -401,12 +431,7 @@ fun Modifier.cardStyle(
         )
         .cardPadding(
             cardStyle = cardStyle,
-            paddingValues = PaddingValues(
-                start = paddingStart,
-                top = paddingTop,
-                end = paddingEnd,
-                bottom = paddingBottom,
-            ),
+            paddingValues = padding,
         )
 
 /**

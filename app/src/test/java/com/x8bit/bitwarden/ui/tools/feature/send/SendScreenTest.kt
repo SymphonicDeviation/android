@@ -23,12 +23,13 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.core.net.toUri
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
-import com.x8bit.bitwarden.data.platform.manager.util.AppResumeStateManager
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
 import com.bitwarden.ui.util.asText
+import com.x8bit.bitwarden.data.platform.manager.util.AppResumeStateManager
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
+import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.ViewSendRoute
 import com.x8bit.bitwarden.ui.util.assertNoDialogExists
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
 import com.x8bit.bitwarden.ui.util.isProgressBar
 import io.mockk.every
 import io.mockk.just
@@ -44,13 +45,14 @@ import org.junit.Before
 import org.junit.Test
 
 @Suppress("LargeClass")
-class SendScreenTest : BaseComposeTest() {
+class SendScreenTest : BitwardenComposeTest() {
 
     private var onNavigateToNewSendCalled = false
     private var onNavigateToSendFilesListCalled = false
     private var onNavigateToSendTextListCalled = false
     private var onNavigateToSendSearchCalled = false
     private var onNavigateToEditSendId: String? = null
+    private var onNavigateToViewSendRoute: ViewSendRoute? = null
 
     private val intentManager = mockk<IntentManager> {
         every { launchUri(any()) } just runs
@@ -74,6 +76,7 @@ class SendScreenTest : BaseComposeTest() {
                 viewModel = viewModel,
                 onNavigateToAddSend = { onNavigateToNewSendCalled = true },
                 onNavigateToEditSend = { onNavigateToEditSendId = it },
+                onNavigateToViewSend = { onNavigateToViewSendRoute = it },
                 onNavigateToSendFilesList = { onNavigateToSendFilesListCalled = true },
                 onNavigateToSendTextList = { onNavigateToSendTextListCalled = true },
                 onNavigateToSearchSend = { onNavigateToSendSearchCalled = true },
@@ -92,6 +95,14 @@ class SendScreenTest : BaseComposeTest() {
         val sendId = "sendId1234"
         mutableEventFlow.tryEmit(SendEvent.NavigateToEditSend(sendId))
         assertEquals(sendId, onNavigateToEditSendId)
+    }
+
+    @Test
+    fun `on NavigateToViewSend should call onNavigateToViewSend`() {
+        val sendId = "sendId1234"
+        val sendType = SendItemType.TEXT
+        mutableEventFlow.tryEmit(SendEvent.NavigateToViewSend(sendId = sendId, sendType = sendType))
+        assertEquals(ViewSendRoute(sendId = sendId, sendType = sendType), onNavigateToViewSendRoute)
     }
 
     @Test
@@ -472,7 +483,43 @@ class SendScreenTest : BaseComposeTest() {
     }
 
     @Test
-    fun `on send item overflow dialog edit click should send SendClick`() {
+    fun `on send item overflow dialog view click should send SendClick`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = SendState.ViewState.Content(
+                    textTypeCount = 0,
+                    fileTypeCount = 1,
+                    sendItems = listOf(
+                        DEFAULT_SEND_ITEM,
+                        DEFAULT_SEND_ITEM.copy(id = "mockId-2"),
+                    ),
+                ),
+            )
+        }
+        composeTestRule.assertNoDialogExists()
+
+        // We scroll to the last item but click the first one to avoid clicking the FAB by mistake
+        composeTestRule
+            .onAllNodesWithContentDescription("Options")
+            .apply { onLast().performScrollTo() }
+            .onFirst()
+            .assertIsDisplayed()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("View")
+            .assert(hasAnyAncestor(isDialog()))
+            .performClick()
+
+        verify {
+            viewModel.trySendAction(SendAction.ViewClick(DEFAULT_SEND_ITEM))
+        }
+
+        composeTestRule.assertNoDialogExists()
+    }
+
+    @Test
+    fun `on send item overflow dialog edit click should send EditClick`() {
         mutableStateFlow.update {
             it.copy(
                 viewState = SendState.ViewState.Content(
@@ -501,7 +548,7 @@ class SendScreenTest : BaseComposeTest() {
             .performClick()
 
         verify {
-            viewModel.trySendAction(SendAction.SendClick(DEFAULT_SEND_ITEM))
+            viewModel.trySendAction(SendAction.EditClick(DEFAULT_SEND_ITEM))
         }
 
         composeTestRule.assertNoDialogExists()
@@ -755,7 +802,7 @@ class SendScreenTest : BaseComposeTest() {
     @Test
     fun `loading dialog should be displayed according to state`() {
         val loadingMessage = "syncing"
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
         composeTestRule.onNodeWithText(loadingMessage).assertDoesNotExist()
 
         mutableStateFlow.update {
@@ -765,7 +812,7 @@ class SendScreenTest : BaseComposeTest() {
         composeTestRule
             .onNodeWithText(loadingMessage)
             .assertIsDisplayed()
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
     }
 }
 

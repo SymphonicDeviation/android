@@ -2,9 +2,9 @@ package com.x8bit.bitwarden.ui.platform.feature.search.util
 
 import androidx.annotation.DrawableRes
 import com.bitwarden.send.SendType
+import com.bitwarden.ui.util.asText
 import com.bitwarden.vault.CipherType
 import com.x8bit.bitwarden.R
-import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.platform.feature.search.SearchState
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
@@ -73,7 +73,7 @@ fun createMockDisplayItemForCipher(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = isTotp,
-                cipherType = CipherType.LOGIN,
+                itemType = SearchState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -116,7 +116,7 @@ fun createMockDisplayItemForCipher(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = false,
-                cipherType = CipherType.SECURE_NOTE,
+                itemType = SearchState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -165,7 +165,7 @@ fun createMockDisplayItemForCipher(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = false,
-                cipherType = CipherType.CARD,
+                itemType = SearchState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -205,7 +205,7 @@ fun createMockDisplayItemForCipher(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = false,
-                cipherType = CipherType.IDENTITY,
+                itemType = SearchState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -240,7 +240,7 @@ fun createMockDisplayItemForCipher(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = false,
-                cipherType = CipherType.SSH_KEY,
+                itemType = SearchState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
     }
@@ -275,6 +275,10 @@ fun createMockDisplayItemForSend(
                     ),
                 ),
                 overflowOptions = listOf(
+                    ListingItemOverflowAction.SendAction.ViewClick(
+                        sendId = "mockId-$number",
+                        sendType = sendType,
+                    ),
                     ListingItemOverflowAction.SendAction.EditClick(sendId = "mockId-$number"),
                     ListingItemOverflowAction.SendAction.CopyUrlClick(
                         sendUrl = "https://vault.bitwarden.com/#/send/mockAccessId-$number/mockKey-$number",
@@ -290,7 +294,7 @@ fun createMockDisplayItemForSend(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = false,
-                cipherType = null,
+                itemType = SearchState.DisplayItem.ItemType.Sends(type = sendType),
             )
         }
 
@@ -315,6 +319,10 @@ fun createMockDisplayItemForSend(
                     ),
                 ),
                 overflowOptions = listOf(
+                    ListingItemOverflowAction.SendAction.ViewClick(
+                        sendId = "mockId-$number",
+                        sendType = sendType,
+                    ),
                     ListingItemOverflowAction.SendAction.EditClick(sendId = "mockId-$number"),
                     ListingItemOverflowAction.SendAction.CopyUrlClick(
                         sendUrl = "https://vault.bitwarden.com/#/send/mockAccessId-$number/mockKey-$number",
@@ -330,7 +338,7 @@ fun createMockDisplayItemForSend(
                 autofillSelectionOptions = emptyList(),
                 shouldDisplayMasterPasswordReprompt = false,
                 isTotp = false,
-                cipherType = null,
+                itemType = SearchState.DisplayItem.ItemType.Sends(type = sendType),
             )
         }
     }

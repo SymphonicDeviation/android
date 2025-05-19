@@ -3,11 +3,13 @@ package com.x8bit.bitwarden.ui.platform.feature.search
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.bitwarden.core.annotation.OmitFromCoverage
+import com.bitwarden.annotation.OmitFromCoverage
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.data.repository.util.baseWebSendUrl
 import com.bitwarden.network.model.PolicyTypeJson
+import com.bitwarden.send.SendType
+import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
@@ -36,7 +38,6 @@ import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.UpdateCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.platform.feature.search.model.AutofillSelectionOption
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
@@ -44,6 +45,8 @@ import com.x8bit.bitwarden.ui.platform.feature.search.util.filterAndOrganize
 import com.x8bit.bitwarden.ui.platform.feature.search.util.toSearchTypeData
 import com.x8bit.bitwarden.ui.platform.feature.search.util.toViewState
 import com.x8bit.bitwarden.ui.platform.feature.search.util.updateWithAdditionalDataIfNecessary
+import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
+import com.x8bit.bitwarden.ui.tools.feature.send.util.toSendItemType
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterData
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterType
@@ -87,7 +90,7 @@ class SearchViewModel @Inject constructor(
     // We load the state from the savedStateHandle for testing purposes.
     initialState = savedStateHandle[KEY_STATE]
         ?: run {
-            val searchType = SearchArgs(savedStateHandle).type
+            val searchType = savedStateHandle.toSearchArgs().type
             val userState = requireNotNull(authRepo.userStateFlow.value)
             val specialCircumstance = specialCircumstanceManager.specialCircumstance
             val searchTerm = (specialCircumstance as? SpecialCircumstance.SearchShortcut)
@@ -161,23 +164,26 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun handleItemClick(action: SearchAction.ItemClick) {
-        val event = when (state.searchType) {
-            is SearchTypeData.Vault -> {
+        val event = when (val itemType = action.itemType) {
+            is SearchState.DisplayItem.ItemType.Vault -> {
                 if (state.isTotp) {
                     SearchEvent.NavigateToEditCipher(
                         cipherId = action.itemId,
-                        cipherType = requireNotNull(action.cipherType).toVaultItemCipherType(),
+                        cipherType = itemType.type.toVaultItemCipherType(),
                     )
                 } else {
                     SearchEvent.NavigateToViewCipher(
                         cipherId = action.itemId,
-                        cipherType = requireNotNull(action.cipherType).toVaultItemCipherType(),
+                        cipherType = itemType.type.toVaultItemCipherType(),
                     )
                 }
             }
 
-            is SearchTypeData.Sends -> {
-                SearchEvent.NavigateToEditSend(sendId = action.itemId)
+            is SearchState.DisplayItem.ItemType.Sends -> {
+                SearchEvent.NavigateToViewSend(
+                    sendId = action.itemId,
+                    sendType = itemType.type.toSendItemType(),
+                )
             }
         }
         sendEvent(event)
@@ -264,6 +270,7 @@ class SearchViewModel @Inject constructor(
                 handleDeleteClick(overflowAction)
             }
 
+            is ListingItemOverflowAction.SendAction.ViewClick -> handleViewClick(overflowAction)
             is ListingItemOverflowAction.SendAction.EditClick -> handleEditClick(overflowAction)
             is ListingItemOverflowAction.SendAction.RemovePasswordClick -> {
                 handleRemovePasswordClick(overflowAction)
@@ -326,6 +333,15 @@ class SearchViewModel @Inject constructor(
             val result = vaultRepo.deleteSend(action.sendId)
             sendAction(SearchAction.Internal.DeleteSendResultReceive(result))
         }
+    }
+
+    private fun handleViewClick(action: ListingItemOverflowAction.SendAction.ViewClick) {
+        sendEvent(
+            SearchEvent.NavigateToViewSend(
+                sendId = action.sendId,
+                sendType = action.sendType.toSendItemType(),
+            ),
+        )
     }
 
     private fun handleEditClick(action: ListingItemOverflowAction.SendAction.EditClick) {
@@ -626,7 +642,7 @@ class SearchViewModel @Inject constructor(
                 trySendAction(
                     action = SearchAction.ItemClick(
                         itemId = data.cipherId,
-                        cipherType = CipherType.LOGIN,
+                        itemType = SearchState.DisplayItem.ItemType.Vault(type = CipherType.LOGIN),
                     ),
                 )
             }
@@ -890,8 +906,25 @@ data class SearchState(
         val autofillSelectionOptions: List<AutofillSelectionOption>,
         val isTotp: Boolean,
         val shouldDisplayMasterPasswordReprompt: Boolean,
-        val cipherType: CipherType?,
-    ) : Parcelable
+        val itemType: ItemType,
+    ) : Parcelable {
+        /**
+         * Indicates the item type as a send or vault item.
+         */
+        sealed class ItemType : Parcelable {
+            /**
+             * Indicates the item type is a send.
+             */
+            @Parcelize
+            data class Sends(val type: SendType) : ItemType()
+
+            /**
+             * Indicates the item type is a vault item.
+             */
+            @Parcelize
+            data class Vault(val type: CipherType) : ItemType()
+        }
+    }
 }
 
 /**
@@ -1070,7 +1103,7 @@ sealed class SearchAction {
      */
     data class ItemClick(
         val itemId: String,
-        val cipherType: CipherType?,
+        val itemType: SearchState.DisplayItem.ItemType,
     ) : SearchAction()
 
     /**
@@ -1188,6 +1221,14 @@ sealed class SearchEvent {
      */
     data class NavigateToEditSend(
         val sendId: String,
+    ) : SearchEvent()
+
+    /**
+     * Navigates to view a send.
+     */
+    data class NavigateToViewSend(
+        val sendId: String,
+        val sendType: SendItemType,
     ) : SearchEvent()
 
     /**

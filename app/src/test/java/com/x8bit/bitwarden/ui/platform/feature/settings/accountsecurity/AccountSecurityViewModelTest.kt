@@ -9,6 +9,7 @@ import com.bitwarden.network.model.OrganizationType
 import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.network.model.SyncResponseJson.Policy
 import com.bitwarden.network.model.createMockPolicy
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
@@ -33,7 +34,6 @@ import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.data.platform.repository.util.FakeEnvironmentRepository
 import com.x8bit.bitwarden.data.platform.util.isBuildVersionBelow
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.components.toggle.UnlockWithPinState
 import com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.AccountSecurityAction.AuthenticatorSyncToggle
 import io.mockk.coEvery
@@ -998,6 +998,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldManageResetPassword = false,
                     role = OrganizationType.USER,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
                 Organization(
                     id = "organizationAdmin",
@@ -1006,6 +1007,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldManageResetPassword = false,
                     role = OrganizationType.ADMIN,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
                 Organization(
                     id = "organizationOwner",
@@ -1014,6 +1016,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldManageResetPassword = false,
                     role = OrganizationType.OWNER,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
                 Organization(
                     id = "organizationCustom",
@@ -1022,6 +1025,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldManageResetPassword = false,
                     role = OrganizationType.CUSTOM,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
             ),
             needsMasterPassword = false,

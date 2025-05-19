@@ -24,11 +24,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitwarden.ui.platform.base.util.EventsEffect
+import com.bitwarden.ui.platform.base.util.toListItemCardStyle
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
-import com.x8bit.bitwarden.ui.platform.base.util.EventsEffect
 import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
-import com.x8bit.bitwarden.ui.platform.base.util.toListItemCardStyle
 import com.x8bit.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.x8bit.bitwarden.ui.platform.components.appbar.NavigationIcon
 import com.x8bit.bitwarden.ui.platform.components.button.BitwardenFilledButton
@@ -37,7 +38,6 @@ import com.x8bit.bitwarden.ui.platform.components.header.BitwardenListHeaderText
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
 import com.x8bit.bitwarden.ui.platform.components.util.rememberVectorPainter
 import com.x8bit.bitwarden.ui.platform.feature.debugmenu.components.ListItemContent
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 
@@ -101,8 +101,6 @@ fun DebugMenuScreen(
             Spacer(Modifier.height(height = 16.dp))
             // Pulled these into variable to avoid over-nested formatting in the composable call.
             val isRestartOnboardingEnabled = state.featureFlags[FlagKey.OnboardingFlow] as? Boolean
-            val isRestartOnboardingCarouselEnabled = state
-                .featureFlags[FlagKey.OnboardingCarousel] as? Boolean
             OnboardingOverrideContent(
                 isRestartOnboardingEnabled = isRestartOnboardingEnabled == true,
                 onStartOnboarding = remember(viewModel) {
@@ -110,7 +108,6 @@ fun DebugMenuScreen(
                         viewModel.trySendAction(DebugMenuAction.RestartOnboarding)
                     }
                 },
-                isCarouselOverrideEnabled = isRestartOnboardingCarouselEnabled == true,
                 onStartOnboardingCarousel = remember(viewModel) {
                     {
                         viewModel.trySendAction(DebugMenuAction.RestartOnboardingCarousel)
@@ -124,6 +121,37 @@ fun DebugMenuScreen(
                     {
                         viewModel.trySendAction(DebugMenuAction.ResetCoachMarkTourStatuses)
                     }
+                },
+                isEnabled = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .standardHorizontalMargin(),
+            )
+            Spacer(Modifier.height(height = 16.dp))
+            BitwardenHorizontalDivider()
+            Spacer(Modifier.height(height = 16.dp))
+            BitwardenListHeaderText(
+                label = stringResource(R.string.error_reports),
+                modifier = Modifier
+                    .standardHorizontalMargin()
+                    .padding(horizontal = 16.dp),
+            )
+            Spacer(modifier = Modifier.height(height = 8.dp))
+            BitwardenFilledButton(
+                label = stringResource(R.string.generate_error_report),
+                onClick = remember(viewModel) {
+                    { viewModel.trySendAction(DebugMenuAction.GenerateErrorReportClick) }
+                },
+                isEnabled = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .standardHorizontalMargin(),
+            )
+            Spacer(modifier = Modifier.height(height = 8.dp))
+            BitwardenFilledButton(
+                label = stringResource(R.string.generate_crash),
+                onClick = remember(viewModel) {
+                    { viewModel.trySendAction(DebugMenuAction.GenerateCrashClick) }
                 },
                 isEnabled = true,
                 modifier = Modifier
@@ -183,7 +211,6 @@ private fun FeatureFlagContent(
 private fun OnboardingOverrideContent(
     isRestartOnboardingEnabled: Boolean,
     onStartOnboarding: () -> Unit,
-    isCarouselOverrideEnabled: Boolean,
     onStartOnboardingCarousel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -217,7 +244,6 @@ private fun OnboardingOverrideContent(
         BitwardenFilledButton(
             label = stringResource(R.string.restart_onboarding_carousel),
             onClick = onStartOnboardingCarousel,
-            isEnabled = isCarouselOverrideEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .standardHorizontalMargin(),
@@ -242,7 +268,6 @@ private fun FeatureFlagContent_preview() {
         FeatureFlagContent(
             featureFlagMap = persistentMapOf(
                 FlagKey.EmailVerification to true,
-                FlagKey.OnboardingCarousel to true,
                 FlagKey.OnboardingFlow to false,
             ),
             onValueChange = { _, _ -> },
@@ -259,7 +284,6 @@ private fun OnboardingOverrideContent_preview() {
             onStartOnboarding = {},
             isRestartOnboardingEnabled = true,
             onStartOnboardingCarousel = {},
-            isCarouselOverrideEnabled = true,
         )
     }
 }

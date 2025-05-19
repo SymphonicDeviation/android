@@ -11,12 +11,12 @@ import androidx.compose.ui.test.performTouchInput
 import com.bitwarden.authenticator.ui.authenticator.feature.itemlisting.model.SharedCodesDisplayState
 import com.bitwarden.authenticator.ui.authenticator.feature.itemlisting.model.VaultDropdownMenuAction
 import com.bitwarden.authenticator.ui.authenticator.feature.itemlisting.model.VerificationCodeDisplayItem
-import com.bitwarden.authenticator.ui.platform.base.BaseComposeTest
-import com.bitwarden.ui.util.asText
-import com.bitwarden.authenticator.ui.platform.feature.settings.appearance.model.AppTheme
+import com.bitwarden.authenticator.ui.platform.base.AuthenticatorComposeTest
 import com.bitwarden.authenticator.ui.platform.manager.intent.IntentManager
 import com.bitwarden.authenticator.ui.platform.manager.permissions.FakePermissionManager
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
+import com.bitwarden.ui.util.asText
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.update
 import org.junit.Before
 import org.junit.Test
 
-class ItemListingScreenTest : BaseComposeTest() {
+class ItemListingScreenTest : AuthenticatorComposeTest() {
 
     private var onNavigateBackCalled = false
     private var onNavigateToSearchCalled = false
@@ -49,7 +49,7 @@ class ItemListingScreenTest : BaseComposeTest() {
 
     @Before
     fun setup() {
-        composeTestRule.setContent {
+        setContent {
             ItemListingScreen(
                 viewModel = viewModel,
                 intentManager = intentManager,

@@ -14,12 +14,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.bitwarden.ui.platform.base.util.toUnscaledTextUnit
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.base.util.toSafeOverlayColor
-import com.x8bit.bitwarden.ui.platform.base.util.toUnscaledTextUnit
 import com.x8bit.bitwarden.ui.platform.components.button.color.bitwardenStandardIconButtonColors
 import com.x8bit.bitwarden.ui.platform.components.util.rememberVectorPainter
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 
 /**
  * Displays an icon representing a Bitwarden account with the user's initials superimposed.
@@ -53,7 +53,7 @@ fun BitwardenAccountActionItem(
             style = TextStyle(
                 fontSize = 11.dp.toUnscaledTextUnit(),
                 lineHeight = 13.dp.toUnscaledTextUnit(),
-                fontFamily = FontFamily(Font(R.font.dm_sans_bold)),
+                fontFamily = FontFamily(Font(com.bitwarden.ui.R.font.dm_sans_bold)),
                 fontWeight = FontWeight.W600,
             ),
             color = color.toSafeOverlayColor(),

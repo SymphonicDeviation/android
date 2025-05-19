@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.bitwarden.ui.platform.base.BaseViewModel
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.bitwarden.vault.CipherView
@@ -13,13 +15,13 @@ import com.x8bit.bitwarden.data.auth.repository.model.EmailTokenResult
 import com.x8bit.bitwarden.data.auth.util.getCompleteRegistrationDataIntentOrNull
 import com.x8bit.bitwarden.data.auth.util.getPasswordlessRequestDataIntentOrNull
 import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilitySelectionManager
-import com.x8bit.bitwarden.data.autofill.fido2.manager.Fido2CredentialManager
-import com.x8bit.bitwarden.data.autofill.fido2.util.getFido2AssertionRequestOrNull
-import com.x8bit.bitwarden.data.autofill.fido2.util.getFido2CreateCredentialRequestOrNull
-import com.x8bit.bitwarden.data.autofill.fido2.util.getFido2GetCredentialsRequestOrNull
 import com.x8bit.bitwarden.data.autofill.manager.AutofillSelectionManager
 import com.x8bit.bitwarden.data.autofill.util.getAutofillSaveItemOrNull
 import com.x8bit.bitwarden.data.autofill.util.getAutofillSelectionDataOrNull
+import com.x8bit.bitwarden.data.credentials.manager.BitwardenCredentialManager
+import com.x8bit.bitwarden.data.credentials.util.getCreateCredentialRequestOrNull
+import com.x8bit.bitwarden.data.credentials.util.getFido2AssertionRequestOrNull
+import com.x8bit.bitwarden.data.credentials.util.getGetCredentialsRequestOrNull
 import com.x8bit.bitwarden.data.platform.manager.AppResumeManager
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
@@ -33,9 +35,7 @@ import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.platform.util.isAddTotpLoginItemFromAuthenticator
 import com.x8bit.bitwarden.data.vault.manager.model.VaultStateEvent
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
 import com.x8bit.bitwarden.ui.platform.model.FeatureFlagsState
 import com.x8bit.bitwarden.ui.platform.util.isAccountSecurityShortcut
@@ -72,7 +72,7 @@ class MainViewModel @Inject constructor(
     private val addTotpItemFromAuthenticatorManager: AddTotpItemFromAuthenticatorManager,
     private val specialCircumstanceManager: SpecialCircumstanceManager,
     private val garbageCollectionManager: GarbageCollectionManager,
-    private val fido2CredentialManager: Fido2CredentialManager,
+    private val bitwardenCredentialManager: BitwardenCredentialManager,
     private val intentManager: IntentManager,
     private val settingsRepository: SettingsRepository,
     private val vaultRepository: VaultRepository,
@@ -88,6 +88,7 @@ class MainViewModel @Inject constructor(
         isErrorReportingDialogEnabled = featureFlagManager.getFeatureFlag(
             key = FlagKey.MobileErrorReporting,
         ),
+        isDynamicColorsEnabled = settingsRepository.isDynamicColorsEnabled,
     ),
 ) {
     private var specialCircumstance: SpecialCircumstance?
@@ -135,6 +136,12 @@ class MainViewModel @Inject constructor(
         settingsRepository
             .isScreenCaptureAllowedStateFlow
             .map { MainAction.Internal.ScreenCaptureUpdate(it) }
+            .onEach(::trySendAction)
+            .launchIn(viewModelScope)
+
+        settingsRepository
+            .isDynamicColorsEnabledFlow
+            .map { MainAction.Internal.DynamicColorsUpdate(it) }
             .onEach(::trySendAction)
             .launchIn(viewModelScope)
 
@@ -209,6 +216,7 @@ class MainViewModel @Inject constructor(
             is MainAction.Internal.ScreenCaptureUpdate -> handleScreenCaptureUpdate(action)
             is MainAction.Internal.ThemeUpdate -> handleAppThemeUpdated(action)
             is MainAction.Internal.VaultUnlockStateChange -> handleVaultUnlockStateChange()
+            is MainAction.Internal.DynamicColorsUpdate -> handleDynamicColorsUpdate(action)
             is MainAction.Internal.OnMobileErrorReportingReceive -> {
                 handleOnMobileErrorReportingReceive(action)
             }
@@ -269,6 +277,10 @@ class MainViewModel @Inject constructor(
         recreateUiAndGarbageCollect()
     }
 
+    private fun handleDynamicColorsUpdate(action: MainAction.Internal.DynamicColorsUpdate) {
+        mutableStateFlow.update { it.copy(isDynamicColorsEnabled = action.isDynamicColorsEnabled) }
+    }
+
     private fun handleFirstIntentReceived(action: MainAction.ReceiveFirstIntent) {
         handleIntent(
             intent = action.intent,
@@ -310,8 +322,8 @@ class MainViewModel @Inject constructor(
         val hasVaultShortcut = intent.isMyVaultShortcut
         val hasAccountSecurityShortcut = intent.isAccountSecurityShortcut
         val completeRegistrationData = intent.getCompleteRegistrationDataIntentOrNull()
-        val fido2CreateCredentialRequest = intent.getFido2CreateCredentialRequestOrNull()
-        val fido2GetCredentialsRequest = intent.getFido2GetCredentialsRequestOrNull()
+        val createCredentialRequest = intent.getCreateCredentialRequestOrNull()
+        val getCredentialsRequest = intent.getGetCredentialsRequestOrNull()
         val fido2AssertCredentialRequest = intent.getFido2AssertionRequestOrNull()
         when {
             passwordlessRequestData != null -> {
@@ -370,23 +382,23 @@ class MainViewModel @Inject constructor(
                     )
             }
 
-            fido2CreateCredentialRequest != null -> {
+            createCredentialRequest != null -> {
                 // Set the user's verification status when a new FIDO 2 request is received to force
                 // explicit verification if the user's vault is unlocked when the request is
                 // received.
-                fido2CredentialManager.isUserVerified =
-                    fido2CreateCredentialRequest.isUserPreVerified
+                bitwardenCredentialManager.isUserVerified =
+                    createCredentialRequest.isUserPreVerified
 
                 specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.Fido2Save(
-                        fido2CreateCredentialRequest = fido2CreateCredentialRequest,
+                    SpecialCircumstance.ProviderCreateCredential(
+                        createCredentialRequest = createCredentialRequest,
                     )
 
                 // Switch accounts if the selected user is not the active user.
                 if (authRepository.activeUserId != null &&
-                    authRepository.activeUserId != fido2CreateCredentialRequest.userId
+                    authRepository.activeUserId != createCredentialRequest.userId
                 ) {
-                    authRepository.switchAccount(fido2CreateCredentialRequest.userId)
+                    authRepository.switchAccount(createCredentialRequest.userId)
                 }
             }
 
@@ -394,7 +406,7 @@ class MainViewModel @Inject constructor(
                 // Set the user's verification status when a new FIDO 2 request is received to force
                 // explicit verification if the user's vault is unlocked when the request is
                 // received.
-                fido2CredentialManager.isUserVerified =
+                bitwardenCredentialManager.isUserVerified =
                     fido2AssertCredentialRequest.isUserPreVerified
 
                 specialCircumstanceManager.specialCircumstance =
@@ -403,10 +415,10 @@ class MainViewModel @Inject constructor(
                     )
             }
 
-            fido2GetCredentialsRequest != null -> {
+            getCredentialsRequest != null -> {
                 specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.Fido2GetCredentials(
-                        fido2GetCredentialsRequest = fido2GetCredentialsRequest,
+                    SpecialCircumstance.ProviderGetCredentials(
+                        getCredentialsRequest = getCredentialsRequest,
                     )
             }
 
@@ -482,6 +494,7 @@ class MainViewModel @Inject constructor(
 data class MainState(
     val theme: AppTheme,
     val isScreenCaptureAllowed: Boolean,
+    val isDynamicColorsEnabled: Boolean,
     private val isErrorReportingDialogEnabled: Boolean,
 ) : Parcelable {
     /**
@@ -572,6 +585,13 @@ sealed class MainAction {
          * Indicates a relevant change in the current vault lock state.
          */
         data object VaultUnlockStateChange : Internal()
+
+        /**
+         * Indicates that the dynamic colors state has changed.
+         */
+        data class DynamicColorsUpdate(
+            val isDynamicColorsEnabled: Boolean,
+        ) : Internal()
     }
 }
 

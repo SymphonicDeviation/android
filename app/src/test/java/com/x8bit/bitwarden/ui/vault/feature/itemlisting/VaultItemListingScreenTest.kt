@@ -19,28 +19,30 @@ import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.data.repository.model.Environment
 import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.data.repository.util.baseWebSendUrl
+import com.bitwarden.send.SendType
+import com.bitwarden.ui.platform.base.util.toHostOrPathOrNull
 import com.bitwarden.ui.util.asText
 import com.bitwarden.vault.CipherType
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.autofill.model.AutofillSelectionData
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
-import com.x8bit.bitwarden.ui.autofill.fido2.manager.Fido2CompletionManager
-import com.x8bit.bitwarden.ui.autofill.fido2.manager.model.AssertFido2CredentialResult
-import com.x8bit.bitwarden.ui.autofill.fido2.manager.model.GetFido2CredentialsResult
-import com.x8bit.bitwarden.ui.autofill.fido2.manager.model.RegisterFido2CredentialResult
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
-import com.x8bit.bitwarden.ui.platform.base.util.toHostOrPathOrNull
+import com.x8bit.bitwarden.ui.credentials.manager.CredentialProviderCompletionManager
+import com.x8bit.bitwarden.ui.credentials.manager.model.AssertFido2CredentialResult
+import com.x8bit.bitwarden.ui.credentials.manager.model.GetCredentialsResult
+import com.x8bit.bitwarden.ui.credentials.manager.model.RegisterFido2CredentialResult
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.components.model.AccountSummary
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
 import com.x8bit.bitwarden.ui.platform.manager.biometrics.BiometricsManager
 import com.x8bit.bitwarden.ui.platform.manager.exit.ExitManager
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
+import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.ViewSendRoute
 import com.x8bit.bitwarden.ui.util.assertLockOrLogoutDialogIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertLogoutConfirmationDialogIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertMasterPasswordDialogDisplayed
 import com.x8bit.bitwarden.ui.util.assertNoDialogExists
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
 import com.x8bit.bitwarden.ui.util.assertRemovalConfirmationDialogIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertSwitcherIsDisplayed
 import com.x8bit.bitwarden.ui.util.assertSwitcherIsNotDisplayed
@@ -79,12 +81,13 @@ import org.junit.Before
 import org.junit.Test
 
 @Suppress("LargeClass")
-class VaultItemListingScreenTest : BaseComposeTest() {
+class VaultItemListingScreenTest : BitwardenComposeTest() {
 
     private var onNavigateBackCalled = false
     private var onNavigateToVaultAddItemScreenCalled = false
     private var onNavigateToAddSendScreenCalled = false
     private var onNavigateToEditSendItemId: String? = null
+    private var onNavigateToViewSendScreenRoute: ViewSendRoute? = null
     private var onNavigateToVaultItemArgs: VaultItemArgs? = null
     private var onNavigateToVaultEditItemScreenArgs: VaultAddEditArgs? = null
     private var onNavigateToSearchType: SearchType? = null
@@ -99,10 +102,10 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         every { shareText(any()) } just runs
         every { launchUri(any()) } just runs
     }
-    private val fido2CompletionManager: Fido2CompletionManager = mockk {
+    private val credentialProviderCompletionManager: CredentialProviderCompletionManager = mockk {
         every { completeFido2Registration(any()) } just runs
         every { completeFido2Assertion(any()) } just runs
-        every { completeFido2GetCredentialsRequest(any()) } just runs
+        every { completeProviderGetCredentialsRequest(any()) } just runs
     }
     private val biometricsManager: BiometricsManager = mockk()
     private val mutableEventFlow = bufferedMutableSharedFlow<VaultItemListingEvent>()
@@ -119,7 +122,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         setContent(
             exitManager = exitManager,
             intentManager = intentManager,
-            fido2CompletionManager = fido2CompletionManager,
+            credentialProviderCompletionManager = credentialProviderCompletionManager,
             biometricsManager = biometricsManager,
         ) {
             VaultItemListingScreen(
@@ -128,6 +131,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
                 onNavigateToVaultItemScreen = { onNavigateToVaultItemArgs = it },
                 onNavigateToVaultAddItemScreen = { onNavigateToVaultAddItemScreenCalled = true },
                 onNavigateToAddSendItem = { onNavigateToAddSendScreenCalled = true },
+                onNavigateToViewSendItem = { onNavigateToViewSendScreenRoute = it },
                 onNavigateToEditSendItem = { onNavigateToEditSendItemId = it },
                 onNavigateToSearch = { onNavigateToSearchType = it },
                 onNavigateToVaultEditItemScreen = { onNavigateToVaultEditItemScreenArgs = it },
@@ -480,6 +484,19 @@ class VaultItemListingScreenTest : BaseComposeTest() {
     }
 
     @Test
+    fun `NavigateToViewSendItem should call onNavigateToViewSendScreen`() {
+        val sendId = "id"
+        val sendType = SendItemType.TEXT
+        mutableEventFlow.tryEmit(
+            VaultItemListingEvent.NavigateToViewSendItem(id = sendId, sendType = sendType),
+        )
+        assertEquals(
+            ViewSendRoute(sendId = sendId, sendType = sendType),
+            onNavigateToViewSendScreenRoute,
+        )
+    }
+
+    @Test
     fun `NavigateToVaultSearchScreen should call onNavigateToSearch`() {
         val searchType = SearchType.Vault.SecureNotes
         mutableEventFlow.tryEmit(VaultItemListingEvent.NavigateToSearchScreen(searchType))
@@ -503,9 +520,9 @@ class VaultItemListingScreenTest : BaseComposeTest() {
     }
 
     @Test
-    fun `NavigateToSendItem event should call onNavigateToEditSendItemId`() {
+    fun `NavigateToEditSendItem event should call onNavigateToEditSendItemId`() {
         val sendId = "sendId"
-        mutableEventFlow.tryEmit(VaultItemListingEvent.NavigateToSendItem(sendId))
+        mutableEventFlow.tryEmit(VaultItemListingEvent.NavigateToEditSendItem(id = sendId))
         assertEquals(sendId, onNavigateToEditSendItemId)
     }
 
@@ -1026,7 +1043,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             viewModel.trySendAction(
                 VaultItemListingsAction.ItemClick(
                     id = "mockId-1",
-                    cipherType = null,
+                    type = VaultItemListingState.DisplayItem.ItemType.Sends(type = SendType.TEXT),
                 ),
             )
         }
@@ -1455,6 +1472,25 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         composeTestRule.assertNoDialogExists()
 
         composeTestRule
+            .onNodeWithContentDescription(label = "Options")
+            .assertIsDisplayed()
+            .performClick()
+        composeTestRule
+            .onNodeWithText(text = "View")
+            .assert(hasAnyAncestor(isDialog()))
+            .performClick()
+        verify(exactly = 1) {
+            viewModel.trySendAction(
+                VaultItemListingsAction.OverflowOptionClick(
+                    action = ListingItemOverflowAction.SendAction.ViewClick(
+                        sendId = "mockId-$number",
+                        sendType = SendType.FILE,
+                    ),
+                ),
+            )
+        }
+
+        composeTestRule
             .onNodeWithContentDescription("Options")
             .assertIsDisplayed()
             .performClick()
@@ -1595,7 +1631,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
     @Test
     fun `loading dialog should be displayed according to state`() {
         val loadingMessage = "syncing"
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
         composeTestRule.onNodeWithText(loadingMessage).assertDoesNotExist()
 
         mutableStateFlow.update {
@@ -1609,11 +1645,12 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         composeTestRule
             .onNodeWithText(loadingMessage)
             .assertIsDisplayed()
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `fido2 master password prompt dialog should display and function according to state`() {
+    fun `user verification master password prompt dialog should display and function according to state`() {
         val selectedCipherId = "selectedCipherId"
         val dialogTitle = "Master password confirmation"
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -1621,9 +1658,11 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2MasterPasswordPrompt(
-                    selectedCipherId = selectedCipherId,
-                ),
+                dialogState = VaultItemListingState
+                    .DialogState
+                    .UserVerificationMasterPasswordPrompt(
+                        selectedCipherId = selectedCipherId,
+                    ),
             )
         }
 
@@ -1638,7 +1677,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.DismissFido2VerificationDialogClick,
+                VaultItemListingsAction.DismissUserVerificationDialogClick,
             )
         }
 
@@ -1648,7 +1687,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.DismissFido2VerificationDialogClick,
+                VaultItemListingsAction.DismissUserVerificationDialogClick,
             )
         }
 
@@ -1663,7 +1702,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.MasterPasswordFido2VerificationSubmit(
+                VaultItemListingsAction.MasterPasswordUserVerificationSubmit(
                     password = "password",
                     selectedCipherId = selectedCipherId,
                 ),
@@ -1671,8 +1710,9 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `fido2 master password error dialog should display and function according to state`() {
+    fun `user verification master password error dialog should display and function according to state`() {
         val selectedCipherId = "selectedCipherId"
         val dialogMessage = "Invalid master password. Try again."
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -1680,7 +1720,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2MasterPasswordError(
+                dialogState = VaultItemListingState.DialogState.UserVerificationMasterPasswordError(
                     title = null,
                     message = dialogMessage.asText(),
                     selectedCipherId = selectedCipherId,
@@ -1699,15 +1739,16 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.RetryFido2PasswordVerificationClick(
+                VaultItemListingsAction.RetryUserVerificationPasswordVerificationClick(
                     selectedCipherId = selectedCipherId,
                 ),
             )
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `fido2 pin prompt dialog should display and function according to state`() {
+    fun `user verification pin prompt dialog should display and function according to state`() {
         val selectedCipherId = "selectedCipherId"
         val dialogTitle = "Verify PIN"
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -1715,7 +1756,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2PinPrompt(
+                dialogState = VaultItemListingState.DialogState.UserVerificationPinPrompt(
                     selectedCipherId = selectedCipherId,
                 ),
             )
@@ -1732,7 +1773,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.DismissFido2VerificationDialogClick,
+                VaultItemListingsAction.DismissUserVerificationDialogClick,
             )
         }
 
@@ -1742,7 +1783,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.DismissFido2VerificationDialogClick,
+                VaultItemListingsAction.DismissUserVerificationDialogClick,
             )
         }
 
@@ -1757,7 +1798,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.PinFido2VerificationSubmit(
+                VaultItemListingsAction.PinUserVerificationSubmit(
                     pin = "PIN",
                     selectedCipherId = selectedCipherId,
                 ),
@@ -1766,7 +1807,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
     }
 
     @Test
-    fun `fido2 pin error dialog should display and function according to state`() {
+    fun `user verification pin error dialog should display and function according to state`() {
         val selectedCipherId = "selectedCipherId"
         val dialogMessage = "Invalid PIN. Try again."
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -1774,7 +1815,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2PinError(
+                dialogState = VaultItemListingState.DialogState.UserVerificationPinError(
                     title = null,
                     message = dialogMessage.asText(),
                     selectedCipherId = selectedCipherId,
@@ -1793,7 +1834,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.RetryFido2PinVerificationClick(
+                VaultItemListingsAction.RetryUserVerificationPinVerificationClick(
                     selectedCipherId = selectedCipherId,
                 ),
             )
@@ -1801,7 +1842,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
     }
 
     @Test
-    fun `fido2 pin set up dialog should display and function according to state`() {
+    fun `user verification pin set up dialog should display and function according to state`() {
         val selectedCipherId = "selectedCipherId"
         val dialogMessage = "Enter your PIN code"
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -1809,7 +1850,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2PinSetUpPrompt(
+                dialogState = VaultItemListingState.DialogState.UserVerificationPinSetUpPrompt(
                     selectedCipherId = selectedCipherId,
                 ),
             )
@@ -1821,7 +1862,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.DismissFido2VerificationDialogClick,
+                VaultItemListingsAction.DismissUserVerificationDialogClick,
             )
         }
 
@@ -1836,7 +1877,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.PinFido2SetUpSubmit(
+                VaultItemListingsAction.UserVerificationPinSetUpSubmit(
                     pin = "1234",
                     selectedCipherId = selectedCipherId,
                 ),
@@ -1844,8 +1885,9 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `fido2 pin set up error dialog should display and function according to state`() {
+    fun `user verification pin set up error dialog should display and function according to state`() {
         val selectedCipherId = "selectedCipherId"
         val dialogMessage = "The PIN field is required."
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -1853,7 +1895,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2PinSetUpError(
+                dialogState = VaultItemListingState.DialogState.UserVerificationPinSetUpError(
                     title = null,
                     message = dialogMessage.asText(),
                     selectedCipherId = selectedCipherId,
@@ -1867,7 +1909,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             .performClick()
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.PinFido2SetUpRetryClick(
+                VaultItemListingsAction.UserVerificationPinSetUpRetryClick(
                     selectedCipherId = selectedCipherId,
                 ),
             )
@@ -1882,7 +1924,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = VaultItemListingState.DialogState.Fido2OperationFail(
+                dialogState = VaultItemListingState.DialogState.CredentialManagerOperationFail(
                     title = R.string.an_error_has_occurred.asText(),
                     message = dialogMessage.asText(),
                 ),
@@ -1896,46 +1938,51 @@ class VaultItemListingScreenTest : BaseComposeTest() {
 
         verify {
             viewModel.trySendAction(
-                VaultItemListingsAction.DismissFido2ErrorDialogClick(
+                VaultItemListingsAction.DismissCredentialManagerErrorDialogClick(
                     message = dialogMessage.asText(),
                 ),
             )
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `CompleteFido2Registration event should call Fido2CompletionManager with result`() {
+    fun `CompleteFido2Registration event should call CredentialProviderCompletionManager with result`() {
         val result = RegisterFido2CredentialResult.Success("mockResponse")
         mutableEventFlow.tryEmit(VaultItemListingEvent.CompleteFido2Registration(result))
         verify {
-            fido2CompletionManager.completeFido2Registration(result)
+            credentialProviderCompletionManager.completeFido2Registration(result)
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `CompleteFido2Assertion event should call Fido2CompletionManager with result`() {
+    fun `CompleteFido2Assertion event should call CredentialProviderCompletionManager with result`() {
         val result = AssertFido2CredentialResult.Success("mockResponse")
         mutableEventFlow.tryEmit(VaultItemListingEvent.CompleteFido2Assertion(result))
         verify {
-            fido2CompletionManager.completeFido2Assertion(result)
+            credentialProviderCompletionManager.completeFido2Assertion(result)
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `CompleteFido2GetCredentials event should call Fido2CompletionManager with result`() {
-        val result = GetFido2CredentialsResult.Success(
+    fun `CompleteProviderGetCredentialsRequest event should call CredentialProviderCompletionManager with result`() {
+        val result = GetCredentialsResult.Success(
+            credentialEntries = listOf(mockk()),
             userId = "mockUserId",
-            option = mockk(),
-            credentials = mockk(),
         )
-        mutableEventFlow.tryEmit(VaultItemListingEvent.CompleteFido2GetCredentialsRequest(result))
+        mutableEventFlow.tryEmit(
+            VaultItemListingEvent.CompleteProviderGetCredentialsRequest(result),
+        )
         verify {
-            fido2CompletionManager.completeFido2GetCredentialsRequest(result)
+            credentialProviderCompletionManager.completeProviderGetCredentialsRequest(result)
         }
     }
 
+    @Suppress("MaxLineLength")
     @Test
-    fun `Fido2UserVerification event should perform user verification when it is supported`() {
+    fun `CredentialManagerUserVerification event should perform user verification when it is supported`() {
         every {
             biometricsManager.promptUserVerification(
                 any(),
@@ -1946,7 +1993,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
             )
         } just runs
         mutableEventFlow.tryEmit(
-            VaultItemListingEvent.Fido2UserVerification(
+            VaultItemListingEvent.CredentialManagerUserVerification(
                 isRequired = true,
                 selectedCipherView = createMockCipherView(number = 1),
             ),
@@ -1978,7 +2025,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
 
         mutableEventFlow.tryEmit(
-            VaultItemListingEvent.Fido2UserVerification(
+            VaultItemListingEvent.CredentialManagerUserVerification(
                 isRequired = true,
                 selectedCipherView = selectedCipherView,
             ),
@@ -2007,7 +2054,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
 
         mutableEventFlow.tryEmit(
-            VaultItemListingEvent.Fido2UserVerification(
+            VaultItemListingEvent.CredentialManagerUserVerification(
                 isRequired = true,
                 selectedCipherView = selectedCipherView,
             ),
@@ -2036,7 +2083,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
 
         mutableEventFlow.tryEmit(
-            VaultItemListingEvent.Fido2UserVerification(
+            VaultItemListingEvent.CredentialManagerUserVerification(
                 isRequired = true,
                 selectedCipherView = selectedCipherView,
             ),
@@ -2065,7 +2112,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
 
         mutableEventFlow.tryEmit(
-            VaultItemListingEvent.Fido2UserVerification(
+            VaultItemListingEvent.CredentialManagerUserVerification(
                 isRequired = true,
                 selectedCipherView = selectedCipherView,
             ),
@@ -2094,7 +2141,7 @@ class VaultItemListingScreenTest : BaseComposeTest() {
         }
 
         mutableEventFlow.tryEmit(
-            VaultItemListingEvent.Fido2UserVerification(
+            VaultItemListingEvent.CredentialManagerUserVerification(
                 isRequired = true,
                 selectedCipherView = selectedCipherView,
             ),
@@ -2297,6 +2344,10 @@ private fun createDisplayItem(number: Int): VaultItemListingState.DisplayItem =
             ),
         ),
         overflowOptions = listOf(
+            ListingItemOverflowAction.SendAction.ViewClick(
+                sendId = "mockId-$number",
+                sendType = SendType.FILE,
+            ),
             ListingItemOverflowAction.SendAction.EditClick(sendId = "mockId-$number"),
             ListingItemOverflowAction.SendAction.CopyUrlClick(sendUrl = "www.test.com"),
             ListingItemOverflowAction.SendAction.ShareUrlClick(sendUrl = "www.test.com"),
@@ -2305,11 +2356,11 @@ private fun createDisplayItem(number: Int): VaultItemListingState.DisplayItem =
         ),
         optionsTestTag = "SendOptionsButton",
         isAutofill = false,
-        isFido2Creation = false,
+        isCredentialCreation = false,
         shouldShowMasterPasswordReprompt = false,
         iconTestTag = null,
         isTotp = false,
-        type = null,
+        itemType = VaultItemListingState.DisplayItem.ItemType.Sends(type = SendType.TEXT),
     )
 
 private fun createCipherDisplayItem(number: Int): VaultItemListingState.DisplayItem =
@@ -2332,9 +2383,9 @@ private fun createCipherDisplayItem(number: Int): VaultItemListingState.DisplayI
         ),
         optionsTestTag = "CipherOptionsButton",
         isAutofill = false,
-        isFido2Creation = false,
+        isCredentialCreation = false,
         shouldShowMasterPasswordReprompt = false,
         iconTestTag = null,
         isTotp = true,
-        type = CipherType.LOGIN,
+        itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = CipherType.LOGIN),
     )

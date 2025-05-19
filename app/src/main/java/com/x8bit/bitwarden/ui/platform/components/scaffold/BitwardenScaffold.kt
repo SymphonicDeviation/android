@@ -31,7 +31,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -40,16 +39,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.x8bit.bitwarden.ui.platform.base.util.toDp
+import com.bitwarden.ui.platform.base.util.toDp
+import com.bitwarden.ui.platform.model.WindowSize
+import com.bitwarden.ui.platform.theme.BitwardenTheme
+import com.bitwarden.ui.platform.util.rememberWindowSize
 import com.x8bit.bitwarden.ui.platform.components.model.BitwardenPullToRefreshState
 import com.x8bit.bitwarden.ui.platform.components.model.ScaffoldNavigationData
 import com.x8bit.bitwarden.ui.platform.components.model.rememberBitwardenPullToRefreshState
 import com.x8bit.bitwarden.ui.platform.components.navigation.BitwardenBottomAppBar
 import com.x8bit.bitwarden.ui.platform.components.navigation.BitwardenNavigationRail
 import com.x8bit.bitwarden.ui.platform.components.scrim.BitwardenAnimatedScrim
-import com.x8bit.bitwarden.ui.platform.model.WindowSize
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
-import com.x8bit.bitwarden.ui.platform.util.rememberWindowSize
 
 /**
  * Direct passthrough to [Scaffold] but contains a few specific override values. Everything is
@@ -60,7 +59,7 @@ import com.x8bit.bitwarden.ui.platform.util.rememberWindowSize
  * The [overlay] is a nonstandard [Composable] that is placed over top the `utilityBar` and
  * `content`.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Suppress("LongMethod")
 @Composable
 fun BitwardenScaffold(

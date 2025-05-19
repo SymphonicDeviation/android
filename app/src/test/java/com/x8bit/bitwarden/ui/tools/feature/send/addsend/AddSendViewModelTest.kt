@@ -9,6 +9,7 @@ import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.createMockPolicy
 import com.bitwarden.send.SendView
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
@@ -28,7 +29,6 @@ import com.x8bit.bitwarden.data.vault.repository.model.CreateSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.UpdateSendResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.model.AddSendType
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.util.toSendView
@@ -93,6 +93,7 @@ class AddSendViewModelTest : BaseViewModelTest() {
     @BeforeEach
     fun setup() {
         mockkStatic(
+            SavedStateHandle::toAddSendArgs,
             AddSendState.ViewState.Content::toSendView,
             SendView::toSendUrl,
             SendView::toViewState,
@@ -102,6 +103,7 @@ class AddSendViewModelTest : BaseViewModelTest() {
     @AfterEach
     fun tearDown() {
         unmockkStatic(
+            SavedStateHandle::toAddSendArgs,
             AddSendState.ViewState.Content::toSendView,
             SendView::toSendUrl,
             SendView::toViewState,
@@ -665,7 +667,7 @@ class AddSendViewModelTest : BaseViewModelTest() {
 
         viewModel.eventFlow.test {
             viewModel.trySendAction(AddSendAction.DeleteClick)
-            assertEquals(AddSendEvent.NavigateBack, awaitItem())
+            assertEquals(AddSendEvent.NavigateToRoot, awaitItem())
             assertEquals(AddSendEvent.ShowToast(R.string.send_deleted.asText()), awaitItem())
         }
     }
@@ -1016,15 +1018,8 @@ class AddSendViewModelTest : BaseViewModelTest() {
     ): AddSendViewModel = AddSendViewModel(
         savedStateHandle = SavedStateHandle().apply {
             set("state", state?.copy(addSendType = addSendType))
-            set(
-                "add_send_item_type",
-                when (addSendType) {
-                    AddSendType.AddItem -> "add"
-                    is AddSendType.EditItem -> "edit"
-                },
-            )
-            set("edit_send_id", (addSendType as? AddSendType.EditItem)?.sendItemId)
             set("activityToken", activityToken)
+            every { toAddSendArgs() } returns AddSendArgs(sendAddType = addSendType)
         },
         authRepo = authRepository,
         environmentRepo = environmentRepository,

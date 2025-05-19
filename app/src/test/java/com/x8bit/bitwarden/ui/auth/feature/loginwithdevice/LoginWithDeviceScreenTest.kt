@@ -6,7 +6,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,9 +14,9 @@ import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.auth.feature.loginwithdevice.model.LoginWithDeviceType
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
+import com.x8bit.bitwarden.ui.util.assertNoDialogExists
 import com.x8bit.bitwarden.ui.util.isProgressBar
 import io.mockk.every
 import io.mockk.just
@@ -31,7 +30,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class LoginWithDeviceScreenTest : BaseComposeTest() {
+class LoginWithDeviceScreenTest : BitwardenComposeTest() {
     private var onNavigateBackCalled = false
     private var onNavigateToTwoFactorLoginEmail: String? = null
 
@@ -148,11 +147,11 @@ class LoginWithDeviceScreenTest : BaseComposeTest() {
         }
         composeTestRule
             .onNodeWithText(loadingMessage)
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
             .assertIsDisplayed()
 
         mutableStateFlow.update { it.copy(dialogState = null) }
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
     }
 
     @Test

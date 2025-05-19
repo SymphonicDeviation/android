@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitwarden.ui.platform.base.util.EventsEffect
+import com.bitwarden.ui.platform.components.model.CardStyle
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.auth.feature.completeregistration.PasswordStrengthIndicator
 import com.x8bit.bitwarden.ui.auth.feature.createaccount.CreateAccountAction.AcceptPoliciesToggle
@@ -49,7 +52,6 @@ import com.x8bit.bitwarden.ui.auth.feature.createaccount.CreateAccountAction.Sub
 import com.x8bit.bitwarden.ui.auth.feature.createaccount.CreateAccountAction.TermsClick
 import com.x8bit.bitwarden.ui.auth.feature.createaccount.CreateAccountEvent.NavigateToPrivacyPolicy
 import com.x8bit.bitwarden.ui.auth.feature.createaccount.CreateAccountEvent.NavigateToTerms
-import com.x8bit.bitwarden.ui.platform.base.util.EventsEffect
 import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.x8bit.bitwarden.ui.platform.base.util.toAnnotatedString
 import com.x8bit.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
@@ -59,13 +61,11 @@ import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenLoadingDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
 import com.x8bit.bitwarden.ui.platform.components.field.BitwardenPasswordField
 import com.x8bit.bitwarden.ui.platform.components.field.BitwardenTextField
-import com.x8bit.bitwarden.ui.platform.components.model.CardStyle
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
 import com.x8bit.bitwarden.ui.platform.components.toggle.BitwardenSwitch
 import com.x8bit.bitwarden.ui.platform.components.util.rememberVectorPainter
 import com.x8bit.bitwarden.ui.platform.composition.LocalIntentManager
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 
 /**
  * Top level composable for the create account screen.
@@ -75,7 +75,7 @@ import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 @Composable
 fun CreateAccountScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToLogin: (emailAddress: String, captchaToken: String) -> Unit,
+    onNavigateToLogin: (emailAddress: String, captchaToken: String?) -> Unit,
     intentManager: IntentManager = LocalIntentManager.current,
     viewModel: CreateAccountViewModel = hiltViewModel(),
 ) {

@@ -1,12 +1,9 @@
-@file:OmitFromCoverage
-
 package com.x8bit.bitwarden.ui.platform.feature.vaultunlocked
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.navigation
-import com.bitwarden.core.annotation.OmitFromCoverage
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.navigateToSetupAutoFillScreen
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.navigateToSetupUnlockScreen
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupAutoFillDestination
@@ -32,7 +29,7 @@ import com.x8bit.bitwarden.ui.platform.feature.settings.folders.addedit.navigate
 import com.x8bit.bitwarden.ui.platform.feature.settings.folders.foldersDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.folders.model.FolderAddEditType
 import com.x8bit.bitwarden.ui.platform.feature.settings.folders.navigateToFolders
-import com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.VAULT_UNLOCKED_NAV_BAR_ROUTE
+import com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.VaultUnlockedNavbarRoute
 import com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.vaultUnlockedNavBarDestination
 import com.x8bit.bitwarden.ui.tools.feature.generator.generatorModalDestination
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.GeneratorPasswordHistoryMode
@@ -42,6 +39,8 @@ import com.x8bit.bitwarden.ui.tools.feature.generator.passwordhistory.passwordHi
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.addSendDestination
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.model.AddSendType
 import com.x8bit.bitwarden.ui.tools.feature.send.addsend.navigateToAddSend
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.navigateToViewSend
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.viewSendDestination
 import com.x8bit.bitwarden.ui.vault.feature.addedit.navigateToVaultAddEdit
 import com.x8bit.bitwarden.ui.vault.feature.addedit.vaultAddEditDestination
 import com.x8bit.bitwarden.ui.vault.feature.attachments.attachmentDestination
@@ -57,14 +56,19 @@ import com.x8bit.bitwarden.ui.vault.feature.movetoorganization.navigateToVaultMo
 import com.x8bit.bitwarden.ui.vault.feature.movetoorganization.vaultMoveToOrganizationDestination
 import com.x8bit.bitwarden.ui.vault.feature.qrcodescan.navigateToQrCodeScanScreen
 import com.x8bit.bitwarden.ui.vault.feature.qrcodescan.vaultQrCodeScanDestination
+import kotlinx.serialization.Serializable
 
-const val VAULT_UNLOCKED_GRAPH_ROUTE: String = "vault_unlocked_graph"
+/**
+ * The type-safe route for the vault unlocked graph.
+ */
+@Serializable
+data object VaultUnlockedGraphRoute
 
 /**
  * Navigate to the vault unlocked screen.
  */
 fun NavController.navigateToVaultUnlockedGraph(navOptions: NavOptions? = null) {
-    navigate(VAULT_UNLOCKED_GRAPH_ROUTE, navOptions)
+    navigate(route = VaultUnlockedGraphRoute, navOptions = navOptions)
 }
 
 /**
@@ -74,9 +78,8 @@ fun NavController.navigateToVaultUnlockedGraph(navOptions: NavOptions? = null) {
 fun NavGraphBuilder.vaultUnlockedGraph(
     navController: NavController,
 ) {
-    navigation(
-        startDestination = VAULT_UNLOCKED_NAV_BAR_ROUTE,
-        route = VAULT_UNLOCKED_GRAPH_ROUTE,
+    navigation<VaultUnlockedGraphRoute>(
+        startDestination = VaultUnlockedNavbarRoute,
     ) {
         vaultItemListingDestinationAsRoot(
             onNavigateBack = { navController.popBackStack() },
@@ -101,6 +104,7 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateToSearchSend = { navController.navigateToSearch(searchType = it) },
             onNavigateToAddSend = { navController.navigateToAddSend(AddSendType.AddItem) },
             onNavigateToEditSend = { navController.navigateToAddSend(AddSendType.EditItem(it)) },
+            onNavigateToViewSend = { navController.navigateToViewSend(route = it) },
             onNavigateToDeleteAccount = { navController.navigateToDeleteAccount() },
             onNavigateToPendingRequests = { navController.navigateToPendingRequests() },
             onNavigateToPasswordHistory = {
@@ -197,7 +201,16 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateBack = { navController.popBackStack() },
         )
 
-        addSendDestination(onNavigateBack = { navController.popBackStack() })
+        addSendDestination(
+            onNavigateBack = { navController.popBackStack() },
+            onNavigateUpToRoot = { navController.navigateToVaultUnlockedRoot() },
+        )
+        viewSendDestination(
+            onNavigateBack = { navController.popBackStack() },
+            onNavigateToEditSend = {
+                navController.navigateToAddSend(sendAddType = AddSendType.EditItem(sendItemId = it))
+            },
+        )
         passwordHistoryDestination(onNavigateBack = { navController.popBackStack() })
         exportVaultDestination(onNavigateBack = { navController.popBackStack() })
         foldersDestination(
@@ -217,6 +230,7 @@ fun NavGraphBuilder.vaultUnlockedGraph(
         searchDestination(
             onNavigateBack = { navController.popBackStack() },
             onNavigateToEditSend = { navController.navigateToAddSend(AddSendType.EditItem(it)) },
+            onNavigateToViewSend = { navController.navigateToViewSend(it) },
             onNavigateToEditCipher = { navController.navigateToVaultAddEdit(it) },
             onNavigateToViewCipher = { navController.navigateToVaultItem(it) },
         )
@@ -237,4 +251,8 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateBack = { navController.popBackStack() },
         )
     }
+}
+
+private fun NavController.navigateToVaultUnlockedRoot() {
+    this.popBackStack(route = VaultUnlockedNavbarRoute, inclusive = false)
 }

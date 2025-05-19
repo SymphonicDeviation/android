@@ -6,6 +6,7 @@ import androidx.annotation.DrawableRes
 import com.bitwarden.fido.Fido2CredentialAutofillView
 import com.bitwarden.send.SendType
 import com.bitwarden.send.SendView
+import com.bitwarden.ui.platform.base.util.toHostOrPathOrNull
 import com.bitwarden.ui.util.asText
 import com.bitwarden.vault.CipherRepromptType
 import com.bitwarden.vault.CipherType
@@ -13,12 +14,11 @@ import com.bitwarden.vault.CipherView
 import com.bitwarden.vault.CollectionView
 import com.bitwarden.vault.FolderView
 import com.x8bit.bitwarden.R
-import com.x8bit.bitwarden.data.autofill.fido2.model.Fido2CreateCredentialRequest
 import com.x8bit.bitwarden.data.autofill.model.AutofillSelectionData
 import com.x8bit.bitwarden.data.autofill.util.isActiveWithFido2Credentials
+import com.x8bit.bitwarden.data.credentials.model.CreateCredentialRequest
 import com.x8bit.bitwarden.data.platform.util.subtitle
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
-import com.x8bit.bitwarden.ui.platform.base.util.toHostOrPathOrNull
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.platform.util.toFormattedPattern
 import com.x8bit.bitwarden.ui.tools.feature.send.util.toLabelIcons
@@ -107,7 +107,7 @@ fun VaultData.toViewState(
     baseIconUrl: String,
     isIconLoadingDisabled: Boolean,
     autofillSelectionData: AutofillSelectionData?,
-    fido2CreationData: Fido2CreateCredentialRequest?,
+    createCredentialRequestData: CreateCredentialRequest?,
     fido2CredentialAutofillViews: List<Fido2CredentialAutofillView>?,
     totpData: TotpData?,
     isPremiumUser: Boolean,
@@ -138,7 +138,7 @@ fun VaultData.toViewState(
                 hasMasterPassword = hasMasterPassword,
                 isIconLoadingDisabled = isIconLoadingDisabled,
                 isAutofill = autofillSelectionData != null,
-                isFido2Creation = fido2CreationData != null,
+                isFido2Creation = createCredentialRequestData != null,
                 fido2CredentialAutofillViews = fido2CredentialAutofillViews,
                 isPremiumUser = isPremiumUser,
                 isTotp = totpData != null,
@@ -174,7 +174,7 @@ fun VaultData.toViewState(
             ?.uri
             ?.toHostOrPathOrNull()
             ?.let { R.string.no_items_for_uri.asText(it) }
-            ?: fido2CreationData
+            ?: createCredentialRequestData
                 ?.relyingPartyIdOrNull
                 ?.toHostOrPathOrNull()
                 ?.let { R.string.no_items_for_uri.asText(it) }
@@ -227,7 +227,7 @@ fun VaultData.toViewState(
                 ?.let { R.string.no_items_for_vault.asText(it.issuer ?: it.accountName ?: "--") },
             message = message,
             shouldShowAddButton = shouldShowAddButton,
-            buttonText = fido2CreationData
+            buttonText = createCredentialRequestData
                 ?.let { R.string.save_passkey_as_new_login.asText() }
                 ?: run {
                     when (itemListingType) {
@@ -406,11 +406,11 @@ private fun CipherView.toDisplayItem(
         ),
         optionsTestTag = "CipherOptionsButton",
         isAutofill = isAutofill,
-        isFido2Creation = isFido2Creation,
+        isCredentialCreation = isFido2Creation,
         isTotp = isTotp,
         shouldShowMasterPasswordReprompt = (reprompt == CipherRepromptType.PASSWORD) &&
             hasMasterPassword,
-        type = this.type,
+        itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = this.type),
     )
 
 private fun CipherView.toSecondSubtitle(fido2CredentialRpId: String?): String? =
@@ -480,9 +480,9 @@ private fun SendView.toDisplayItem(
         optionsTestTag = "SendOptionsButton",
         isAutofill = false,
         shouldShowMasterPasswordReprompt = false,
-        isFido2Creation = false,
+        isCredentialCreation = false,
         isTotp = false,
-        type = null,
+        itemType = VaultItemListingState.DisplayItem.ItemType.Sends(type = this.type),
     )
 
 @get:DrawableRes

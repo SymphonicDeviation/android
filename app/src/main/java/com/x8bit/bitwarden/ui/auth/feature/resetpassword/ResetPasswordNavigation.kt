@@ -1,14 +1,16 @@
-@file:OmitFromCoverage
-
 package com.x8bit.bitwarden.ui.auth.feature.resetpassword
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
-import com.bitwarden.core.annotation.OmitFromCoverage
+import kotlinx.serialization.Serializable
 
-const val RESET_PASSWORD_ROUTE: String = "reset_password"
+/**
+ * The type-safe route for the reset password screen.
+ */
+@Serializable
+data object ResetPasswordRoute
 
 /**
  * Add the Reset Password screen to the nav graph.
@@ -16,9 +18,7 @@ const val RESET_PASSWORD_ROUTE: String = "reset_password"
 fun NavGraphBuilder.resetPasswordDestination(
     onNavigateToPreventAccountLockOut: () -> Unit,
 ) {
-    composable(
-        route = RESET_PASSWORD_ROUTE,
-    ) {
+    composable<ResetPasswordRoute> {
         ResetPasswordScreen(onNavigateToPreventAccountLockOut = onNavigateToPreventAccountLockOut)
     }
 }
@@ -29,5 +29,5 @@ fun NavGraphBuilder.resetPasswordDestination(
 fun NavController.navigateToResetPasswordScreen(
     navOptions: NavOptions? = null,
 ) {
-    this.navigate(RESET_PASSWORD_ROUTE, navOptions)
+    this.navigate(route = ResetPasswordRoute, navOptions = navOptions)
 }

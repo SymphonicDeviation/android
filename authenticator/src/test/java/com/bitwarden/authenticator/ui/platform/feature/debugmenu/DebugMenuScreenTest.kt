@@ -2,12 +2,10 @@ package com.bitwarden.authenticator.ui.platform.feature.debugmenu
 
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.printToLog
 import com.bitwarden.authenticator.data.platform.manager.model.FlagKey
-import com.bitwarden.authenticator.ui.platform.base.BaseComposeTest
+import com.bitwarden.authenticator.ui.platform.base.AuthenticatorComposeTest
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import io.mockk.every
 import io.mockk.mockk
@@ -17,7 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class DebugMenuScreenTest : BaseComposeTest() {
+class DebugMenuScreenTest : AuthenticatorComposeTest() {
     private var onNavigateBackCalled = false
     private val mutableEventFlow = bufferedMutableSharedFlow<DebugMenuEvent>()
     private val mutableStateFlow = MutableStateFlow(DebugMenuState(featureFlags = emptyMap()))
@@ -28,7 +26,7 @@ class DebugMenuScreenTest : BaseComposeTest() {
 
     @Before
     fun setup() {
-        composeTestRule.setContent {
+        setContent {
             DebugMenuScreen(
                 onNavigateBack = { onNavigateBackCalled = true },
                 viewModel = viewModel,
@@ -44,9 +42,6 @@ class DebugMenuScreenTest : BaseComposeTest() {
 
     @Test
     fun `onNavigateBack should send action to viewModel`() {
-        composeTestRule
-            .onRoot()
-            .printToLog("djf")
         composeTestRule
             .onNodeWithContentDescription("Back")
             .performClick()

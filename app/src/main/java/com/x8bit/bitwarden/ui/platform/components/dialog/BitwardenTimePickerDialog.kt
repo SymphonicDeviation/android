@@ -22,7 +22,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -32,10 +31,10 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.x8bit.bitwarden.ui.platform.components.button.BitwardenTextButton
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 
 /**
  * A custom composable representing a dialog that displays the time picker dialog.
@@ -129,7 +128,6 @@ private fun bitwardenTimePickerColors(): TimePickerColors = TimePickerColors(
     timeSelectorUnselectedContentColor = BitwardenTheme.colorScheme.text.primary,
 )
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun TimePickerDialog(
     onDismissRequest: () -> Unit,

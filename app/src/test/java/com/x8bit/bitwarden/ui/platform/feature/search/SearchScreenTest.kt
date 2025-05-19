@@ -9,7 +9,6 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -19,17 +18,19 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.core.net.toUri
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.send.SendType
+import com.bitwarden.ui.util.asText
 import com.bitwarden.vault.CipherType
 import com.x8bit.bitwarden.data.platform.manager.util.AppResumeStateManager
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
-import com.bitwarden.ui.util.asText
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.feature.search.model.AutofillSelectionOption
 import com.x8bit.bitwarden.ui.platform.feature.search.util.createMockDisplayItemForCipher
 import com.x8bit.bitwarden.ui.platform.feature.search.util.createMockDisplayItemForSend
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
+import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.ViewSendRoute
 import com.x8bit.bitwarden.ui.util.assertMasterPasswordDialogDisplayed
 import com.x8bit.bitwarden.ui.util.assertNoDialogExists
-import com.x8bit.bitwarden.ui.util.assertNoPopupExists
 import com.x8bit.bitwarden.ui.util.isProgressBar
 import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
 import com.x8bit.bitwarden.ui.vault.feature.item.VaultItemArgs
@@ -49,7 +50,7 @@ import org.junit.Before
 import org.junit.Test
 
 @Suppress("LargeClass")
-class SearchScreenTest : BaseComposeTest() {
+class SearchScreenTest : BitwardenComposeTest() {
     private val mutableEventFlow = bufferedMutableSharedFlow<SearchEvent>()
     private val mutableStateFlow = MutableStateFlow(DEFAULT_STATE)
     private val viewModel = mockk<SearchViewModel>(relaxed = true) {
@@ -65,6 +66,7 @@ class SearchScreenTest : BaseComposeTest() {
 
     private var onNavigateBackCalled = false
     private var onNavigateToEditSendId: String? = null
+    private var onNavigateToViewSendRoute: ViewSendRoute? = null
     private var onNavigateToEditCipherArgs: VaultAddEditArgs? = null
     private var onNavigateToViewCipherArgs: VaultItemArgs? = null
 
@@ -78,6 +80,7 @@ class SearchScreenTest : BaseComposeTest() {
                 viewModel = viewModel,
                 onNavigateBack = { onNavigateBackCalled = true },
                 onNavigateToEditSend = { onNavigateToEditSendId = it },
+                onNavigateToViewSend = { onNavigateToViewSendRoute = it },
                 onNavigateToEditCipher = { onNavigateToEditCipherArgs = it },
                 onNavigateToViewCipher = { onNavigateToViewCipherArgs = it },
             )
@@ -95,6 +98,19 @@ class SearchScreenTest : BaseComposeTest() {
         val sendId = "sendId"
         mutableEventFlow.tryEmit(SearchEvent.NavigateToEditSend(sendId))
         assertEquals(sendId, onNavigateToEditSendId)
+    }
+
+    @Test
+    fun `NavigateToViewSend should call onNavigateToViewSend`() {
+        val sendId = "sendId1234"
+        val sendType = SendItemType.TEXT
+        mutableEventFlow.tryEmit(
+            SearchEvent.NavigateToViewSend(sendId = sendId, sendType = sendType),
+        )
+        assertEquals(
+            ViewSendRoute(sendId = sendId, sendType = sendType),
+            onNavigateToViewSendRoute,
+        )
     }
 
     @Test
@@ -220,7 +236,12 @@ class SearchScreenTest : BaseComposeTest() {
             .assertIsDisplayed()
             .performClick()
         verify {
-            viewModel.trySendAction(SearchAction.ItemClick("mockId-1", CipherType.LOGIN))
+            viewModel.trySendAction(
+                SearchAction.ItemClick(
+                    itemId = "mockId-1",
+                    itemType = SearchState.DisplayItem.ItemType.Vault(type = CipherType.LOGIN),
+                ),
+            )
         }
     }
 
@@ -364,7 +385,7 @@ class SearchScreenTest : BaseComposeTest() {
             viewModel.trySendAction(
                 SearchAction.ItemClick(
                     itemId = "mockId-1",
-                    cipherType = CipherType.LOGIN,
+                    itemType = SearchState.DisplayItem.ItemType.Vault(type = CipherType.LOGIN),
                 ),
             )
         }
@@ -800,6 +821,25 @@ class SearchScreenTest : BaseComposeTest() {
         composeTestRule.assertNoDialogExists()
 
         composeTestRule
+            .onNodeWithContentDescription(label = "Options")
+            .assertIsDisplayed()
+            .performClick()
+        composeTestRule
+            .onNodeWithText(text = "View")
+            .assert(hasAnyAncestor(isDialog()))
+            .performClick()
+        verify(exactly = 1) {
+            viewModel.trySendAction(
+                SearchAction.OverflowOptionClick(
+                    overflowAction = ListingItemOverflowAction.SendAction.ViewClick(
+                        sendId = "mockId-1",
+                        sendType = SendType.FILE,
+                    ),
+                ),
+            )
+        }
+
+        composeTestRule
             .onNodeWithContentDescription("Options")
             .assertIsDisplayed()
             .performClick()
@@ -940,7 +980,7 @@ class SearchScreenTest : BaseComposeTest() {
     @Test
     fun `loading dialog should be displayed according to state`() {
         val loadingMessage = "syncing"
-        composeTestRule.assertNoPopupExists()
+        composeTestRule.assertNoDialogExists()
         composeTestRule.onNodeWithText(loadingMessage).assertDoesNotExist()
 
         mutableStateFlow.update {
@@ -950,7 +990,7 @@ class SearchScreenTest : BaseComposeTest() {
         composeTestRule
             .onNodeWithText(loadingMessage)
             .assertIsDisplayed()
-            .assert(hasAnyAncestor(isPopup()))
+            .assert(hasAnyAncestor(isDialog()))
     }
 }
 

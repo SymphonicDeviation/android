@@ -3,6 +3,8 @@ package com.x8bit.bitwarden.ui.auth.feature.removepassword
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.bitwarden.ui.platform.base.BaseViewModel
+import com.bitwarden.ui.platform.base.util.orNullIfBlank
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
@@ -10,8 +12,6 @@ import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.LeaveOrganizationResult
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.RemovePasswordResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
-import com.x8bit.bitwarden.ui.platform.base.util.orNullIfBlank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -122,6 +122,17 @@ class RemovePasswordViewModel @Inject constructor(
                             title = R.string.an_error_has_occurred.asText(),
                             message = R.string.generic_error_message.asText(),
                             error = result.error,
+                        ),
+                    )
+                }
+            }
+
+            is RemovePasswordResult.WrongPasswordError -> {
+                mutableStateFlow.update {
+                    it.copy(
+                        dialogState = RemovePasswordState.DialogState.Error(
+                            title = R.string.an_error_has_occurred.asText(),
+                            message = R.string.invalid_master_password.asText(),
                         ),
                     )
                 }

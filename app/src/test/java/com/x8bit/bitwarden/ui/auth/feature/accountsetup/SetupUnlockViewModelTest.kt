@@ -3,6 +3,7 @@ package com.x8bit.bitwarden.ui.auth.feature.accountsetup
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
@@ -13,19 +14,22 @@ import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.platform.repository.model.BiometricsKeyResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.components.toggle.UnlockWithPinState
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkStatic
 import io.mockk.runs
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import javax.crypto.Cipher
 
@@ -54,6 +58,16 @@ class SetupUnlockViewModelTest : BaseViewModelTest() {
             isBiometricIntegrityValid(userId = DEFAULT_USER_ID, cipher = CIPHER)
         } returns false
         every { createCipherOrNull(DEFAULT_USER_ID) } returns CIPHER
+    }
+
+    @BeforeEach
+    fun setup() {
+        mockkStatic(SavedStateHandle::toSetupUnlockArgs)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        unmockkStatic(SavedStateHandle::toSetupUnlockArgs)
     }
 
     @Test
@@ -373,12 +387,10 @@ class SetupUnlockViewModelTest : BaseViewModelTest() {
         state: SetupUnlockState? = null,
     ): SetupUnlockViewModel =
         SetupUnlockViewModel(
-            savedStateHandle = SavedStateHandle(
-                mapOf(
-                    "state" to state,
-                    "isInitialSetup" to true,
-                ),
-            ),
+            savedStateHandle = SavedStateHandle().apply {
+                set(key = "state", value = state)
+                every { toSetupUnlockArgs() } returns SetupUnlockArgs(isInitialSetup = true)
+            },
             authRepository = authRepository,
             settingsRepository = settingsRepository,
             biometricsEncryptionManager = biometricsEncryptionManager,

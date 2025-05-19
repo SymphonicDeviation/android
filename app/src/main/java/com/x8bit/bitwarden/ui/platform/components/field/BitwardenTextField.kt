@@ -36,7 +36,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
@@ -50,11 +50,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
+import com.bitwarden.ui.platform.base.util.toPx
+import com.bitwarden.ui.platform.base.util.withLineBreaksAtWidth
+import com.bitwarden.ui.platform.components.model.CardStyle
+import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.base.util.cardStyle
 import com.x8bit.bitwarden.ui.platform.base.util.nullableTestTag
-import com.x8bit.bitwarden.ui.platform.base.util.toPx
-import com.x8bit.bitwarden.ui.platform.base.util.withLineBreaksAtWidth
 import com.x8bit.bitwarden.ui.platform.components.appbar.color.bitwardenMenuItemColors
 import com.x8bit.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.x8bit.bitwarden.ui.platform.components.divider.BitwardenHorizontalDivider
@@ -62,12 +64,10 @@ import com.x8bit.bitwarden.ui.platform.components.field.color.bitwardenTextField
 import com.x8bit.bitwarden.ui.platform.components.field.toolbar.BitwardenCutCopyTextToolbar
 import com.x8bit.bitwarden.ui.platform.components.field.toolbar.BitwardenEmptyTextToolbar
 import com.x8bit.bitwarden.ui.platform.components.icon.BitwardenIcon
-import com.x8bit.bitwarden.ui.platform.components.model.CardStyle
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.platform.components.model.TextToolbarType
 import com.x8bit.bitwarden.ui.platform.components.model.TooltipData
 import com.x8bit.bitwarden.ui.platform.components.row.BitwardenRowOfActions
-import com.x8bit.bitwarden.ui.platform.theme.BitwardenTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -254,7 +254,7 @@ fun BitwardenTextField(
             value = textFieldValue,
             onValueChange = onValueChange,
             defaultTextToolbar = LocalTextToolbar.current,
-            clipboardManager = LocalClipboardManager.current.nativeClipboard,
+            clipboardManager = LocalClipboard.current.nativeClipboard,
             focusManager = LocalFocusManager.current,
         )
 

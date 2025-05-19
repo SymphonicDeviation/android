@@ -1,32 +1,36 @@
-@file:OmitFromCoverage
-
 package com.x8bit.bitwarden.ui.tools.feature.send
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
-import com.bitwarden.core.annotation.OmitFromCoverage
-import com.x8bit.bitwarden.ui.platform.base.util.composableWithRootPushTransitions
+import com.bitwarden.ui.platform.base.util.composableWithRootPushTransitions
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.ViewSendRoute
+import kotlinx.serialization.Serializable
 
-const val SEND_ROUTE: String = "send"
+/**
+ * The type-safe route for the send screen.
+ */
+@Serializable
+data object SendRoute
 
 /**
  * Add send destination to the nav graph.
  */
+@Suppress("LongParameterList")
 fun NavGraphBuilder.sendDestination(
     onNavigateToAddSend: () -> Unit,
     onNavigateToEditSend: (sendItemId: String) -> Unit,
+    onNavigateToViewSend: (ViewSendRoute) -> Unit,
     onNavigateToSendFilesList: () -> Unit,
     onNavigateToSendTextList: () -> Unit,
     onNavigateToSearchSend: (searchType: SearchType.Sends) -> Unit,
 ) {
-    composableWithRootPushTransitions(
-        route = SEND_ROUTE,
-    ) {
+    composableWithRootPushTransitions<SendRoute> {
         SendScreen(
             onNavigateToAddSend = onNavigateToAddSend,
             onNavigateToEditSend = onNavigateToEditSend,
+            onNavigateToViewSend = onNavigateToViewSend,
             onNavigateToSendFilesList = onNavigateToSendFilesList,
             onNavigateToSendTextList = onNavigateToSendTextList,
             onNavigateToSearchSend = onNavigateToSearchSend,
@@ -39,5 +43,5 @@ fun NavGraphBuilder.sendDestination(
  * via [sendDestination].
  */
 fun NavController.navigateToSend(navOptions: NavOptions? = null) {
-    navigate(SEND_ROUTE, navOptions)
+    navigate(route = SendRoute, navOptions = navOptions)
 }

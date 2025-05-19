@@ -213,6 +213,7 @@ dependencies {
 
     implementation(files("libs/authenticatorbridge-1.0.0-release.aar"))
 
+    implementation(project(":annotation"))
     implementation(project(":core"))
     implementation(project(":data"))
     implementation(project(":network"))
@@ -275,6 +276,7 @@ dependencies {
     // Pull in test fixtures from other modules
     testImplementation(testFixtures(project(":data")))
     testImplementation(testFixtures(project(":network")))
+    testImplementation(testFixtures(project(":ui")))
 
     testImplementation(libs.androidx.compose.ui.test)
     testImplementation(libs.google.hilt.android.testing)

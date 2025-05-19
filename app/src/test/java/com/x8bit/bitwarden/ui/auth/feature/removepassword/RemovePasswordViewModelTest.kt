@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bitwarden.data.repository.model.Environment
 import com.bitwarden.network.model.OrganizationType
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
@@ -13,7 +14,6 @@ import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.RemovePasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -75,6 +75,39 @@ class RemovePasswordViewModelTest : BaseViewModelTest() {
                         title = R.string.an_error_has_occurred.asText(),
                         message = R.string.generic_error_message.asText(),
                         error = error,
+                    ),
+                ),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `ContinueClick with input and remove password wrong password error with should show error dialog with message`() = runTest {
+        val password = "123"
+        val initialState = DEFAULT_STATE.copy(input = password)
+        val viewModel = createViewModel(state = initialState)
+        coEvery {
+            authRepository.removePassword(masterPassword = password)
+        } returns RemovePasswordResult.WrongPasswordError
+
+        viewModel.stateFlow.test {
+            assertEquals(initialState, awaitItem())
+            viewModel.trySendAction(RemovePasswordAction.ContinueClick)
+            assertEquals(
+                initialState.copy(
+                    dialogState = RemovePasswordState.DialogState.Loading(
+                        title = R.string.deleting.asText(),
+                    ),
+                ),
+                awaitItem(),
+            )
+            assertEquals(
+                initialState.copy(
+                    dialogState = RemovePasswordState.DialogState.Error(
+                        title = R.string.an_error_has_occurred.asText(),
+                        message = R.string.invalid_master_password.asText(),
                     ),
                 ),
                 awaitItem(),
@@ -262,6 +295,7 @@ private val DEFAULT_ACCOUNT = UserState.Account(
             shouldUseKeyConnector = true,
             role = OrganizationType.USER,
             keyConnectorUrl = KEY_CONNECTOR_URL,
+            userIsClaimedByOrganization = false,
         ),
     ),
     needsMasterPassword = false,

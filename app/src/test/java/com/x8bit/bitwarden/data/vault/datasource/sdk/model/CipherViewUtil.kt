@@ -50,6 +50,12 @@ fun createMockCipherView(
     clock: Clock = FIXED_CLOCK,
     fido2Credentials: List<Fido2Credential>? = null,
     sshKey: SshKeyView? = createMockSshKeyView(number = number),
+    login: LoginView? = createMockLoginView(
+        number = number,
+        totp = totp,
+        clock = clock,
+        fido2Credentials = fido2Credentials,
+    ),
 ): CipherView =
     CipherView(
         id = "mockId-$number",
@@ -60,13 +66,7 @@ fun createMockCipherView(
         name = "mockName-$number",
         notes = "mockNotes-$number",
         type = cipherType,
-        login = createMockLoginView(
-            number = number,
-            totp = totp,
-            clock = clock,
-            fido2Credentials = fido2Credentials,
-        )
-            .takeIf { cipherType == CipherType.LOGIN },
+        login = login.takeIf { cipherType == CipherType.LOGIN },
         creationDate = clock.instant(),
         deletedDate = if (isDeleted) {
             clock.instant()
@@ -83,6 +83,7 @@ fun createMockCipherView(
         sshKey = sshKey.takeIf { cipherType == CipherType.SSH_KEY },
         favorite = false,
         passwordHistory = listOf(createMockPasswordHistoryView(number = number, clock)),
+        permissions = createMockSdkCipherPermissions(),
         reprompt = repromptType,
         secureNote = createMockSecureNoteView().takeIf { cipherType == CipherType.SECURE_NOTE },
         edit = true,
@@ -94,10 +95,13 @@ fun createMockCipherView(
 /**
  * Create a mock [LoginView] with a given [number].
  */
+@Suppress("LongParameterList")
 fun createMockLoginView(
     number: Int,
     totp: String? = "mockTotp-$number",
     clock: Clock = FIXED_CLOCK,
+    hasUris: Boolean = true,
+    uris: List<LoginUriView>? = listOf(createMockUriView(number = number)),
     fido2Credentials: List<Fido2Credential>? = createMockSdkFido2CredentialList(number, clock),
 ): LoginView =
     LoginView(
@@ -105,7 +109,7 @@ fun createMockLoginView(
         password = "mockPassword-$number",
         passwordRevisionDate = clock.instant(),
         autofillOnPageLoad = false,
-        uris = listOf(createMockUriView(number = number)),
+        uris = uris.takeIf { hasUris },
         totp = totp,
         fido2Credentials = fido2Credentials,
     )
@@ -116,13 +120,14 @@ fun createMockLoginView(
 fun createMockSdkFido2CredentialList(
     number: Int,
     clock: Clock = FIXED_CLOCK,
-): List<Fido2Credential> = listOf(createMockSdkFido2Credential(number, clock))
+): List<Fido2Credential> = listOf(createMockSdkFido2Credential(number = number, clock = clock))
 
 /**
  * Create a mock [Fido2Credential] with a given [number].
  */
 fun createMockSdkFido2Credential(
     number: Int,
+    rpId: String = "mockRpId-$number",
     clock: Clock = FIXED_CLOCK,
 ): Fido2Credential = Fido2Credential(
     credentialId = "mockCredentialId-$number",
@@ -130,7 +135,7 @@ fun createMockSdkFido2Credential(
     keyAlgorithm = "mockKeyAlgorithm-$number",
     keyCurve = "mockKeyCurve-$number",
     keyValue = "mockKeyValue-$number",
-    rpId = "mockRpId-$number",
+    rpId = rpId,
     userHandle = "mockUserHandle-$number",
     userName = "mockUserName-$number",
     counter = "mockCounter-$number",
@@ -146,11 +151,12 @@ fun createMockSdkFido2Credential(
 fun createMockFido2CredentialAutofillView(
     number: Int,
     cipherId: String? = null,
+    rpId: String = "mockRpId-$number",
 ): Fido2CredentialAutofillView =
     Fido2CredentialAutofillView(
         credentialId = "mockCredentialId-$number".encodeToByteArray(),
         cipherId = cipherId ?: "mockCipherId-$number",
-        rpId = "mockRpId-$number",
+        rpId = rpId,
         userNameForUi = "mockUserNameForUi-$number",
         userHandle = "mockUserHandle-$number".encodeToByteArray(),
     )
@@ -158,9 +164,9 @@ fun createMockFido2CredentialAutofillView(
 /**
  * Create a mock [LoginUriView] with a given [number].
  */
-fun createMockUriView(number: Int): LoginUriView =
+fun createMockUriView(number: Int, uri: String = "www.mockuri$number.com"): LoginUriView =
     LoginUriView(
-        uri = "www.mockuri$number.com",
+        uri = uri,
         match = UriMatchType.HOST,
         uriChecksum = "mockUriChecksum-$number",
     )

@@ -7,6 +7,7 @@ import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.data.repository.model.Environment
 import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.network.model.OrganizationType
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
@@ -20,9 +21,11 @@ import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
+import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardManager
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
+import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
 import com.x8bit.bitwarden.data.platform.manager.model.OrganizationEvent
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
@@ -30,13 +33,13 @@ import com.x8bit.bitwarden.data.platform.repository.util.FakeEnvironmentReposito
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCollectionView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockFolderView
+import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkCipherPermissions
 import com.x8bit.bitwarden.data.vault.manager.FileManager
 import com.x8bit.bitwarden.data.vault.manager.model.VerificationCodeItem
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.DownloadAttachmentResult
 import com.x8bit.bitwarden.data.vault.repository.model.RestoreCipherResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.vault.feature.item.model.TotpCodeItemData
 import com.x8bit.bitwarden.ui.vault.feature.item.model.VaultItemLocation
@@ -102,6 +105,8 @@ class VaultItemViewModelTest : BaseViewModelTest() {
         every { edit } returns true
         every { folderId } returns null
         every { organizationId } returns null
+        every { permissions } returns null
+        every { deletedDate } returns null
     }
     private val mockEnvironmentRepository = FakeEnvironmentRepository()
     private val mutableIsIconLoadingDisabledFlow = MutableStateFlow(false)
@@ -109,15 +114,24 @@ class VaultItemViewModelTest : BaseViewModelTest() {
         every { isIconLoadingDisabled } returns false
         every { isIconLoadingDisabledFlow } returns mutableIsIconLoadingDisabledFlow
     }
+    private val featureFlagManager: FeatureFlagManager = mockk {
+        every { getFeatureFlag(key = FlagKey.RestrictCipherItemDeletion) } returns false
+    }
 
     @BeforeEach
     fun setup() {
-        mockkStatic(CipherView::toViewState)
+        mockkStatic(
+            SavedStateHandle::toVaultItemArgs,
+            CipherView::toViewState,
+        )
     }
 
     @AfterEach
     fun tearDown() {
-        unmockkStatic(CipherView::toViewState)
+        unmockkStatic(
+            SavedStateHandle::toVaultItemArgs,
+            CipherView::toViewState,
+        )
         unmockkStatic(Uri::class)
     }
 
@@ -198,6 +212,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -228,6 +243,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -251,6 +267,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -300,6 +317,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -338,6 +356,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -387,6 +406,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -441,6 +461,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -485,6 +506,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = createTotpCodeData(),
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -524,6 +546,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -567,6 +590,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -613,6 +637,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = createTotpCodeData(),
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -670,6 +695,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = createTotpCodeData(),
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -708,6 +734,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -731,6 +758,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -762,6 +790,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -831,6 +860,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -891,6 +921,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -963,6 +994,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -993,6 +1025,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1013,6 +1046,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1037,6 +1071,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1082,6 +1117,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1120,6 +1156,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1160,6 +1197,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -1197,6 +1235,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1222,6 +1261,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1252,6 +1292,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1276,6 +1317,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1316,6 +1358,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1348,6 +1391,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1376,6 +1420,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1430,6 +1475,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1460,6 +1506,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = null,
@@ -1484,6 +1531,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1522,6 +1570,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1552,6 +1601,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1576,6 +1626,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1624,6 +1675,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1686,6 +1738,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1758,6 +1811,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = null,
@@ -1931,6 +1985,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -1976,6 +2031,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = createTotpCodeData(),
@@ -2022,6 +2078,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = createTotpCodeData(),
@@ -2045,6 +2102,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = createTotpCodeData(),
@@ -2078,6 +2136,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = createTotpCodeData(),
@@ -2098,6 +2157,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = createTotpCodeData(),
@@ -2124,6 +2184,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         isPremiumUser = true,
                         hasMasterPassword = true,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         totpCodeItemData = createTotpCodeData(),
@@ -2180,6 +2241,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     isPremiumUser = true,
                     hasMasterPassword = true,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     totpCodeItemData = createTotpCodeData(),
@@ -2207,6 +2269,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = createTotpCodeData(),
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2251,6 +2314,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2282,6 +2346,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2302,6 +2367,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2335,6 +2401,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2356,6 +2423,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2391,6 +2459,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2415,6 +2484,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2453,6 +2523,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = createTotpCodeData(),
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2492,6 +2563,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2524,6 +2596,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2544,6 +2617,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2572,6 +2646,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2592,6 +2667,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2624,6 +2700,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2644,6 +2721,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2675,6 +2753,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2695,6 +2774,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2727,6 +2807,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2747,6 +2828,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2775,6 +2857,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2795,6 +2878,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2827,6 +2911,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2846,6 +2931,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2877,6 +2963,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2909,6 +2996,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2947,6 +3035,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -2981,6 +3070,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3002,6 +3092,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3035,6 +3126,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3055,6 +3147,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3091,6 +3184,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                         hasMasterPassword = true,
                         totpCodeItemData = null,
                         canDelete = true,
+                        canRestore = false,
                         canAssignToCollections = true,
                         canEdit = true,
                         baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3132,6 +3226,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3173,6 +3268,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3328,6 +3424,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3350,6 +3447,138 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                                 shouldUseKeyConnector = false,
                                 role = OrganizationType.OWNER,
                                 keyConnectorUrl = null,
+                                userIsClaimedByOrganization = true,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+
+            val viewModel = createViewModel(state = null)
+
+            mutableVaultItemFlow.value = DataState.Loaded(data = mockCipherView)
+            mutableCollectionsStateFlow.value = DataState.Loaded(
+                listOf(createMockCollectionView(number = 1)),
+            )
+            mutableFoldersStateFlow.value = DataState.Loaded(
+                listOf(createMockFolderView(number = 1)),
+            )
+
+            assertEquals(
+                DEFAULT_STATE.copy(viewState = viewState),
+                viewModel.stateFlow.value,
+            )
+        }
+
+        @Test
+        @Suppress("MaxLineLength")
+        fun `on VaultDataReceive with Loaded and nonnull false permission data should update the ViewState with cipher permissions`() {
+            val viewState = mockk<VaultItemState.ViewState>()
+            every {
+                featureFlagManager.getFeatureFlag(FlagKey.RestrictCipherItemDeletion)
+            } returns true
+            every { mockCipherView.organizationId } returns "mockOrganizationId"
+            every { mockCipherView.collectionIds } returns listOf("mockId-1")
+            every { mockCipherView.folderId } returns "mockId-1"
+            every {
+                mockCipherView.permissions
+            } returns createMockSdkCipherPermissions(delete = false, restore = false)
+            every {
+                mockCipherView.toViewState(
+                    previousState = null,
+                    isPremiumUser = true,
+                    hasMasterPassword = true,
+                    totpCodeItemData = null,
+                    canDelete = false,
+                    canRestore = false,
+                    canAssignToCollections = true,
+                    canEdit = true,
+                    baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
+                    isIconLoadingDisabled = false,
+                    relatedLocations = persistentListOf(
+                        VaultItemLocation.Organization("mockOrganizationName"),
+                        VaultItemLocation.Collection("mockName-1"),
+                        VaultItemLocation.Folder("mockName-1"),
+                    ),
+                )
+            } returns viewState
+            mutableUserStateFlow.value = DEFAULT_USER_STATE.copy(
+                accounts = listOf(
+                    DEFAULT_USER_ACCOUNT.copy(
+                        organizations = listOf(
+                            Organization(
+                                id = "mockOrganizationId",
+                                name = "mockOrganizationName",
+                                shouldManageResetPassword = false,
+                                shouldUseKeyConnector = false,
+                                role = OrganizationType.OWNER,
+                                keyConnectorUrl = null,
+                                userIsClaimedByOrganization = true,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+
+            val viewModel = createViewModel(state = null)
+
+            mutableVaultItemFlow.value = DataState.Loaded(data = mockCipherView)
+            mutableCollectionsStateFlow.value = DataState.Loaded(
+                listOf(createMockCollectionView(number = 1)),
+            )
+            mutableFoldersStateFlow.value = DataState.Loaded(
+                listOf(createMockFolderView(number = 1)),
+            )
+
+            assertEquals(
+                DEFAULT_STATE.copy(viewState = viewState),
+                viewModel.stateFlow.value,
+            )
+        }
+
+        @Test
+        @Suppress("MaxLineLength")
+        fun `on VaultDataReceive with Loaded and nonnull true permission data should update the ViewState with cipher permissions`() {
+            val viewState = mockk<VaultItemState.ViewState>()
+            every {
+                featureFlagManager.getFeatureFlag(FlagKey.RestrictCipherItemDeletion)
+            } returns true
+            every { mockCipherView.organizationId } returns "mockOrganizationId"
+            every { mockCipherView.deletedDate } returns Instant.MIN
+            every { mockCipherView.collectionIds } returns listOf("mockId-1")
+            every { mockCipherView.folderId } returns "mockId-1"
+            every { mockCipherView.permissions } returns createMockSdkCipherPermissions()
+            every {
+                mockCipherView.toViewState(
+                    previousState = null,
+                    isPremiumUser = true,
+                    hasMasterPassword = true,
+                    totpCodeItemData = null,
+                    canDelete = true,
+                    canRestore = true,
+                    canAssignToCollections = true,
+                    canEdit = true,
+                    baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
+                    isIconLoadingDisabled = false,
+                    relatedLocations = persistentListOf(
+                        VaultItemLocation.Organization("mockOrganizationName"),
+                        VaultItemLocation.Collection("mockName-1"),
+                        VaultItemLocation.Folder("mockName-1"),
+                    ),
+                )
+            } returns viewState
+            mutableUserStateFlow.value = DEFAULT_USER_STATE.copy(
+                accounts = listOf(
+                    DEFAULT_USER_ACCOUNT.copy(
+                        organizations = listOf(
+                            Organization(
+                                id = "mockOrganizationId",
+                                name = "mockOrganizationName",
+                                shouldManageResetPassword = false,
+                                shouldUseKeyConnector = false,
+                                role = OrganizationType.OWNER,
+                                keyConnectorUrl = null,
+                                userIsClaimedByOrganization = false,
                             ),
                         ),
                     ),
@@ -3400,6 +3629,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3445,6 +3675,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3485,6 +3716,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     hasMasterPassword = true,
                     totpCodeItemData = null,
                     canDelete = true,
+                    canRestore = false,
                     canAssignToCollections = true,
                     canEdit = true,
                     baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
@@ -3547,18 +3779,10 @@ class VaultItemViewModelTest : BaseViewModelTest() {
     ): VaultItemViewModel = VaultItemViewModel(
         savedStateHandle = SavedStateHandle().apply {
             set("state", state)
-            set("vault_item_id", vaultItemId)
-            set(
-                "vault_item_cipher_type",
-                when (vaultItemCipherType) {
-                    VaultItemCipherType.LOGIN -> "login"
-                    VaultItemCipherType.CARD -> "card"
-                    VaultItemCipherType.IDENTITY -> "identity"
-                    VaultItemCipherType.SECURE_NOTE -> "secure_note"
-                    VaultItemCipherType.SSH_KEY -> "ssh_key"
-                },
-            )
             set("tempAttachmentFile", tempAttachmentFile)
+            every {
+                toVaultItemArgs()
+            } returns VaultItemArgs(vaultItemId = vaultItemId, cipherType = vaultItemCipherType)
         },
         clipboardManager = bitwardenClipboardManager,
         authRepository = authRepository,
@@ -3567,6 +3791,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
         organizationEventManager = eventManager,
         environmentRepository = environmentRepository,
         settingsRepository = settingsRepository,
+        featureFlagManager = featureFlagManager,
     )
 
     private fun createViewState(
@@ -3747,6 +3972,7 @@ class VaultItemViewModelTest : BaseViewModelTest() {
                     ),
                 ),
                 canDelete = true,
+                canRestore = false,
                 canAssignToCollections = true,
                 canEdit = true,
                 favorite = false,

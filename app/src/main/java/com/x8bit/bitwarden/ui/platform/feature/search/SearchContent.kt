@@ -15,10 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.bitwarden.vault.CipherType
+import com.bitwarden.ui.platform.base.util.toListItemCardStyle
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
-import com.x8bit.bitwarden.ui.platform.base.util.toListItemCardStyle
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenMasterPasswordDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenSelectionDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
@@ -65,6 +64,7 @@ fun SearchContent(
         is ListingItemOverflowAction.SendAction.EditClick,
         is ListingItemOverflowAction.SendAction.RemovePasswordClick,
         is ListingItemOverflowAction.SendAction.ShareUrlClick,
+        is ListingItemOverflowAction.SendAction.ViewClick,
         is ListingItemOverflowAction.VaultAction.CopyNoteClick,
         is ListingItemOverflowAction.VaultAction.CopyNumberClick,
         is ListingItemOverflowAction.VaultAction.CopyPasswordClick,
@@ -126,7 +126,7 @@ fun SearchContent(
                     } else if (it.autofillSelectionOptions.isNotEmpty()) {
                         autofillSelectionOptionsItem = it
                     } else {
-                        searchHandlers.onItemClick(it.id, it.cipherType)
+                        searchHandlers.onItemClick(it.id, it.itemType)
                     }
                 },
                 trailingLabelIcons = it.extraIconList,
@@ -184,7 +184,7 @@ private fun AutofillSelectionDialog(
     displayItem: SearchState.DisplayItem,
     onAutofillItemClick: (cipherId: String) -> Unit,
     onAutofillAndSaveItemClick: (cipherId: String) -> Unit,
-    onViewItemClick: (cipherId: String, cipherType: CipherType?) -> Unit,
+    onViewItemClick: (id: String, type: SearchState.DisplayItem.ItemType) -> Unit,
     onMasterPasswordRepromptRequest: (MasterPasswordRepromptData) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -238,7 +238,7 @@ private fun AutofillSelectionDialog(
                     text = stringResource(id = R.string.view),
                     onClick = {
                         onDismissRequest()
-                        onViewItemClick(displayItem.id, displayItem.cipherType)
+                        onViewItemClick(displayItem.id, displayItem.itemType)
                     },
                 )
             }

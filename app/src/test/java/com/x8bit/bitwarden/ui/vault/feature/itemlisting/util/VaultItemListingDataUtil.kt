@@ -1,9 +1,9 @@
 package com.x8bit.bitwarden.ui.vault.feature.itemlisting.util
 
 import com.bitwarden.send.SendType
+import com.bitwarden.ui.util.asText
 import com.bitwarden.vault.CipherType
 import com.x8bit.bitwarden.R
-import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.ui.platform.components.model.IconData
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.VaultItemListingState
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
@@ -74,11 +74,11 @@ fun createMockDisplayItemForCipher(
                 ),
                 optionsTestTag = "CipherOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = "LoginCipherIcon",
                 isTotp = isTotp,
-                type = cipherType,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -120,11 +120,11 @@ fun createMockDisplayItemForCipher(
                 ),
                 optionsTestTag = "CipherOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = "SecureNoteCipherIcon",
                 isTotp = false,
-                type = cipherType,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -172,11 +172,11 @@ fun createMockDisplayItemForCipher(
                 ),
                 optionsTestTag = "CipherOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = "CardCipherIcon",
                 isTotp = false,
-                type = cipherType,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -215,11 +215,11 @@ fun createMockDisplayItemForCipher(
                 ),
                 optionsTestTag = "CipherOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = "IdentityCipherIcon",
                 isTotp = false,
-                type = cipherType,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
 
@@ -258,11 +258,11 @@ fun createMockDisplayItemForCipher(
                 ),
                 optionsTestTag = "CipherOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = "SshKeyCipherIcon",
                 isTotp = false,
-                type = cipherType,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Vault(type = cipherType),
             )
         }
     }
@@ -299,6 +299,10 @@ fun createMockDisplayItemForSend(
                     ),
                 ),
                 overflowOptions = listOf(
+                    ListingItemOverflowAction.SendAction.ViewClick(
+                        sendId = "mockId-$number",
+                        sendType = sendType,
+                    ),
                     ListingItemOverflowAction.SendAction.EditClick(sendId = "mockId-$number"),
                     ListingItemOverflowAction.SendAction.CopyUrlClick(
                         sendUrl = "https://send.bitwarden.com/#mockAccessId-$number/mockKey-$number",
@@ -311,11 +315,11 @@ fun createMockDisplayItemForSend(
                 ),
                 optionsTestTag = "SendOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = null,
                 isTotp = false,
-                type = null,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Sends(type = sendType),
             )
         }
 
@@ -342,6 +346,10 @@ fun createMockDisplayItemForSend(
                     ),
                 ),
                 overflowOptions = listOf(
+                    ListingItemOverflowAction.SendAction.ViewClick(
+                        sendId = "mockId-$number",
+                        sendType = sendType,
+                    ),
                     ListingItemOverflowAction.SendAction.EditClick(sendId = "mockId-$number"),
                     ListingItemOverflowAction.SendAction.CopyUrlClick(
                         sendUrl = "https://send.bitwarden.com/#mockAccessId-$number/mockKey-$number",
@@ -354,11 +362,11 @@ fun createMockDisplayItemForSend(
                 ),
                 optionsTestTag = "SendOptionsButton",
                 isAutofill = false,
-                isFido2Creation = false,
+                isCredentialCreation = false,
                 shouldShowMasterPasswordReprompt = false,
                 iconTestTag = null,
                 isTotp = false,
-                type = null,
+                itemType = VaultItemListingState.DisplayItem.ItemType.Sends(type = sendType),
             )
         }
     }

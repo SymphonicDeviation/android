@@ -3,7 +3,7 @@ package com.x8bit.bitwarden.ui.auth.feature.checkemail
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModel
+import com.bitwarden.ui.platform.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -21,7 +21,7 @@ class CheckEmailViewModel @Inject constructor(
 ) : BaseViewModel<CheckEmailState, CheckEmailEvent, CheckEmailAction>(
     initialState = savedStateHandle[KEY_STATE]
         ?: CheckEmailState(
-            email = CheckEmailArgs(savedStateHandle).emailAddress,
+            email = savedStateHandle.toCheckEmailArgs().emailAddress,
         ),
 ) {
     init {

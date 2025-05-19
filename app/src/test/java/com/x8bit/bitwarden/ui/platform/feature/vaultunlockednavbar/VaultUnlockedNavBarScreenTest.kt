@@ -4,9 +4,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.navOptions
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.ui.platform.base.createMockNavHostController
 import com.x8bit.bitwarden.R
-import com.x8bit.bitwarden.ui.platform.base.BaseComposeTest
-import com.x8bit.bitwarden.ui.platform.base.FakeNavHostController
+import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
+import com.x8bit.bitwarden.ui.platform.feature.settings.SettingsGraphRoute
+import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorGraphRoute
+import com.x8bit.bitwarden.ui.tools.feature.send.SendGraphRoute
+import com.x8bit.bitwarden.ui.vault.feature.vault.VaultGraphRoute
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -15,8 +19,8 @@ import kotlinx.coroutines.flow.update
 import org.junit.Before
 import org.junit.Test
 
-class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
-    private val fakeNavHostController = FakeNavHostController()
+class VaultUnlockedNavBarScreenTest : BitwardenComposeTest() {
+    private val mockNavHostController = createMockNavHostController()
     private val mutableEventFlow = bufferedMutableSharedFlow<VaultUnlockedNavBarEvent>()
     private val mutableStateFlow = MutableStateFlow(DEFAULT_STATE)
     val viewModel = mockk<VaultUnlockedNavBarViewModel>(relaxed = true) {
@@ -26,7 +30,7 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
 
     private val expectedNavOptions = navOptions {
         // When changing root navigation state, pop everything else off the back stack:
-        popUpTo(fakeNavHostController.graphId) {
+        popUpTo(id = mockNavHostController.graph.id) {
             inclusive = false
             saveState = true
         }
@@ -36,44 +40,41 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
 
     @Before
     fun setup() {
-        composeTestRule.apply {
-            setContent {
-                VaultUnlockedNavBarScreen(
-                    viewModel = viewModel,
-                    navController = fakeNavHostController,
-                    onNavigateToVaultAddItem = {},
-                    onNavigateToVaultItem = {},
-                    onNavigateToVaultEditItem = {},
-                    onNavigateToAddSend = {},
-                    onNavigateToEditSend = {},
-                    onNavigateToDeleteAccount = {},
-                    onNavigateToExportVault = {},
-                    onNavigateToFolders = {},
-                    onNavigateToPasswordHistory = {},
-                    onNavigateToPendingRequests = {},
-                    onNavigateToSearchVault = {},
-                    onNavigateToSearchSend = {},
-                    onNavigateToSetupAutoFillScreen = {},
-                    onNavigateToSetupUnlockScreen = {},
-                    onNavigateToImportLogins = {},
-                    onNavigateToAddFolderScreen = {},
-                    onNavigateToFlightRecorder = {},
-                    onNavigateToRecordedLogs = {},
-                )
-            }
+        setContent {
+            VaultUnlockedNavBarScreen(
+                viewModel = viewModel,
+                navController = mockNavHostController,
+                onNavigateToVaultAddItem = {},
+                onNavigateToVaultItem = {},
+                onNavigateToVaultEditItem = {},
+                onNavigateToAddSend = {},
+                onNavigateToEditSend = {},
+                onNavigateToViewSend = {},
+                onNavigateToDeleteAccount = {},
+                onNavigateToExportVault = {},
+                onNavigateToFolders = {},
+                onNavigateToPasswordHistory = {},
+                onNavigateToPendingRequests = {},
+                onNavigateToSearchVault = {},
+                onNavigateToSearchSend = {},
+                onNavigateToSetupAutoFillScreen = {},
+                onNavigateToSetupUnlockScreen = {},
+                onNavigateToImportLogins = {},
+                onNavigateToAddFolderScreen = {},
+                onNavigateToFlightRecorder = {},
+                onNavigateToRecordedLogs = {},
+            )
         }
     }
 
     @Test
     fun `vault tab click should send VaultTabClick action`() {
-        composeTestRule.onNodeWithText("My vault").performClick()
+        composeTestRule.onNodeWithText(text = "My vault").performClick()
         verify { viewModel.trySendAction(VaultUnlockedNavBarAction.VaultTabClick) }
     }
 
     @Test
     fun `NavigateToVaultScreen should navigate to VaultScreen`() {
-        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSendScreen)
-        composeTestRule.runOnIdle { fakeNavHostController.assertCurrentRoute("send_graph") }
         mutableEventFlow.tryEmit(
             VaultUnlockedNavBarEvent.NavigateToVaultScreen(
                 labelRes = R.string.my_vault,
@@ -81,17 +82,17 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
             ),
         )
         composeTestRule.runOnIdle {
-            fakeNavHostController.assertLastNavigation(
-                route = "vault_graph",
-                navOptions = expectedNavOptions,
-            )
+            verify {
+                mockNavHostController.navigate(
+                    route = VaultGraphRoute,
+                    navOptions = expectedNavOptions,
+                )
+            }
         }
     }
 
     @Test
     fun `NavigateToVaultScreen shortcut event should navigate to VaultScreen`() {
-        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSendScreen)
-        composeTestRule.runOnIdle { fakeNavHostController.assertCurrentRoute("send_graph") }
         mutableEventFlow.tryEmit(
             VaultUnlockedNavBarEvent.Shortcut.NavigateToVaultScreen(
                 labelRes = R.string.my_vault,
@@ -99,8 +100,8 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
             ),
         )
         composeTestRule.runOnIdle {
-            fakeNavHostController.assertLastNavigation(
-                route = "vault_graph",
+            mockNavHostController.navigate(
+                route = VaultGraphRoute,
                 navOptions = expectedNavOptions,
             )
         }
@@ -108,97 +109,83 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
 
     @Test
     fun `NavigateToSettingsScreen shortcut event should navigate to SettingsScreen`() {
-        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSendScreen)
-        composeTestRule.runOnIdle { fakeNavHostController.assertCurrentRoute("send_graph") }
-        mutableEventFlow.tryEmit(
-            VaultUnlockedNavBarEvent.Shortcut.NavigateToSettingsScreen,
-        )
+        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.Shortcut.NavigateToSettingsScreen)
         composeTestRule.runOnIdle {
-            fakeNavHostController.assertLastNavigation(
-                route = "settings_graph",
+            verify {
+                mockNavHostController.navigate(
+                    route = SettingsGraphRoute,
+                    navOptions = expectedNavOptions,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `send tab click should send SendTabClick action`() {
+        composeTestRule.onNodeWithText(text = "Send").performClick()
+        verify { viewModel.trySendAction(VaultUnlockedNavBarAction.SendTabClick) }
+    }
+
+    @Test
+    fun `NavigateToSendScreen should navigate to SendScreen`() {
+        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSendScreen)
+        composeTestRule.runOnIdle {
+            mockNavHostController.navigate(
+                route = SendGraphRoute,
                 navOptions = expectedNavOptions,
             )
         }
     }
 
     @Test
-    fun `send tab click should send SendTabClick action`() {
-        composeTestRule.onNodeWithText("Send").performClick()
-        verify { viewModel.trySendAction(VaultUnlockedNavBarAction.SendTabClick) }
-    }
-
-    @Test
-    fun `NavigateToSendScreen should navigate to SendScreen`() {
-        composeTestRule.apply {
-            runOnIdle { fakeNavHostController.assertCurrentRoute("vault_graph") }
-            mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSendScreen)
-            runOnIdle {
-                fakeNavHostController.assertLastNavigation(
-                    route = "send_graph",
-                    navOptions = expectedNavOptions,
-                )
-            }
-        }
-    }
-
-    @Test
     fun `generator tab click should send GeneratorTabClick action`() {
-        composeTestRule.onNodeWithText("Generator").performClick()
+        composeTestRule.onNodeWithText(text = "Generator").performClick()
         verify { viewModel.trySendAction(VaultUnlockedNavBarAction.GeneratorTabClick) }
     }
 
     @Test
     fun `NavigateToGeneratorScreen should navigate to GeneratorScreen`() {
-        composeTestRule.apply {
-            runOnIdle { fakeNavHostController.assertCurrentRoute("vault_graph") }
-            mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToGeneratorScreen)
-            runOnIdle {
-                fakeNavHostController.assertLastNavigation(
-                    route = "generator_graph",
-                    navOptions = expectedNavOptions,
-                )
-            }
+        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToGeneratorScreen)
+        composeTestRule.runOnIdle {
+            mockNavHostController.navigate(
+                route = GeneratorGraphRoute,
+                navOptions = expectedNavOptions,
+            )
         }
     }
 
     @Test
-    fun `NavigateToGeneratorScreen  shortcut event should navigate to GeneratorScreen`() {
-        composeTestRule.apply {
-            runOnIdle { fakeNavHostController.assertCurrentRoute("vault_graph") }
-            mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.Shortcut.NavigateToGeneratorScreen)
-            runOnIdle {
-                fakeNavHostController.assertLastNavigation(
-                    route = "generator_graph",
-                    navOptions = expectedNavOptions,
-                )
-            }
+    fun `NavigateToGeneratorScreen shortcut event should navigate to GeneratorScreen`() {
+        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.Shortcut.NavigateToGeneratorScreen)
+        composeTestRule.runOnIdle {
+            mockNavHostController.navigate(
+                route = GeneratorGraphRoute,
+                navOptions = expectedNavOptions,
+            )
         }
     }
 
     @Test
     fun `settings tab click should send SendTabClick action`() {
-        composeTestRule.onNodeWithText("Settings").performClick()
+        composeTestRule.onNodeWithText(text = "Settings").performClick()
         verify { viewModel.trySendAction(VaultUnlockedNavBarAction.SettingsTabClick) }
     }
 
     @Test
     fun `NavigateToSettingsScreen should navigate to SettingsScreen`() {
-        composeTestRule.apply {
-            runOnIdle { fakeNavHostController.assertCurrentRoute("vault_graph") }
-            mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSettingsScreen)
-            runOnIdle {
-                fakeNavHostController.assertLastNavigation(
-                    route = "settings_graph",
-                    navOptions = expectedNavOptions,
-                )
-            }
+        mutableEventFlow.tryEmit(VaultUnlockedNavBarEvent.NavigateToSettingsScreen)
+        composeTestRule.runOnIdle {
+            mockNavHostController.navigate(
+                route = SettingsGraphRoute,
+                navOptions = expectedNavOptions,
+            )
         }
     }
 
     @Test
     fun `vault nav bar should update according to state`() {
-        composeTestRule.onNodeWithText("My vault").assertExists()
-        composeTestRule.onNodeWithText("Vaults").assertDoesNotExist()
+        composeTestRule.onNodeWithText(text = "My vault").assertExists()
+        composeTestRule.onNodeWithText(text = "Vaults").assertDoesNotExist()
 
         mutableStateFlow.tryEmit(
             VaultUnlockedNavBarState(
@@ -210,8 +197,8 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
             ),
         )
 
-        composeTestRule.onNodeWithText("My vault").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Vaults").assertExists()
+        composeTestRule.onNodeWithText(text = "My vault").assertDoesNotExist()
+        composeTestRule.onNodeWithText(text = "Vaults").assertExists()
     }
 
     @Suppress("MaxLineLength")
@@ -225,7 +212,7 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
             )
         }
         composeTestRule
-            .onNodeWithText("1", useUnmergedTree = true)
+            .onNodeWithText(text = "1", useUnmergedTree = true)
             .assertExists()
 
         mutableStateFlow.update {
@@ -236,7 +223,7 @@ class VaultUnlockedNavBarScreenTest : BaseComposeTest() {
             )
         }
         composeTestRule
-            .onNodeWithText("1", useUnmergedTree = true)
+            .onNodeWithText(text = "1", useUnmergedTree = true)
             .assertDoesNotExist()
     }
 }

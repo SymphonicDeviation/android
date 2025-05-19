@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
 import com.bitwarden.vault.CipherView
@@ -18,7 +19,6 @@ import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.CreateAttachmentResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteAttachmentResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
 import com.x8bit.bitwarden.ui.vault.feature.attachments.util.toViewState
 import io.mockk.coEvery
@@ -47,13 +47,19 @@ class AttachmentsViewModelTest : BaseViewModelTest() {
 
     @BeforeEach
     fun setup() {
-        mockkStatic(CipherView::toViewState)
+        mockkStatic(
+            SavedStateHandle::toAttachmentsArgs,
+            CipherView::toViewState,
+        )
         mockkStatic(Uri::class)
     }
 
     @AfterEach
     fun tearDown() {
-        unmockkStatic(CipherView::toViewState)
+        unmockkStatic(
+            SavedStateHandle::toAttachmentsArgs,
+            CipherView::toViewState,
+        )
         unmockkStatic(Uri::class)
     }
 
@@ -624,7 +630,9 @@ class AttachmentsViewModelTest : BaseViewModelTest() {
         vaultRepo = vaultRepository,
         savedStateHandle = SavedStateHandle().apply {
             set("state", initialState)
-            set("cipher_id", initialState?.cipherId ?: "mockId-1")
+            every {
+                toAttachmentsArgs()
+            } returns AttachmentsArgs(cipherId = initialState?.cipherId ?: "mockId-1")
         },
     )
 }

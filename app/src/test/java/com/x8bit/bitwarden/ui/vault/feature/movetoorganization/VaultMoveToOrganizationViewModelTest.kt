@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.data.repository.model.Environment
 import com.bitwarden.network.model.OrganizationType
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
 import com.bitwarden.vault.CipherView
@@ -19,24 +20,26 @@ import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCollectionView
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.ShareCipherResult
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.vault.feature.movetoorganization.util.createMockOrganizationList
 import com.x8bit.bitwarden.ui.vault.model.VaultCollection
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class VaultMoveToOrganizationViewModelTest : BaseViewModelTest() {
 
     private val initialState = createVaultMoveToOrganizationState()
-    private val initialSavedStateHandle = createSavedStateHandleWithState(
-        state = initialState,
-    )
+    private val initialSavedStateHandle
+        get() = createSavedStateHandleWithState(state = initialState)
 
     private val mutableVaultItemFlow = MutableStateFlow<DataState<CipherView?>>(DataState.Loading)
 
@@ -52,6 +55,16 @@ class VaultMoveToOrganizationViewModelTest : BaseViewModelTest() {
 
     private val authRepository: AuthRepository = mockk {
         every { userStateFlow } returns mutableUserStateFlow
+    }
+
+    @BeforeEach
+    fun setup() {
+        mockkStatic(SavedStateHandle::toVaultMoveToOrganizationArgs)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        unmockkStatic(SavedStateHandle::toVaultMoveToOrganizationArgs)
     }
 
     @Test
@@ -456,8 +469,10 @@ class VaultMoveToOrganizationViewModelTest : BaseViewModelTest() {
         showOnlyCollections: Boolean = false,
     ) = SavedStateHandle().apply {
         set("state", state)
-        set("vault_move_to_organization_id", vaultItemId)
-        set("vault_move_to_organization_only_collections", "$showOnlyCollections")
+        every { toVaultMoveToOrganizationArgs() } returns VaultMoveToOrganizationArgs(
+            vaultItemId = vaultItemId,
+            showOnlyCollections = showOnlyCollections,
+        )
     }
 
     @Suppress("MaxLineLength")
@@ -499,6 +514,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldUseKeyConnector = false,
                     role = OrganizationType.ADMIN,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
                 Organization(
                     id = "mockOrganizationId-2",
@@ -507,6 +523,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldUseKeyConnector = false,
                     role = OrganizationType.ADMIN,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
                 Organization(
                     id = "mockOrganizationId-3",
@@ -515,6 +532,7 @@ private val DEFAULT_USER_STATE = UserState(
                     shouldUseKeyConnector = false,
                     role = OrganizationType.ADMIN,
                     keyConnectorUrl = null,
+                    userIsClaimedByOrganization = false,
                 ),
             ),
             trustedDevice = null,

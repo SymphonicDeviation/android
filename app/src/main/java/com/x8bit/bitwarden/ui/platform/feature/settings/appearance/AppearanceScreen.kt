@@ -23,17 +23,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitwarden.ui.platform.base.util.EventsEffect
+import com.bitwarden.ui.platform.components.model.CardStyle
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.R
-import com.x8bit.bitwarden.ui.platform.base.util.EventsEffect
 import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.x8bit.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
+import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
 import com.x8bit.bitwarden.ui.platform.components.dropdown.BitwardenMultiSelectButton
-import com.x8bit.bitwarden.ui.platform.components.model.CardStyle
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
 import com.x8bit.bitwarden.ui.platform.components.toggle.BitwardenSwitch
 import com.x8bit.bitwarden.ui.platform.components.util.rememberVectorPainter
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.ui.platform.util.displayLabel
 import kotlinx.collections.immutable.toImmutableList
 
@@ -53,6 +54,16 @@ fun AppearanceScreen(
             AppearanceEvent.NavigateBack -> onNavigateBack.invoke()
         }
     }
+
+    AppearanceDialogs(
+        dialogState = state.dialogState,
+        onConfirmEnableDynamicColorsClick = remember(viewModel) {
+            { viewModel.trySendAction(AppearanceAction.ConfirmEnableDynamicColorsClick) }
+        },
+        onDismissDialog = remember(viewModel) {
+            { viewModel.trySendAction(AppearanceAction.DismissDialog) }
+        },
+    )
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     BitwardenScaffold(
@@ -100,6 +111,20 @@ fun AppearanceScreen(
             )
             Spacer(modifier = Modifier.height(height = 8.dp))
             BitwardenSwitch(
+                label = stringResource(id = R.string.dynamic_colors),
+                supportingText = stringResource(id = R.string.dynamic_colors_description),
+                isChecked = state.isDynamicColorsEnabled,
+                onCheckedChange = remember(viewModel) {
+                    { viewModel.trySendAction(AppearanceAction.DynamicColorsToggle(it)) }
+                },
+                cardStyle = CardStyle.Full,
+                modifier = Modifier
+                    .testTag("DynamicColorsSwitch")
+                    .fillMaxWidth()
+                    .standardHorizontalMargin(),
+            )
+            Spacer(modifier = Modifier.height(height = 8.dp))
+            BitwardenSwitch(
                 label = stringResource(id = R.string.show_website_icons),
                 supportingText = stringResource(id = R.string.show_website_icons_description),
                 isChecked = state.showWebsiteIcons,
@@ -115,6 +140,31 @@ fun AppearanceScreen(
             Spacer(modifier = Modifier.height(height = 16.dp))
             Spacer(modifier = Modifier.navigationBarsPadding())
         }
+    }
+}
+
+@Composable
+private fun AppearanceDialogs(
+    dialogState: AppearanceState.DialogState?,
+    onConfirmEnableDynamicColorsClick: () -> Unit,
+    onDismissDialog: () -> Unit,
+) {
+    when (dialogState) {
+        AppearanceState.DialogState.EnableDynamicColors -> {
+            BitwardenTwoButtonDialog(
+                title = stringResource(id = R.string.dynamic_colors),
+                message = stringResource(
+                    id = R.string.dynamic_colors_may_not_adhere_to_accessibility_guidelines,
+                ),
+                confirmButtonText = stringResource(R.string.ok),
+                dismissButtonText = stringResource(R.string.cancel),
+                onConfirmClick = onConfirmEnableDynamicColorsClick,
+                onDismissClick = onDismissDialog,
+                onDismissRequest = onDismissDialog,
+            )
+        }
+
+        else -> Unit
     }
 }
 

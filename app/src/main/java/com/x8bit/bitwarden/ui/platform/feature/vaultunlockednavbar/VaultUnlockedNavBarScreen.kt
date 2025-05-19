@@ -19,7 +19,8 @@ import androidx.navigation.NavOptions
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navOptions
-import com.x8bit.bitwarden.ui.platform.base.util.EventsEffect
+import com.bitwarden.ui.platform.base.util.EventsEffect
+import com.bitwarden.ui.platform.theme.RootTransitionProviders
 import com.x8bit.bitwarden.ui.platform.components.model.NavigationItem
 import com.x8bit.bitwarden.ui.platform.components.model.ScaffoldNavigationData
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
@@ -31,14 +32,14 @@ import com.x8bit.bitwarden.ui.platform.feature.settings.navigateToSettingsGraphR
 import com.x8bit.bitwarden.ui.platform.feature.settings.settingsGraph
 import com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.model.VaultUnlockedNavBarTab
 import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
-import com.x8bit.bitwarden.ui.platform.theme.RootTransitionProviders
 import com.x8bit.bitwarden.ui.tools.feature.generator.generatorGraph
 import com.x8bit.bitwarden.ui.tools.feature.generator.navigateToGeneratorGraph
 import com.x8bit.bitwarden.ui.tools.feature.send.navigateToSendGraph
 import com.x8bit.bitwarden.ui.tools.feature.send.sendGraph
+import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.ViewSendRoute
 import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
 import com.x8bit.bitwarden.ui.vault.feature.item.VaultItemArgs
-import com.x8bit.bitwarden.ui.vault.feature.vault.VAULT_GRAPH_ROUTE
+import com.x8bit.bitwarden.ui.vault.feature.vault.VaultGraphRoute
 import com.x8bit.bitwarden.ui.vault.feature.vault.navigateToVaultGraph
 import com.x8bit.bitwarden.ui.vault.feature.vault.vaultGraph
 import kotlinx.collections.immutable.persistentListOf
@@ -60,6 +61,7 @@ fun VaultUnlockedNavBarScreen(
     onNavigateToSearchVault: (searchType: SearchType.Vault) -> Unit,
     onNavigateToAddSend: () -> Unit,
     onNavigateToEditSend: (sendItemId: String) -> Unit,
+    onNavigateToViewSend: (ViewSendRoute) -> Unit,
     onNavigateToDeleteAccount: () -> Unit,
     onNavigateToExportVault: () -> Unit,
     onNavigateToFolders: () -> Unit,
@@ -122,6 +124,7 @@ fun VaultUnlockedNavBarScreen(
         onNavigateToSearchVault = onNavigateToSearchVault,
         navigateToAddSend = onNavigateToAddSend,
         onNavigateToEditSend = onNavigateToEditSend,
+        onNavigateToViewSend = onNavigateToViewSend,
         navigateToDeleteAccount = onNavigateToDeleteAccount,
         navigateToExportVault = onNavigateToExportVault,
         navigateToFolders = onNavigateToFolders,
@@ -167,6 +170,7 @@ private fun VaultUnlockedNavBarScaffold(
     onNavigateToSearchVault: (searchType: SearchType.Vault) -> Unit,
     navigateToAddSend: () -> Unit,
     onNavigateToEditSend: (sendItemId: String) -> Unit,
+    onNavigateToViewSend: (ViewSendRoute) -> Unit,
     navigateToDeleteAccount: () -> Unit,
     navigateToExportVault: () -> Unit,
     navigateToFolders: () -> Unit,
@@ -216,7 +220,7 @@ private fun VaultUnlockedNavBarScaffold(
         // - consume the IME insets.
         NavHost(
             navController = navController,
-            startDestination = VAULT_GRAPH_ROUTE,
+            startDestination = VaultGraphRoute,
             enterTransition = RootTransitionProviders.Enter.fadeIn,
             exitTransition = RootTransitionProviders.Exit.fadeOut,
             popEnterTransition = RootTransitionProviders.Enter.fadeIn,
@@ -240,6 +244,7 @@ private fun VaultUnlockedNavBarScaffold(
                 navController = navController,
                 onNavigateToAddSend = navigateToAddSend,
                 onNavigateToEditSend = onNavigateToEditSend,
+                onNavigateToViewSend = onNavigateToViewSend,
                 onNavigateToSearchSend = onNavigateToSearchSend,
             )
             generatorGraph(

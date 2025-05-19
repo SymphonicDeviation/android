@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.data.datasource.disk.model.EnvironmentUrlDataJson
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
@@ -13,9 +14,9 @@ import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.SwitchAccountResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.VaultUnlockType
-import com.x8bit.bitwarden.data.autofill.fido2.manager.Fido2CredentialManager
-import com.x8bit.bitwarden.data.autofill.fido2.model.createMockFido2CredentialAssertionRequest
-import com.x8bit.bitwarden.data.autofill.fido2.model.createMockFido2GetCredentialsRequest
+import com.x8bit.bitwarden.data.credentials.manager.BitwardenCredentialManager
+import com.x8bit.bitwarden.data.credentials.model.createMockFido2CredentialAssertionRequest
+import com.x8bit.bitwarden.data.credentials.model.createMockGetCredentialsRequest
 import com.x8bit.bitwarden.data.platform.manager.AppResumeManager
 import com.x8bit.bitwarden.data.platform.manager.BiometricsEncryptionManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
@@ -28,7 +29,6 @@ import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockResult
 import com.x8bit.bitwarden.ui.auth.feature.vaultunlock.model.UnlockType
 import com.x8bit.bitwarden.ui.auth.feature.vaultunlock.util.unlockScreenInputLabel
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.components.model.AccountSummary
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toAccountSummary
 import io.mockk.coEvery
@@ -36,14 +36,18 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkStatic
 import io.mockk.runs
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import javax.crypto.Cipher
 
@@ -79,7 +83,7 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
             )
         } returns false
     }
-    private val fido2CredentialManager: Fido2CredentialManager = mockk {
+    private val bitwardenCredentialManager: BitwardenCredentialManager = mockk {
         every { isUserVerified } returns true
         every { isUserVerified = any() } just runs
     }
@@ -95,6 +99,16 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
 
     private val vaultLockManager: VaultLockManager = mockk(relaxed = true) {
         every { isFromLockFlow } returns false
+    }
+
+    @BeforeEach
+    fun setup() {
+        mockkStatic(SavedStateHandle::toVaultUnlockArgs)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        unmockkStatic(SavedStateHandle::toVaultUnlockArgs)
     }
 
     @Test
@@ -207,8 +221,8 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
     fun `showAccountMenu should be false when unlocking for FIDO 2 credential discovery`() {
         every {
             specialCircumstanceManager.specialCircumstance
-        } returns SpecialCircumstance.Fido2GetCredentials(
-            createMockFido2GetCredentialsRequest(number = 1),
+        } returns SpecialCircumstance.ProviderGetCredentials(
+            createMockGetCredentialsRequest(number = 1),
         )
         val viewModel = createViewModel()
 
@@ -371,9 +385,9 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
     @Suppress("MaxLineLength")
     @Test
     fun `UserState updates with a FIDO2 GetCredentialsRequest should switch accounts when the requested user is not the active user`() {
-        val mockFido2GetCredentialsRequest = createMockFido2GetCredentialsRequest(number = 1)
+        val mockFido2GetCredentialsRequest = createMockGetCredentialsRequest(number = 1)
         val initialState = DEFAULT_STATE.copy(
-            fido2GetCredentialsRequest = mockFido2GetCredentialsRequest,
+            getCredentialsRequest = mockFido2GetCredentialsRequest,
             accountSummaries = listOf(
                 DEFAULT_ACCOUNT.copy(isVaultUnlocked = false)
                     .toAccountSummary(isActive = true),
@@ -401,12 +415,12 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
     @Suppress("MaxLineLength")
     @Test
     fun `UserState updates with a FIDO2 GetCredentialsRequest should not switch accounts when the requested user is the active user`() {
-        val mockFido2GetCredentialsRequest = createMockFido2GetCredentialsRequest(
+        val mockFido2GetCredentialsRequest = createMockGetCredentialsRequest(
             number = 1,
             userId = DEFAULT_USER_STATE.activeUserId,
         )
         val initialState = DEFAULT_STATE.copy(
-            fido2GetCredentialsRequest = mockFido2GetCredentialsRequest,
+            getCredentialsRequest = mockFido2GetCredentialsRequest,
             accountSummaries = listOf(
                 DEFAULT_ACCOUNT.copy(isVaultUnlocked = false)
                     .toAccountSummary(isActive = true),
@@ -592,7 +606,7 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
     fun `on DismissDialog should emit Fido2GetCredentialsError when state has Fido2GetCredentialsRequest`() =
         runTest {
             val initialState = DEFAULT_STATE.copy(
-                fido2GetCredentialsRequest = createMockFido2GetCredentialsRequest(number = 1),
+                getCredentialsRequest = createMockGetCredentialsRequest(number = 1),
             )
             val viewModel = createViewModel(state = initialState)
             viewModel.trySendAction(VaultUnlockAction.DismissDialog)
@@ -1275,8 +1289,11 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
     @Suppress("MaxLineLength")
     @Test
     fun `on ReceiveVaultUnlockResult should set FIDO 2 user verification state to verified when result is Success`() {
-        val viewModel = createViewModel()
-
+        val viewModel = createViewModel(
+            state = DEFAULT_STATE.copy(
+                getCredentialsRequest = mockk(relaxed = true),
+            ),
+        )
         viewModel.trySendAction(
             VaultUnlockAction.Internal.ReceiveVaultUnlockResult(
                 userId = "activeUserId",
@@ -1285,7 +1302,7 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
             ),
         )
 
-        verify { fido2CredentialManager.isUserVerified = true }
+        verify { bitwardenCredentialManager.isUserVerified = true }
     }
 
     @Suppress("MaxLineLength")
@@ -1301,7 +1318,7 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
             ),
         )
 
-        verify { fido2CredentialManager.isUserVerified = false }
+        verify { bitwardenCredentialManager.isUserVerified = false }
     }
 
     @Test
@@ -1344,13 +1361,13 @@ class VaultUnlockViewModelTest : BaseViewModelTest() {
     ): VaultUnlockViewModel = VaultUnlockViewModel(
         savedStateHandle = SavedStateHandle().apply {
             set("state", state)
-            set("unlock_type", unlockType)
+            every { toVaultUnlockArgs() } returns VaultUnlockArgs(unlockType = unlockType)
         },
         authRepository = authRepository,
         vaultRepo = vaultRepo,
         environmentRepo = environmentRepo,
         biometricsEncryptionManager = biometricsEncryptionManager,
-        fido2CredentialManager = fido2CredentialManager,
+        bitwardenCredentialManager = bitwardenCredentialManager,
         specialCircumstanceManager = specialCircumstanceManager,
         appResumeManager = appResumeManager,
         vaultLockManager = lockManager,

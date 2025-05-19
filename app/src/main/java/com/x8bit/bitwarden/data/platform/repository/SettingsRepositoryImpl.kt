@@ -5,6 +5,7 @@ import com.bitwarden.authenticatorbridge.util.generateSecretKey
 import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.network.model.SyncResponseJson
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.BuildConfig
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.auth.repository.model.PolicyInformation
@@ -23,7 +24,6 @@ import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeout
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,6 +85,22 @@ class SettingsRepositoryImpl(
                 scope = unconfinedScope,
                 started = SharingStarted.Eagerly,
                 initialValue = settingsDiskSource.appTheme,
+            )
+
+    override var isDynamicColorsEnabled: Boolean
+        get() = settingsDiskSource.isDynamicColorsEnabled ?: false
+        set(value) {
+            settingsDiskSource.isDynamicColorsEnabled = value
+        }
+
+    override val isDynamicColorsEnabledFlow: StateFlow<Boolean>
+        get() = settingsDiskSource
+            .isDynamicColorsEnabledFlow
+            .map { it ?: false }
+            .stateIn(
+                scope = unconfinedScope,
+                started = SharingStarted.Eagerly,
+                initialValue = isDynamicColorsEnabled,
             )
 
     override var initialAutofillDialogShown: Boolean

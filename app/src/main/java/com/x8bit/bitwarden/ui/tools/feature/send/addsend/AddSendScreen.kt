@@ -9,10 +9,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -20,8 +17,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitwarden.ui.platform.base.util.EventsEffect
 import com.x8bit.bitwarden.R
-import com.x8bit.bitwarden.ui.platform.base.util.EventsEffect
 import com.x8bit.bitwarden.ui.platform.base.util.scrolledContainerBottomDivider
 import com.x8bit.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.x8bit.bitwarden.ui.platform.components.appbar.NavigationIcon
@@ -32,7 +29,6 @@ import com.x8bit.bitwarden.ui.platform.components.content.BitwardenErrorContent
 import com.x8bit.bitwarden.ui.platform.components.content.BitwardenLoadingContent
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenBasicDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenLoadingDialog
-import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
 import com.x8bit.bitwarden.ui.platform.components.model.TopAppBarDividerStyle
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
 import com.x8bit.bitwarden.ui.platform.components.segment.BitwardenSegmentedButton
@@ -60,6 +56,7 @@ fun AddSendScreen(
     intentManager: IntentManager = LocalIntentManager.current,
     permissionsManager: PermissionsManager = LocalPermissionsManager.current,
     onNavigateBack: () -> Unit,
+    onNavigateUpToRoot: () -> Unit,
 ) {
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     val addSendHandlers = remember(viewModel) { AddSendHandlers.create(viewModel) }
@@ -84,6 +81,8 @@ fun AddSendScreen(
 
             is AddSendEvent.NavigateBack -> onNavigateBack()
 
+            is AddSendEvent.NavigateToRoot -> onNavigateUpToRoot()
+
             is AddSendEvent.ShowChooserSheet -> {
                 fileChooserLauncher.launch(
                     intentManager.createFileChooserIntent(event.withCameraOption),
@@ -106,24 +105,6 @@ fun AddSendScreen(
             { viewModel.trySendAction(AddSendAction.DismissDialogClick) }
         },
     )
-    var shouldShowDeleteConfirmationDialog by rememberSaveable { mutableStateOf(false) }
-    if (shouldShowDeleteConfirmationDialog) {
-        BitwardenTwoButtonDialog(
-            title = stringResource(id = R.string.delete),
-            message = stringResource(id = R.string.are_you_sure_delete_send),
-            confirmButtonText = stringResource(id = R.string.yes),
-            dismissButtonText = stringResource(id = R.string.cancel),
-            onConfirmClick = remember(viewModel) {
-                {
-                    viewModel.trySendAction(AddSendAction.DeleteClick)
-                    shouldShowDeleteConfirmationDialog = false
-                }
-            },
-            onDismissClick = { shouldShowDeleteConfirmationDialog = false },
-            onDismissRequest = { shouldShowDeleteConfirmationDialog = false },
-        )
-    }
-
     BitwardenScaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -178,10 +159,6 @@ fun AddSendScreen(
                                     },
                                 )
                                     .takeIf { !state.policyDisablesSend },
-                                OverflowMenuItemData(
-                                    text = stringResource(id = R.string.delete),
-                                    onClick = { shouldShowDeleteConfirmationDialog = true },
-                                ),
                             ),
                         )
                     }

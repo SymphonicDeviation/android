@@ -77,6 +77,7 @@ import com.x8bit.bitwarden.data.auth.manager.KeyConnectorManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
 import com.x8bit.bitwarden.data.auth.manager.model.AuthRequest
+import com.x8bit.bitwarden.data.auth.manager.model.MigrateExistingUserToKeyConnectorResult
 import com.x8bit.bitwarden.data.auth.repository.model.AuthState
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.DeleteAccountResult
@@ -170,9 +171,11 @@ class AuthRepositoryTest {
     private val haveIBeenPwnedService: HaveIBeenPwnedService = mockk()
     private val organizationService: OrganizationService = mockk()
     private val mutableVaultUnlockDataStateFlow = MutableStateFlow(VAULT_UNLOCK_DATA)
+    private val mutableIsActiveUserUnlockingFlow = MutableStateFlow(false)
     private val vaultRepository: VaultRepository = mockk {
         every { vaultUnlockDataStateFlow } returns mutableVaultUnlockDataStateFlow
         every { deleteVaultData(any()) } just runs
+        every { isActiveUserUnlockingFlow } returns mutableIsActiveUserUnlockingFlow
     }
     private val fakeAuthDiskSource = FakeAuthDiskSource()
     private val fakeEnvironmentRepository =
@@ -254,7 +257,6 @@ class AuthRepositoryTest {
 
     private val featureFlagManager: FeatureFlagManager = mockk(relaxed = true) {
         every { getFeatureFlag(FlagKey.OnboardingFlow) } returns false
-        every { getFeatureFlag(FlagKey.IgnoreEnvironmentCheck) } returns false
     }
 
     private val firstTimeActionManager = mockk<FirstTimeActionManager> {
@@ -2389,6 +2391,47 @@ class AuthRepositoryTest {
             result,
         )
     }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `login get token returns invalid request should return EncryptionKeyMigrationRequired`() =
+        runTest {
+            coEvery { identityService.preLogin(EMAIL) } returns PRE_LOGIN_SUCCESS.asSuccess()
+            coEvery {
+                identityService.getToken(
+                    email = EMAIL,
+                    authModel = IdentityTokenAuthModel.MasterPassword(
+                        username = EMAIL,
+                        password = PASSWORD_HASH,
+                    ),
+                    captchaToken = null,
+                    uniqueAppId = UNIQUE_APP_ID,
+                )
+            } returns GetTokenResponseJson
+                .Invalid(
+                    errorModel = GetTokenResponseJson.Invalid.ErrorModel(
+                        errorMessage =
+                            "Encryption key migration is required. Please log in to the web vault at",
+                    ),
+                )
+                .asSuccess()
+
+            val result = repository.login(email = EMAIL, password = PASSWORD, captchaToken = null)
+            assertEquals(LoginResult.EncryptionKeyMigrationRequired, result)
+            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
+            coVerify {
+                identityService.preLogin(email = EMAIL)
+                identityService.getToken(
+                    email = EMAIL,
+                    authModel = IdentityTokenAuthModel.MasterPassword(
+                        username = EMAIL,
+                        password = PASSWORD_HASH,
+                    ),
+                    captchaToken = null,
+                    uniqueAppId = UNIQUE_APP_ID,
+                )
+            }
+        }
 
     @Test
     fun `login with device get token fails should return Error with no message`() = runTest {
@@ -4677,6 +4720,7 @@ class AuthRepositoryTest {
                 every { shouldUseKeyConnector } returns true
                 every { type } returns OrganizationType.USER
                 every { keyConnectorUrl } returns null
+                every { userIsClaimedByOrganization } returns false
             },
         )
         fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
@@ -4690,7 +4734,7 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `removePassword with migrateExistingUserToKeyConnector error should return error`() =
+    fun `removePassword with migrateExistingUserToKeyConnector exception should return error`() =
         runTest {
             fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
             fakeAuthDiskSource.storeUserKey(userId = USER_ID_1, userKey = ENCRYPTED_USER_KEY)
@@ -4706,6 +4750,7 @@ class AuthRepositoryTest {
                     every { shouldUseKeyConnector } returns true
                     every { type } returns OrganizationType.USER
                     every { keyConnectorUrl } returns url
+                    every { userIsClaimedByOrganization } returns false
                 },
             )
             fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
@@ -4725,6 +4770,88 @@ class AuthRepositoryTest {
             assertEquals(RemovePasswordResult.Error(error = error), result)
         }
 
+    @Test
+    fun `removePassword with migrateExistingUserToKeyConnector error should return error`() =
+        runTest {
+            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+            fakeAuthDiskSource.storeUserKey(userId = USER_ID_1, userKey = ENCRYPTED_USER_KEY)
+            val url = "www.example.com"
+            val error = Throwable("Fail!")
+            val expectedResult = MigrateExistingUserToKeyConnectorResult.Error(error)
+            val organizations = listOf(
+                mockk<SyncResponseJson.Profile.Organization> {
+                    every { id } returns "orgId"
+                    every { name } returns "orgName"
+                    every { permissions } returns mockk {
+                        every { shouldManageResetPassword } returns false
+                    }
+                    every { shouldUseKeyConnector } returns true
+                    every { type } returns OrganizationType.USER
+                    every { keyConnectorUrl } returns url
+                    every { userIsClaimedByOrganization } returns false
+                },
+            )
+            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            coEvery {
+                keyConnectorManager.migrateExistingUserToKeyConnector(
+                    userId = USER_ID_1,
+                    url = url,
+                    userKeyEncrypted = ENCRYPTED_USER_KEY,
+                    email = PROFILE_1.email,
+                    masterPassword = PASSWORD,
+                    kdf = PROFILE_1.toSdkParams(),
+                )
+            } returns expectedResult.asSuccess()
+
+            val result = repository.removePassword(masterPassword = PASSWORD)
+
+            assertEquals(
+                RemovePasswordResult.Error(error = error),
+                result,
+            )
+        }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `removePassword with migrateExistingUserToKeyConnector wrong password error should return WrongPasswordError error`() =
+        runTest {
+            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+            fakeAuthDiskSource.storeUserKey(userId = USER_ID_1, userKey = ENCRYPTED_USER_KEY)
+            val url = "www.example.com"
+            val expectedResult = MigrateExistingUserToKeyConnectorResult.WrongPasswordError
+            val organizations = listOf(
+                mockk<SyncResponseJson.Profile.Organization> {
+                    every { id } returns "orgId"
+                    every { name } returns "orgName"
+                    every { permissions } returns mockk {
+                        every { shouldManageResetPassword } returns false
+                    }
+                    every { shouldUseKeyConnector } returns true
+                    every { type } returns OrganizationType.USER
+                    every { keyConnectorUrl } returns url
+                    every { userIsClaimedByOrganization } returns false
+                },
+            )
+            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            coEvery {
+                keyConnectorManager.migrateExistingUserToKeyConnector(
+                    userId = USER_ID_1,
+                    url = url,
+                    userKeyEncrypted = ENCRYPTED_USER_KEY,
+                    email = PROFILE_1.email,
+                    masterPassword = PASSWORD,
+                    kdf = PROFILE_1.toSdkParams(),
+                )
+            } returns expectedResult.asSuccess()
+
+            val result = repository.removePassword(masterPassword = PASSWORD)
+
+            assertEquals(
+                RemovePasswordResult.WrongPasswordError,
+                result,
+            )
+        }
+
     @Suppress("MaxLineLength")
     @Test
     fun `removePassword with migrateExistingUserToKeyConnector success should sync and return success`() =
@@ -4742,6 +4869,7 @@ class AuthRepositoryTest {
                     every { shouldUseKeyConnector } returns true
                     every { type } returns OrganizationType.USER
                     every { keyConnectorUrl } returns url
+                    every { userIsClaimedByOrganization } returns false
                 },
             )
             fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
@@ -4754,7 +4882,7 @@ class AuthRepositoryTest {
                     masterPassword = PASSWORD,
                     kdf = PROFILE_1.toSdkParams(),
                 )
-            } returns Unit.asSuccess()
+            } returns MigrateExistingUserToKeyConnectorResult.Success.asSuccess()
             every {
                 SINGLE_USER_STATE_1.toRemovedPasswordUserStateJson(userId = USER_ID_1)
             } returns SINGLE_USER_STATE_1
@@ -5495,17 +5623,11 @@ class AuthRepositoryTest {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `showWelcomeCarousel should return value from settings repository and feature flag manager`() {
+    fun `showWelcomeCarousel should return value from settings repository`() {
         every { settingsRepository.hasUserLoggedInOrCreatedAccount } returns false
-        every { featureFlagManager.getFeatureFlag(FlagKey.OnboardingCarousel) } returns true
         assertTrue(repository.showWelcomeCarousel)
 
         every { settingsRepository.hasUserLoggedInOrCreatedAccount } returns true
-        every { featureFlagManager.getFeatureFlag(FlagKey.OnboardingCarousel) } returns true
-        assertFalse(repository.showWelcomeCarousel)
-
-        every { settingsRepository.hasUserLoggedInOrCreatedAccount } returns true
-        every { featureFlagManager.getFeatureFlag(FlagKey.OnboardingCarousel) } returns false
         assertFalse(repository.showWelcomeCarousel)
     }
 
@@ -5798,6 +5920,7 @@ class AuthRepositoryTest {
             firstTimeState = FIRST_TIME_STATE,
         )
         fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+        fakeEnvironmentRepository.environment = Environment.Eu
         assertEquals(
             originalUserState,
             repository.userStateFlow.value,
@@ -5814,6 +5937,7 @@ class AuthRepositoryTest {
             repository.userStateFlow.value,
         )
         assertFalse(repository.hasPendingAccountAddition)
+        assertEquals(Environment.Us, fakeEnvironmentRepository.environment)
     }
 
     @Suppress("MaxLineLength")
@@ -5833,6 +5957,7 @@ class AuthRepositoryTest {
             firstTimeState = FIRST_TIME_STATE,
         )
         fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+        fakeEnvironmentRepository.environment = Environment.Eu
         assertEquals(
             originalUserState,
             repository.userStateFlow.value,
@@ -5847,6 +5972,7 @@ class AuthRepositoryTest {
             originalUserState,
             repository.userStateFlow.value,
         )
+        assertEquals(Environment.Us, fakeEnvironmentRepository.environment)
     }
 
     @Suppress("MaxLineLength")
@@ -5866,6 +5992,7 @@ class AuthRepositoryTest {
             firstTimeState = FIRST_TIME_STATE,
         )
         fakeAuthDiskSource.userState = MULTI_USER_STATE
+        fakeEnvironmentRepository.environment = Environment.Eu
         assertEquals(
             originalUserState,
             repository.userStateFlow.value,
@@ -5882,6 +6009,7 @@ class AuthRepositoryTest {
             repository.userStateFlow.value,
         )
         assertFalse(repository.hasPendingAccountAddition)
+        assertEquals(Environment.Eu, fakeEnvironmentRepository.environment)
     }
 
     @Test
@@ -6811,6 +6939,42 @@ class AuthRepositoryTest {
             )
         }
 
+    @Suppress("MaxLineLength")
+    @Test
+    fun `isUserManagedByOrganization should return true if any org userIsClaimedByOrganization is true`() =
+        runTest {
+            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
+            fakeAuthDiskSource.storeUserKey(userId = USER_ID_1, userKey = ENCRYPTED_USER_KEY)
+            val organizations = listOf(
+                createMockOrganization(number = 0)
+                    .copy(
+                        userIsClaimedByOrganization = true,
+                    ),
+                createMockOrganization(number = 1),
+            )
+            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            assertEquals(
+                SINGLE_USER_STATE_1.toUserState(
+                    vaultState = VAULT_UNLOCK_DATA,
+                    userAccountTokens = emptyList(),
+                    userOrganizationsList = listOf(
+                        UserOrganizations(
+                            userId = USER_ID_1,
+                            organizations = organizations.toOrganizations(),
+                        ),
+                    ),
+                    userIsUsingKeyConnectorList = emptyList(),
+                    hasPendingAccountAddition = false,
+                    onboardingStatus = null,
+                    isBiometricsEnabledProvider = { false },
+                    vaultUnlockTypeProvider = { VaultUnlockType.MASTER_PASSWORD },
+                    isDeviceTrustedProvider = { false },
+                    firstTimeState = FIRST_TIME_STATE,
+                ),
+                repository.userStateFlow.value,
+            )
+        }
+
     companion object {
         private const val UNIQUE_APP_ID = "testUniqueAppId"
         private const val NAME = "Example Name"
@@ -6920,7 +7084,7 @@ class AuthRepositoryTest {
         private val ACCOUNT_1 = AccountJson(
             profile = PROFILE_1,
             settings = AccountJson.Settings(
-                environmentUrlData = null,
+                environmentUrlData = EnvironmentUrlDataJson.DEFAULT_US,
             ),
         )
         private val ACCOUNT_2 = AccountJson(
@@ -6943,7 +7107,7 @@ class AuthRepositoryTest {
                 creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
             ),
             settings = AccountJson.Settings(
-                environmentUrlData = null,
+                environmentUrlData = EnvironmentUrlDataJson.DEFAULT_EU,
             ),
         )
         private val SINGLE_USER_STATE_1 = UserStateJson(

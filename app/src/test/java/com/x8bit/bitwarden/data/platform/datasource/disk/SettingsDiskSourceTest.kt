@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.bitwarden.core.data.util.decodeFromStringOrNull
 import com.bitwarden.core.di.CoreModule
 import com.bitwarden.data.datasource.disk.base.FakeSharedPreferences
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.data.platform.datasource.disk.model.FlightRecorderDataSet
 import com.x8bit.bitwarden.data.platform.manager.model.AppResumeScreenData
 import com.x8bit.bitwarden.data.platform.repository.model.ClearClipboardFrequency
@@ -12,7 +13,6 @@ import com.x8bit.bitwarden.data.platform.repository.model.UriMatchType
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.data.util.assertJsonEquals
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -491,6 +491,47 @@ class SettingsDiskSourceTest {
             appTheme.value,
             actual,
         )
+    }
+
+    @Test
+    fun `isDynamicColorsEnabled should pull from and update SharedPreferences`() {
+        val isDynamicColorsEnabled = "bwPreferencesStorage:isDynamicColorsEnabled"
+        val expected = false
+
+        assertNull(settingsDiskSource.isDynamicColorsEnabled)
+
+        fakeSharedPreferences
+            .edit {
+                putBoolean(
+                    isDynamicColorsEnabled,
+                    expected,
+                )
+            }
+
+        assertEquals(
+            expected,
+            settingsDiskSource.isDynamicColorsEnabled,
+        )
+
+        settingsDiskSource.isDynamicColorsEnabled = true
+        assertTrue(
+            fakeSharedPreferences.getBoolean(
+                isDynamicColorsEnabled, false,
+            ),
+        )
+    }
+
+    @Test
+    fun `isDynamicColorsEnabledFlow should react to changes in isDynamicColorsEnabled`() = runTest {
+        settingsDiskSource.isDynamicColorsEnabledFlow.test {
+            // The initial values of the Flow and the property are in sync
+            assertNull(settingsDiskSource.isDynamicColorsEnabled)
+            assertNull(awaitItem())
+            settingsDiskSource.isDynamicColorsEnabled = true
+            assertTrue(awaitItem() ?: false)
+            settingsDiskSource.isDynamicColorsEnabled = false
+            assertFalse(awaitItem() ?: true)
+        }
     }
 
     @Test

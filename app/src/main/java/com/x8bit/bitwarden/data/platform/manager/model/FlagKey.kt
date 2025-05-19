@@ -29,12 +29,10 @@ sealed class FlagKey<out T : Any> {
                 AuthenticatorSync,
                 EmailVerification,
                 OnboardingFlow,
-                OnboardingCarousel,
                 ImportLoginsFlow,
                 VerifiedSsoDomainEndpoint,
                 CredentialExchangeProtocolImport,
                 CredentialExchangeProtocolExport,
-                IgnoreEnvironmentCheck,
                 MutualTls,
                 SingleTapPasskeyCreation,
                 SingleTapPasskeyAuthentication,
@@ -43,6 +41,7 @@ sealed class FlagKey<out T : Any> {
                 ChromeAutofill,
                 MobileErrorReporting,
                 FlightRecorder,
+                RestrictCipherItemDeletion,
                 PreAuthSettings,
             )
         }
@@ -82,15 +81,6 @@ sealed class FlagKey<out T : Any> {
         override val keyName: String = "enable-pm-flight-recorder"
         override val defaultValue: Boolean = false
         override val isRemotelyConfigured: Boolean = false
-    }
-
-    /**
-     * Data object holding the feature flag key for the Onboarding Carousel feature.
-     */
-    data object OnboardingCarousel : FlagKey<Boolean>() {
-        override val keyName: String = "native-carousel-flow"
-        override val defaultValue: Boolean = false
-        override val isRemotelyConfigured: Boolean = true
     }
 
     /**
@@ -150,15 +140,6 @@ sealed class FlagKey<out T : Any> {
     }
 
     /**
-     * Data object holding the feature flag key to ignore an environment check.
-     */
-    data object IgnoreEnvironmentCheck : FlagKey<Boolean>() {
-        override val keyName: String = "ignore-environment-check"
-        override val defaultValue: Boolean = false
-        override val isRemotelyConfigured: Boolean = false
-    }
-
-    /**
      * Data object holding the feature flag key for the Mutual TLS feature.
      */
     data object MutualTls : FlagKey<Boolean>() {
@@ -210,6 +191,15 @@ sealed class FlagKey<out T : Any> {
      */
     data object ChromeAutofill : FlagKey<Boolean>() {
         override val keyName: String = "android-chrome-autofill"
+        override val defaultValue: Boolean = false
+        override val isRemotelyConfigured: Boolean = true
+    }
+
+    /**
+     * Data object holding the feature flag key to enable the restriction of cipher item deletion
+     */
+    data object RestrictCipherItemDeletion : FlagKey<Boolean>() {
+        override val keyName: String = "pm-15493-restrict-item-deletion-to-can-manage-permission"
         override val defaultValue: Boolean = false
         override val isRemotelyConfigured: Boolean = true
     }

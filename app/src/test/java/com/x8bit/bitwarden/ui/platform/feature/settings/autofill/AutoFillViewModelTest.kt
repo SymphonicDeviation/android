@@ -3,6 +3,7 @@ package com.x8bit.bitwarden.ui.platform.feature.settings.autofill
 import android.os.Build
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.autofill.manager.chrome.ChromeThirdPartyAutofillEnabledManager
 import com.x8bit.bitwarden.data.autofill.model.chrome.ChromeReleaseChannel
@@ -13,7 +14,6 @@ import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.platform.repository.model.UriMatchType
 import com.x8bit.bitwarden.data.platform.util.isBuildVersionBelow
-import com.x8bit.bitwarden.ui.platform.base.BaseViewModelTest
 import com.x8bit.bitwarden.ui.platform.feature.settings.autofill.chrome.model.ChromeAutofillSettingsOption
 import io.mockk.every
 import io.mockk.just
@@ -50,6 +50,7 @@ class AutoFillViewModelTest : BaseViewModelTest() {
     private val chromeThirdPartyAutofillEnabledManager =
         mockk<ChromeThirdPartyAutofillEnabledManager> {
             every { chromeThirdPartyAutofillStatusFlow } returns mutableChromeAutofillStatusFlow
+            every { chromeThirdPartyAutofillStatus } returns DEFAULT_AUTOFILL_STATUS
         }
 
     private val settingsRepository: SettingsRepository = mockk {
@@ -79,7 +80,6 @@ class AutoFillViewModelTest : BaseViewModelTest() {
 
     @Test
     fun `initial state should be correct when not set`() {
-        mockkStatic(::isBuildVersionBelow)
         every { isBuildVersionBelow(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) } returns false
 
         val viewModel = createViewModel(state = null)
@@ -90,7 +90,6 @@ class AutoFillViewModelTest : BaseViewModelTest() {
 
     @Test
     fun `initial state should be correct when set`() {
-        mockkStatic(::isBuildVersionBelow)
         every { isBuildVersionBelow(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) } returns false
 
         mutableIsAutofillEnabledStateFlow.value = true
@@ -106,7 +105,6 @@ class AutoFillViewModelTest : BaseViewModelTest() {
 
     @Test
     fun `initial state should be correct when sdk is below min`() {
-        mockkStatic(::isBuildVersionBelow)
         every { isBuildVersionBelow(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) } returns true
 
         val expected = DEFAULT_STATE.copy(

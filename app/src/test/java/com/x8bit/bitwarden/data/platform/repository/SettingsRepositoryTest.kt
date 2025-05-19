@@ -14,6 +14,7 @@ import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.TrustedDeviceUserDecryptionOptionsJson
 import com.bitwarden.network.model.UserDecryptionOptionsJson
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
@@ -32,7 +33,6 @@ import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeout
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
-import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -411,6 +411,36 @@ class SettingsRepositoryTest {
             AppTheme.DARK,
             fakeSettingsDiskSource.appTheme,
         )
+    }
+
+    @Test
+    fun `isDynamicColorsEnabled should pull from and update SettingsDiskSource`() {
+        assertFalse(settingsRepository.isDynamicColorsEnabled)
+
+        // Updates to the disk source change the repository value
+        fakeSettingsDiskSource.isDynamicColorsEnabled = true
+        assertTrue(settingsRepository.isDynamicColorsEnabled)
+
+        // Updates to the repository value change the disk source
+        settingsRepository.isDynamicColorsEnabled = false
+        assertFalse(fakeSettingsDiskSource.isDynamicColorsEnabled!!)
+    }
+
+    @Test
+    fun `isDynamicColorsEnabled should react to changes in SettingsDiskSource`() = runTest {
+        settingsRepository
+            .isDynamicColorsEnabledFlow
+            .test {
+                assertFalse(awaitItem())
+                fakeSettingsDiskSource.isDynamicColorsEnabled = true
+                assertTrue(awaitItem())
+            }
+    }
+
+    @Test
+    fun `isDynamicColorsEnabled should properly update SettingsDiskSource`() {
+        settingsRepository.isDynamicColorsEnabled = true
+        assertTrue(fakeSettingsDiskSource.isDynamicColorsEnabled!!)
     }
 
     @Test
@@ -1213,7 +1243,7 @@ class SettingsRepositoryTest {
     @Test
     fun `isVaultRegisteredForExport should return true if it exists`() {
         val userId = "userId"
-        fakeSettingsDiskSource.storeVaultRegisteredForExport(userId = userId, registered = true)
+        fakeSettingsDiskSource.storeVaultRegisteredForExport(userId = userId, isRegistered = true)
         assertTrue(settingsRepository.isVaultRegisteredForExport(userId = userId))
     }
 
@@ -1234,12 +1264,12 @@ class SettingsRepositoryTest {
                     assertFalse(awaitItem())
                     fakeSettingsDiskSource.storeVaultRegisteredForExport(
                         userId = USER_ID,
-                        registered = true,
+                        isRegistered = true,
                     )
                     assertTrue(awaitItem())
                     fakeSettingsDiskSource.storeVaultRegisteredForExport(
                         userId = USER_ID,
-                        registered = false,
+                        isRegistered = false,
                     )
                     assertFalse(awaitItem())
                 }

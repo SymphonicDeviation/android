@@ -16,10 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.bitwarden.vault.CipherType
+import com.bitwarden.ui.platform.base.util.toListItemCardStyle
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.base.util.standardHorizontalMargin
-import com.x8bit.bitwarden.ui.platform.base.util.toListItemCardStyle
 import com.x8bit.bitwarden.ui.platform.components.card.BitwardenInfoCalloutCard
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenMasterPasswordDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
@@ -42,7 +41,7 @@ fun VaultItemListingContent(
     showAddTotpBanner: Boolean,
     collectionClick: (id: String) -> Unit,
     folderClick: (id: String) -> Unit,
-    vaultItemClick: (id: String, cipherType: CipherType?) -> Unit,
+    vaultItemClick: (id: String, type: VaultItemListingState.DisplayItem.ItemType) -> Unit,
     masterPasswordRepromptSubmit: (password: String, data: MasterPasswordRepromptData) -> Unit,
     onOverflowItemClick: (action: ListingItemOverflowAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -68,6 +67,7 @@ fun VaultItemListingContent(
 
         is ListingItemOverflowAction.SendAction.CopyUrlClick,
         is ListingItemOverflowAction.SendAction.EditClick,
+        is ListingItemOverflowAction.SendAction.ViewClick,
         is ListingItemOverflowAction.SendAction.RemovePasswordClick,
         is ListingItemOverflowAction.SendAction.ShareUrlClick,
         is ListingItemOverflowAction.VaultAction.CopyNoteClick,
@@ -222,7 +222,7 @@ fun VaultItemListingContent(
                                 cipherId = it.id,
                             )
                         } else {
-                            vaultItemClick(it.id, it.type)
+                            vaultItemClick(it.id, it.itemType)
                         }
                     },
                     trailingLabelIcons = it.extraIconList,

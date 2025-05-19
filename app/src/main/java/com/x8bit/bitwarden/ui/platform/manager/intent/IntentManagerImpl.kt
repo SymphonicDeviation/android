@@ -23,7 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.credentials.CredentialManager
-import com.bitwarden.core.annotation.OmitFromCoverage
+import com.bitwarden.annotation.OmitFromCoverage
 import com.x8bit.bitwarden.BuildConfig
 import com.x8bit.bitwarden.MainActivity
 import com.x8bit.bitwarden.R
@@ -71,6 +71,11 @@ const val EXTRA_KEY_CREDENTIAL_ID: String = "credential_id"
  * @see IntentManager.createFido2GetCredentialPendingIntent
  */
 const val EXTRA_KEY_CIPHER_ID: String = "cipher_id"
+
+/**
+ * Key for the user verification performed during vault unlock while processing a FIDO 2 request.
+ */
+const val EXTRA_KEY_UV_PERFORMED_DURING_UNLOCK: String = "uv_performed_during_unlock"
 
 /**
  * The default implementation of the [IntentManager] for simplifying the handling of Android
@@ -310,6 +315,7 @@ class IntentManagerImpl(
         userId: String,
         credentialId: String,
         cipherId: String,
+        isUserVerified: Boolean,
         requestCode: Int,
     ): PendingIntent {
         val intent = Intent(action)
@@ -317,6 +323,7 @@ class IntentManagerImpl(
             .putExtra(EXTRA_KEY_USER_ID, userId)
             .putExtra(EXTRA_KEY_CREDENTIAL_ID, credentialId)
             .putExtra(EXTRA_KEY_CIPHER_ID, cipherId)
+            .putExtra(EXTRA_KEY_UV_PERFORMED_DURING_UNLOCK, isUserVerified)
 
         return PendingIntent.getActivity(
             /* context = */ context,
