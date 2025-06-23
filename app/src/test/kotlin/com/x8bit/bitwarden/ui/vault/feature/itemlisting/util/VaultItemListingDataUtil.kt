@@ -30,7 +30,7 @@ fun createMockDisplayItemForCipher(
                 subtitle = subtitle,
                 subtitleTestTag = "CipherSubTitleLabel",
                 iconData = IconData.Network(
-                    uri = "https://vault.bitwarden.com/icons/www.mockuri.com/icon.png",
+                    uri = "https://icons.bitwarden.net/www.mockuri.com/icon.png",
                     fallbackIconRes = R.drawable.ic_globe,
                 ),
                 extraIconList = persistentListOf(
@@ -66,6 +66,7 @@ fun createMockDisplayItemForCipher(
                     ),
                     ListingItemOverflowAction.VaultAction.CopyTotpClick(
                         totpCode = "mockTotp-$number",
+                        requiresPasswordReprompt = requiresPasswordReprompt,
                     ),
                     ListingItemOverflowAction.VaultAction.LaunchClick(
                         url = "www.mockuri$number.com",
@@ -115,6 +116,7 @@ fun createMockDisplayItemForCipher(
                     ),
                     ListingItemOverflowAction.VaultAction.CopyNoteClick(
                         notes = "mockNotes-$number",
+                        requiresPasswordReprompt = requiresPasswordReprompt,
                     ),
                 ),
                 optionsTestTag = "CipherOptionsButton",

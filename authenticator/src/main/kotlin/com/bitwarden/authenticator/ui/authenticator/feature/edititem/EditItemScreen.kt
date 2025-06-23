@@ -44,7 +44,9 @@ import com.bitwarden.authenticator.data.authenticator.datasource.disk.entity.Aut
 import com.bitwarden.authenticator.data.authenticator.datasource.disk.entity.AuthenticatorItemType
 import com.bitwarden.authenticator.ui.authenticator.feature.edititem.model.EditItemData
 import com.bitwarden.authenticator.ui.platform.components.appbar.AuthenticatorTopAppBar
-import com.bitwarden.authenticator.ui.platform.components.button.BitwardenTextButton
+import com.bitwarden.authenticator.ui.platform.components.button.AuthenticatorTextButton
+import com.bitwarden.authenticator.ui.platform.components.content.BitwardenErrorContent
+import com.bitwarden.authenticator.ui.platform.components.content.BitwardenLoadingContent
 import com.bitwarden.authenticator.ui.platform.components.dialog.BasicDialogState
 import com.bitwarden.authenticator.ui.platform.components.dialog.BitwardenBasicDialog
 import com.bitwarden.authenticator.ui.platform.components.dialog.BitwardenLoadingDialog
@@ -119,7 +121,7 @@ fun EditItemScreen(
                     }
                 },
                 actions = {
-                    BitwardenTextButton(
+                    AuthenticatorTextButton(
                         label = stringResource(id = R.string.save),
                         onClick = remember(viewModel) {
                             { viewModel.trySendAction(EditItemAction.SaveClick) }
@@ -204,10 +206,17 @@ fun EditItemScreen(
             }
 
             is EditItemState.ViewState.Error -> {
-                /*ItemErrorContent(state)*/
+                BitwardenErrorContent(
+                    message = viewState.message(),
+                    modifier = Modifier.padding(innerPadding),
+                )
             }
 
-            EditItemState.ViewState.Loading -> EditItemState.ViewState.Loading
+            EditItemState.ViewState.Loading -> {
+                BitwardenLoadingContent(
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
         }
     }
 }

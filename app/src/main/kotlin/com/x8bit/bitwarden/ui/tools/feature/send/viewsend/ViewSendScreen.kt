@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.ui.tools.feature.send.viewsend
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -48,6 +47,10 @@ import com.bitwarden.ui.platform.base.util.cardStyle
 import com.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.bitwarden.ui.platform.components.appbar.NavigationIcon
+import com.bitwarden.ui.platform.components.button.BitwardenFilledButton
+import com.bitwarden.ui.platform.components.button.BitwardenOutlinedButton
+import com.bitwarden.ui.platform.components.button.BitwardenOutlinedErrorButton
+import com.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.bitwarden.ui.platform.components.fab.BitwardenFloatingActionButton
 import com.bitwarden.ui.platform.components.model.CardStyle
 import com.bitwarden.ui.platform.components.util.rememberVectorPainter
@@ -55,9 +58,6 @@ import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.R
-import com.x8bit.bitwarden.ui.platform.components.button.BitwardenFilledButton
-import com.x8bit.bitwarden.ui.platform.components.button.BitwardenOutlinedButton
-import com.x8bit.bitwarden.ui.platform.components.button.BitwardenOutlinedErrorButton
 import com.x8bit.bitwarden.ui.platform.components.content.BitwardenErrorContent
 import com.x8bit.bitwarden.ui.platform.components.content.BitwardenLoadingContent
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenBasicDialog
@@ -67,6 +67,8 @@ import com.x8bit.bitwarden.ui.platform.components.field.BitwardenTextField
 import com.x8bit.bitwarden.ui.platform.components.header.BitwardenExpandingHeader
 import com.x8bit.bitwarden.ui.platform.components.header.BitwardenListHeaderText
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
+import com.x8bit.bitwarden.ui.platform.components.snackbar.BitwardenSnackbarHost
+import com.x8bit.bitwarden.ui.platform.components.snackbar.rememberBitwardenSnackbarHostState
 import com.x8bit.bitwarden.ui.platform.components.stepper.BitwardenStepper
 import com.x8bit.bitwarden.ui.platform.composition.LocalIntentManager
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
@@ -88,6 +90,7 @@ fun ViewSendScreen(
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = context.resources
+    val snackbarHostState = rememberBitwardenSnackbarHostState()
     EventsEffect(viewModel = viewModel) { event ->
         when (event) {
             is ViewSendEvent.NavigateBack -> onNavigateBack()
@@ -105,9 +108,7 @@ fun ViewSendScreen(
                 intentManager.shareText(text = event.text(resources).toString())
             }
 
-            is ViewSendEvent.ShowToast -> {
-                Toast.makeText(context, event.message(resources), Toast.LENGTH_SHORT).show()
-            }
+            is ViewSendEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.data)
         }
     }
 
@@ -152,12 +153,16 @@ fun ViewSendScreen(
                 )
             }
         },
+        snackbarHost = { BitwardenSnackbarHost(bitwardenHostState = snackbarHostState) },
     ) {
         ViewSendScreenContent(
             state = state,
             modifier = Modifier.fillMaxSize(),
             onCopyClick = remember(viewModel) {
                 { viewModel.trySendAction(ViewSendAction.CopyClick) }
+            },
+            onCopyNotesClick = remember(viewModel) {
+                { viewModel.trySendAction(ViewSendAction.CopyNotesClick) }
             },
             onDeleteClick = remember(viewModel) {
                 { viewModel.trySendAction(ViewSendAction.DeleteClick) }
@@ -196,6 +201,7 @@ private fun ViewSendDialogs(
 private fun ViewSendScreenContent(
     state: ViewSendState,
     onCopyClick: () -> Unit,
+    onCopyNotesClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -205,6 +211,7 @@ private fun ViewSendScreenContent(
             ViewStateContent(
                 state = viewState,
                 onCopyClick = onCopyClick,
+                onCopyNotesClick = onCopyNotesClick,
                 onDeleteClick = onDeleteClick,
                 onShareClick = onShareClick,
                 modifier = modifier,
@@ -229,6 +236,7 @@ private fun ViewSendScreenContent(
 private fun ViewStateContent(
     state: ViewSendState.ViewState.Content,
     onCopyClick: () -> Unit,
+    onCopyNotesClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -320,7 +328,10 @@ private fun ViewStateContent(
                 .standardHorizontalMargin(),
         )
 
-        AdditionalOptions(state = state)
+        AdditionalOptions(
+            state = state,
+            onCopyNotesClick = onCopyNotesClick,
+        )
 
         DeleteButton(
             onDeleteClick = onDeleteClick,
@@ -454,6 +465,7 @@ private fun TextSendContent(
 @Composable
 private fun ColumnScope.AdditionalOptions(
     state: ViewSendState.ViewState.Content,
+    onCopyNotesClick: () -> Unit,
 ) {
     if (state.maxAccessCount == null && state.notes == null) {
         Spacer(modifier = Modifier.height(height = 16.dp))
@@ -503,6 +515,14 @@ private fun ColumnScope.AdditionalOptions(
                     label = stringResource(id = R.string.private_notes),
                     readOnly = true,
                     value = it,
+                    actions = {
+                        BitwardenStandardIconButton(
+                            vectorIconRes = R.drawable.ic_copy,
+                            contentDescription = stringResource(id = R.string.copy_notes),
+                            onClick = onCopyNotesClick,
+                            modifier = Modifier.testTag(tag = "ViewSendNotesCopyButton"),
+                        )
+                    },
                     singleLine = false,
                     onValueChange = {},
                     cardStyle = CardStyle.Full,

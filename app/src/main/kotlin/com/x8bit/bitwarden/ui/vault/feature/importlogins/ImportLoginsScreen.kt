@@ -45,21 +45,20 @@ import com.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.bitwarden.ui.platform.base.util.toAnnotatedString
 import com.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.bitwarden.ui.platform.components.appbar.NavigationIcon
+import com.bitwarden.ui.platform.components.button.BitwardenFilledButton
+import com.bitwarden.ui.platform.components.button.BitwardenOutlinedButton
+import com.bitwarden.ui.platform.components.content.model.ContentBlockData
 import com.bitwarden.ui.platform.components.util.rememberVectorPainter
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.ui.platform.components.bottomsheet.BitwardenModalBottomSheet
-import com.x8bit.bitwarden.ui.platform.components.button.BitwardenFilledButton
-import com.x8bit.bitwarden.ui.platform.components.button.BitwardenOutlinedButton
 import com.x8bit.bitwarden.ui.platform.components.card.BitwardenContentCard
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenLoadingDialog
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
-import com.x8bit.bitwarden.ui.platform.components.model.ContentBlockData
 import com.x8bit.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
 import com.x8bit.bitwarden.ui.platform.composition.LocalIntentManager
 import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
 import com.x8bit.bitwarden.ui.vault.feature.importlogins.components.ImportLoginsInstructionStep
 import com.x8bit.bitwarden.ui.vault.feature.importlogins.handlers.ImportLoginHandler
 import com.x8bit.bitwarden.ui.vault.feature.importlogins.handlers.rememberImportLoginHandler
@@ -307,7 +306,7 @@ private fun ImportLoginsStepOneContent(
                 subtitleText = null,
             ),
             ContentBlockData(
-                iconVectorResource = R.drawable.ic_number2,
+                iconVectorResource = BitwardenDrawable.ic_number2,
                 headerText = instruction2,
                 subtitleText = null,
             ),
@@ -353,7 +352,7 @@ private fun ImportLoginsStepTwoContent(
                 subtitleText = null,
             ),
             ContentBlockData(
-                iconVectorResource = R.drawable.ic_number2,
+                iconVectorResource = BitwardenDrawable.ic_number2,
                 headerText = instruction2,
                 subtitleText = null,
             ),
@@ -395,7 +394,7 @@ private fun ImportLoginsStepThreeContent(
                 subtitleText = null,
             ),
             ContentBlockData(
-                iconVectorResource = R.drawable.ic_number2,
+                iconVectorResource = BitwardenDrawable.ic_number2,
                 headerText = instruction2,
                 subtitleText = null,
             ),
@@ -561,14 +560,12 @@ private class ImportLoginsDialogContentPreviewProvider :
                 viewState = ImportLoginsState.ViewState.InitialContent,
                 showBottomSheet = false,
                 currentWebVaultUrl = "vault.bitwarden.com",
-                snackbarRelay = SnackbarRelay.MY_VAULT_RELAY,
             ),
             ImportLoginsState(
                 dialogState = ImportLoginsState.DialogState.ImportLater,
                 viewState = ImportLoginsState.ViewState.InitialContent,
                 showBottomSheet = false,
                 currentWebVaultUrl = "vault.bitwarden.com",
-                snackbarRelay = SnackbarRelay.MY_VAULT_RELAY,
             ),
         )
 }
