@@ -56,7 +56,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "2025.4.0"
+        versionName = "2025.7.0"
 
         setProperty("archivesBaseName", "com.x8bit.bitwarden")
 
@@ -65,7 +65,12 @@ android {
         buildConfigField(
             type = "String",
             name = "CI_INFO",
-            value = "${ciProperties.getOrDefault("ci.info", "\"local\"")}",
+            value = "${ciProperties.getOrDefault("ci.info", "\"\uD83D\uDCBB local\"")}",
+        )
+        buildConfigField(
+            type = "String",
+            name = "SDK_VERSION",
+            value = "\"${libs.versions.bitwardenSdk.get()}\"",
         )
     }
 

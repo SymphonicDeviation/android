@@ -15,6 +15,7 @@ import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
 import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.exporters.ExportFormat
 import com.bitwarden.fido.Fido2CredentialAutofillView
+import com.bitwarden.network.model.CipherTypeJson
 import com.bitwarden.network.model.CreateFileSendResponse
 import com.bitwarden.network.model.CreateSendJsonResponse
 import com.bitwarden.network.model.FolderJsonRequest
@@ -41,8 +42,10 @@ import com.bitwarden.network.service.SyncService
 import com.bitwarden.sdk.Fido2CredentialStore
 import com.bitwarden.send.SendType
 import com.bitwarden.send.SendView
+import com.bitwarden.vault.CipherType
 import com.bitwarden.vault.CipherView
 import com.bitwarden.vault.CollectionView
+import com.bitwarden.vault.DecryptCipherListResult
 import com.bitwarden.vault.Folder
 import com.bitwarden.vault.FolderView
 import com.bitwarden.vault.TotpResponse
@@ -70,6 +73,7 @@ import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.InitializeCryptoResult
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCollectionView
+import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockDecryptCipherListResult
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockFolderView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkCipher
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkCollection
@@ -83,7 +87,6 @@ import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
 import com.x8bit.bitwarden.data.vault.manager.model.VerificationCodeItem
 import com.x8bit.bitwarden.data.vault.repository.model.CreateFolderResult
 import com.x8bit.bitwarden.data.vault.repository.model.CreateSendResult
-import com.x8bit.bitwarden.data.vault.repository.model.DecryptFido2CredentialAutofillViewResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteFolderResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.DomainsData
@@ -303,11 +306,11 @@ class VaultRepositoryTest {
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         val userId = "mockId-1"
         coEvery {
-            vaultSdkSource.decryptCipherList(
+            vaultSdkSource.decryptCipherListWithFailures(
                 userId = userId,
                 cipherList = listOf(createMockSdkCipher(1, clock)),
             )
-        } returns listOf(createMockCipherView(number = 1)).asSuccess()
+        } returns createMockDecryptCipherListResult(number = 1).asSuccess()
         coEvery {
             vaultSdkSource.decryptFolderList(
                 userId = userId,
@@ -340,7 +343,8 @@ class VaultRepositoryTest {
         )
 
         turbineScope {
-            val ciphersStateFlow = vaultRepository.ciphersStateFlow.testIn(backgroundScope)
+            val ciphersStateFlow =
+                vaultRepository.decryptCipherListResultStateFlow.testIn(backgroundScope)
             val collectionsStateFlow = vaultRepository.collectionsStateFlow.testIn(backgroundScope)
             val foldersStateFlow = vaultRepository.foldersStateFlow.testIn(backgroundScope)
             val sendsStateFlow = vaultRepository.sendDataStateFlow.testIn(backgroundScope)
@@ -378,7 +382,7 @@ class VaultRepositoryTest {
             domainsFlow.tryEmit(createMockDomains(number = 1))
 
             assertEquals(
-                DataState.Loaded(listOf(createMockCipherView(number = 1))),
+                DataState.Loaded(createMockDecryptCipherListResult(number = 1)),
                 ciphersStateFlow.awaitItem(),
             )
             assertEquals(
@@ -423,11 +427,11 @@ class VaultRepositoryTest {
             )
             val userId = "mockId-1"
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = userId,
                     cipherList = listOf(createMockSdkCipher(1, clock)),
                 )
-            } returns listOf(createMockCipherView(number = 1)).asSuccess()
+            } returns createMockDecryptCipherListResult(number = 1).asSuccess()
             coEvery {
                 vaultSdkSource.decryptFolderList(
                     userId = userId,
@@ -460,7 +464,8 @@ class VaultRepositoryTest {
             )
 
             turbineScope {
-                val ciphersStateFlow = vaultRepository.ciphersStateFlow.testIn(backgroundScope)
+                val ciphersStateFlow =
+                    vaultRepository.decryptCipherListResultStateFlow.testIn(backgroundScope)
                 val collectionsStateFlow =
                     vaultRepository.collectionsStateFlow.testIn(backgroundScope)
                 val foldersStateFlow = vaultRepository.foldersStateFlow.testIn(backgroundScope)
@@ -492,7 +497,7 @@ class VaultRepositoryTest {
                 setVaultToUnlocked(userId = userId)
 
                 assertEquals(
-                    DataState.Loaded(listOf(createMockCipherView(number = 1))),
+                    DataState.Loaded(createMockDecryptCipherListResult(number = 1)),
                     ciphersStateFlow.awaitItem(),
                 )
                 assertEquals(
@@ -529,21 +534,21 @@ class VaultRepositoryTest {
             val userId = "mockId-1"
             val mockCipherList = listOf(createMockCipher(number = 1))
             val mockEncryptedCipherList = mockCipherList.toEncryptedSdkCipherList()
-            val mockCipherViewList = listOf(createMockCipherView(number = 1))
+            val mockDecryptCipherListResult = createMockDecryptCipherListResult(number = 1)
             val mutableCiphersStateFlow =
                 bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>(replay = 1)
             every {
                 vaultDiskSource.getCiphersFlow(userId = MOCK_USER_STATE.activeUserId)
             } returns mutableCiphersStateFlow
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = userId,
                     cipherList = mockEncryptedCipherList,
                 )
-            } returns mockCipherViewList.asSuccess()
+            } returns mockDecryptCipherListResult.asSuccess()
 
             vaultRepository
-                .ciphersStateFlow
+                .decryptCipherListResultStateFlow
                 .test {
                     assertEquals(DataState.Loading, awaitItem())
                     mutableCiphersStateFlow.tryEmit(mockCipherList)
@@ -552,7 +557,7 @@ class VaultRepositoryTest {
                     expectNoEvents()
                     setVaultToUnlocked(userId = userId)
 
-                    assertEquals(DataState.Loaded(mockCipherViewList), awaitItem())
+                    assertEquals(DataState.Loaded(mockDecryptCipherListResult), awaitItem())
                 }
         }
 
@@ -569,14 +574,14 @@ class VaultRepositoryTest {
             vaultDiskSource.getCiphersFlow(userId = MOCK_USER_STATE.activeUserId)
         } returns mutableCiphersStateFlow
         coEvery {
-            vaultSdkSource.decryptCipherList(
+            vaultSdkSource.decryptCipherListWithFailures(
                 userId = userId,
                 cipherList = mockEncryptedCipherList,
             )
         } returns throwable.asFailure()
 
         vaultRepository
-            .ciphersStateFlow
+            .decryptCipherListResultStateFlow
             .test {
                 assertEquals(DataState.Loading, awaitItem())
                 mutableCiphersStateFlow.tryEmit(mockCipherList)
@@ -585,7 +590,7 @@ class VaultRepositoryTest {
                 expectNoEvents()
                 setVaultToUnlocked(userId = userId)
 
-                assertEquals(DataState.Error<List<CipherView>>(throwable), awaitItem())
+                assertEquals(DataState.Error<DecryptCipherListResult>(throwable), awaitItem())
             }
     }
 
@@ -958,8 +963,8 @@ class VaultRepositoryTest {
         vaultRepository.sync()
 
         assertEquals(
-            DataState.Error<List<CipherView>>(mockException),
-            vaultRepository.ciphersStateFlow.value,
+            DataState.Error<DecryptCipherListResult>(mockException),
+            vaultRepository.decryptCipherListResultStateFlow.value,
         )
         assertEquals(
             DataState.Error<List<CollectionView>>(mockException),
@@ -1004,7 +1009,7 @@ class VaultRepositoryTest {
 
         assertEquals(
             DataState.NoNetwork(data = null),
-            vaultRepository.ciphersStateFlow.value,
+            vaultRepository.decryptCipherListResultStateFlow.value,
         )
         assertEquals(
             DataState.NoNetwork(data = null),
@@ -1974,7 +1979,8 @@ class VaultRepositoryTest {
             )
 
             turbineScope {
-                val ciphersStateFlow = vaultRepository.ciphersStateFlow.testIn(backgroundScope)
+                val ciphersStateFlow =
+                    vaultRepository.decryptCipherListResultStateFlow.testIn(backgroundScope)
                 val collectionsStateFlow =
                     vaultRepository.collectionsStateFlow.testIn(backgroundScope)
                 val foldersStateFlow = vaultRepository.foldersStateFlow.testIn(backgroundScope)
@@ -1982,7 +1988,12 @@ class VaultRepositoryTest {
                 val domainsStateFlow = vaultRepository.domainsStateFlow.testIn(backgroundScope)
 
                 assertEquals(
-                    DataState.Loaded(emptyList<CipherView>()),
+                    DataState.Loaded(
+                        createMockDecryptCipherListResult(
+                            number = 1,
+                            successes = emptyList(),
+                        ),
+                    ),
                     ciphersStateFlow.awaitItem(),
                 )
                 assertEquals(
@@ -2029,7 +2040,8 @@ class VaultRepositoryTest {
                 sendsFlow = flowOf(emptyList()),
             )
             turbineScope {
-                val ciphersStateFlow = vaultRepository.ciphersStateFlow.testIn(backgroundScope)
+                val ciphersStateFlow =
+                    vaultRepository.decryptCipherListResultStateFlow.testIn(backgroundScope)
                 val collectionsStateFlow =
                     vaultRepository.collectionsStateFlow.testIn(backgroundScope)
                 val foldersStateFlow = vaultRepository.foldersStateFlow.testIn(backgroundScope)
@@ -3178,7 +3190,7 @@ class VaultRepositoryTest {
             )
 
             every {
-                totpCodeManager.getTotpCodeStateFlow(userId = userId, any())
+                totpCodeManager.getTotpCodeStateFlow(userId = userId, cipherListView = any())
             } returns stateFlow
 
             setupDataStateFlow(userId = userId)
@@ -3245,7 +3257,10 @@ class VaultRepositoryTest {
         )
 
         every {
-            totpCodeManager.getTotpCodesStateFlow(userId = userId, any())
+            totpCodeManager.getTotpCodesForCipherListViewsStateFlow(
+                userId = userId,
+                cipherListViews = any(),
+            )
         } returns stateFlow
 
         setupDataStateFlow(userId = userId)
@@ -3273,7 +3288,7 @@ class VaultRepositoryTest {
     }
 
     @Test
-    fun `fullSyncFlow emission should trigger sync if necessary`() {
+    fun `fullSyncFlow emission should trigger unforced sync`() {
         val userId = "mockId-1"
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         every {
@@ -3310,18 +3325,17 @@ class VaultRepositoryTest {
 
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
-            val cipherView = createMockCipherView(number = number)
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(createMockSdkCipher(number = number, clock = clock)),
                 )
-            } returns listOf(cipherView).asSuccess()
+            } returns createMockDecryptCipherListResult(number = number).asSuccess()
 
             val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
             setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
 
-            vaultRepository.ciphersStateFlow.test {
+            vaultRepository.decryptCipherListResultStateFlow.test {
                 // Populate and consume items related to the ciphers flow
                 awaitItem()
                 ciphersFlow.tryEmit(listOf(createMockCipher(number = number)))
@@ -3353,13 +3367,12 @@ class VaultRepositoryTest {
 
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
-            val cipherView = createMockCipherView(number = number)
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(createMockSdkCipher(number = number, clock = clock)),
                 )
-            } returns listOf(cipherView).asSuccess()
+            } returns createMockDecryptCipherListResult(number = number).asSuccess()
             val collectionView = createMockCollectionView(number = number)
             coEvery {
                 vaultSdkSource.decryptCollectionList(
@@ -3384,7 +3397,8 @@ class VaultRepositoryTest {
             )
 
             turbineScope {
-                val ciphersStateFlow = vaultRepository.ciphersStateFlow.testIn(backgroundScope)
+                val ciphersStateFlow =
+                    vaultRepository.decryptCipherListResultStateFlow.testIn(backgroundScope)
                 val collectionsStateFlow =
                     vaultRepository.collectionsStateFlow.testIn(backgroundScope)
 
@@ -3425,11 +3439,15 @@ class VaultRepositoryTest {
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(),
                 )
-            } returns listOf<CipherView>().asSuccess()
+            } returns createMockDecryptCipherListResult(
+                number = number,
+                successes = emptyList(),
+            )
+                .asSuccess()
             val collectionView = createMockCollectionView(number = number)
             coEvery {
                 vaultSdkSource.decryptCollectionList(
@@ -3454,7 +3472,8 @@ class VaultRepositoryTest {
             )
 
             turbineScope {
-                val ciphersStateFlow = vaultRepository.ciphersStateFlow.testIn(backgroundScope)
+                val ciphersStateFlow =
+                    vaultRepository.decryptCipherListResultStateFlow.testIn(backgroundScope)
                 val collectionsStateFlow =
                     vaultRepository.collectionsStateFlow.testIn(backgroundScope)
 
@@ -3493,16 +3512,19 @@ class VaultRepositoryTest {
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
         coEvery {
-            vaultSdkSource.decryptCipherList(
+            vaultSdkSource.decryptCipherListWithFailures(
                 userId = MOCK_USER_STATE.activeUserId,
                 cipherList = listOf(),
             )
-        } returns listOf<CipherView>().asSuccess()
+        } returns createMockDecryptCipherListResult(
+            number = number,
+            successes = emptyList(),
+        ).asSuccess()
 
         val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
         setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
 
-        vaultRepository.ciphersStateFlow.test {
+        vaultRepository.decryptCipherListResultStateFlow.test {
             // Populate and consume items related to the ciphers flow
             awaitItem()
             ciphersFlow.tryEmit(listOf())
@@ -3532,18 +3554,17 @@ class VaultRepositoryTest {
 
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
-        val cipherView = createMockCipherView(number = number)
         coEvery {
-            vaultSdkSource.decryptCipherList(
+            vaultSdkSource.decryptCipherListWithFailures(
                 userId = MOCK_USER_STATE.activeUserId,
                 cipherList = listOf(createMockSdkCipher(number = number, clock = clock)),
             )
-        } returns listOf(cipherView).asSuccess()
+        } returns createMockDecryptCipherListResult(number = number).asSuccess()
 
         val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
         setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
 
-        vaultRepository.ciphersStateFlow.test {
+        vaultRepository.decryptCipherListResultStateFlow.test {
             // Populate and consume items related to the cipher flow
             awaitItem()
             ciphersFlow.tryEmit(listOf(createMockCipher(number = number)))
@@ -3588,18 +3609,17 @@ class VaultRepositoryTest {
 
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
-            val cipherView = createMockCipherView(number = number)
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(createMockSdkCipher(number = number, clock = clock)),
                 )
-            } returns listOf(cipherView).asSuccess()
+            } returns createMockDecryptCipherListResult(number = number).asSuccess()
 
             val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
             setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
 
-            vaultRepository.ciphersStateFlow.test {
+            vaultRepository.decryptCipherListResultStateFlow.test {
                 // Populate and consume items related to the ciphers flow
                 awaitItem()
                 ciphersFlow.tryEmit(listOf(createMockCipher(number = number)))
@@ -3642,16 +3662,19 @@ class VaultRepositoryTest {
             } returns response.asFailure()
 
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(),
                 )
-            } returns emptyList<CipherView>().asSuccess()
+            } returns createMockDecryptCipherListResult(
+                number = 1,
+                successes = emptyList(),
+            ).asSuccess()
 
             val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
             setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
 
-            vaultRepository.ciphersStateFlow.test {
+            vaultRepository.decryptCipherListResultStateFlow.test {
                 // Populate and consume items related to the ciphers flow
                 awaitItem()
                 ciphersFlow.tryEmit(emptyList())
@@ -3689,11 +3712,14 @@ class VaultRepositoryTest {
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(),
                 )
-            } returns listOf<CipherView>().asSuccess()
+            } returns createMockDecryptCipherListResult(
+                number = number,
+                successes = emptyList(),
+            ).asSuccess()
 
             val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
             setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
@@ -3707,7 +3733,7 @@ class VaultRepositoryTest {
                 vaultDiskSource.saveCipher(any(), any())
             } just runs
 
-            vaultRepository.ciphersStateFlow.test {
+            vaultRepository.decryptCipherListResultStateFlow.test {
                 // Populate and consume items related to the ciphers flow
                 awaitItem()
                 ciphersFlow.tryEmit(listOf())
@@ -3742,13 +3768,12 @@ class VaultRepositoryTest {
 
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             setVaultToUnlocked(userId = MOCK_USER_STATE.activeUserId)
-            val cipherView = createMockCipherView(number = number)
             coEvery {
-                vaultSdkSource.decryptCipherList(
+                vaultSdkSource.decryptCipherListWithFailures(
                     userId = MOCK_USER_STATE.activeUserId,
                     cipherList = listOf(createMockSdkCipher(number = number, clock = clock)),
                 )
-            } returns listOf(cipherView).asSuccess()
+            } returns createMockDecryptCipherListResult(number = number).asSuccess()
 
             val ciphersFlow = bufferedMutableSharedFlow<List<SyncResponseJson.Cipher>>()
             setupVaultDiskSourceFlows(ciphersFlow = ciphersFlow)
@@ -3762,7 +3787,7 @@ class VaultRepositoryTest {
                 vaultDiskSource.saveCipher(any(), any())
             } just runs
 
-            vaultRepository.ciphersStateFlow.test {
+            vaultRepository.decryptCipherListResultStateFlow.test {
                 // Populate and consume items related to the ciphers flow
                 awaitItem()
                 ciphersFlow.tryEmit(listOf(createMockCipher(number = number)))
@@ -4405,7 +4430,63 @@ class VaultRepositoryTest {
             } returns "TestResult".asSuccess()
 
             val expected = ExportVaultDataResult.Success(vaultData = "TestResult")
-            val result = vaultRepository.exportVaultDataToString(format = format)
+            val result = vaultRepository.exportVaultDataToString(
+                format = format,
+                restrictedTypes = emptyList(),
+            )
+
+            coVerify {
+                vaultSdkSource.exportVaultDataToString(
+                    userId = userId,
+                    ciphers = listOf(userCipher.toEncryptedSdkCipher()),
+                    folders = listOf(createMockSdkFolder(1)),
+                    format = ExportFormat.Json,
+                )
+            }
+
+            assertEquals(
+                expected,
+                result,
+            )
+        }
+
+    @Test
+    fun `exportVaultDataToString with restrictedTypes should filter out restricted cipher types`() =
+        runTest {
+            val format = ExportFormat.Json
+            fakeAuthDiskSource.userState = MOCK_USER_STATE
+            val userId = "mockId-1"
+
+            val userCipher = createMockCipher(1).copy(
+                type = CipherTypeJson.LOGIN,
+                collectionIds = null,
+                deletedDate = null,
+            )
+            val userCipherCard = createMockCipher(2).copy(
+                type = CipherTypeJson.CARD,
+                collectionIds = null,
+                deletedDate = null,
+            )
+            val deletedCipher = createMockCipher(2).copy(collectionIds = null)
+            val orgCipher = createMockCipher(3).copy(deletedDate = null)
+
+            coEvery {
+                vaultDiskSource.getCiphersFlow(userId)
+            } returns flowOf(listOf(userCipher, userCipherCard, deletedCipher, orgCipher))
+
+            coEvery {
+                vaultDiskSource.getFolders(userId)
+            } returns flowOf(listOf(createMockFolder(1)))
+
+            coEvery {
+                vaultSdkSource.exportVaultDataToString(userId, any(), any(), format)
+            } returns "TestResult".asSuccess()
+
+            val expected = ExportVaultDataResult.Success(vaultData = "TestResult")
+            val result = vaultRepository.exportVaultDataToString(
+                format = format,
+                restrictedTypes = listOf(CipherType.CARD),
+            )
 
             coVerify {
                 vaultSdkSource.exportVaultDataToString(
@@ -4442,90 +4523,15 @@ class VaultRepositoryTest {
             } returns error.asFailure()
 
             val expected = ExportVaultDataResult.Error(error = error)
-            val result = vaultRepository.exportVaultDataToString(format = format)
+            val result = vaultRepository.exportVaultDataToString(
+                format = format,
+                restrictedTypes = emptyList(),
+            )
 
             assertEquals(
                 expected,
                 result,
             )
-        }
-
-    @Test
-    fun `getDecryptedFido2CredentialAutofillViews should return error when userId not found`() =
-        runTest {
-            fakeAuthDiskSource.userState = null
-
-            val expected = DecryptFido2CredentialAutofillViewResult.Error(
-                error = NoActiveUserException(),
-            )
-            val result = vaultRepository
-                .getDecryptedFido2CredentialAutofillViews(
-                    cipherViewList = listOf(createMockCipherView(number = 1)),
-                )
-
-            assertEquals(
-                expected,
-                result,
-            )
-            coVerify(exactly = 0) {
-                vaultSdkSource.decryptFido2CredentialAutofillViews(any(), any())
-            }
-        }
-
-    @Test
-    fun `getDecryptedFido2CredentialAutofillViews should return error when decryption fails`() =
-        runTest {
-            fakeAuthDiskSource.userState = MOCK_USER_STATE
-            val cipherViewList = listOf(createMockCipherView(number = 1))
-            val error = Throwable()
-            coEvery {
-                vaultSdkSource.decryptFido2CredentialAutofillViews(
-                    userId = MOCK_USER_STATE.activeUserId,
-                    cipherViews = cipherViewList.toTypedArray(),
-                )
-            } returns error.asFailure()
-
-            val result = vaultRepository.getDecryptedFido2CredentialAutofillViews(
-                cipherViewList = cipherViewList,
-            )
-
-            assertEquals(DecryptFido2CredentialAutofillViewResult.Error(error = error), result)
-            coVerify {
-                vaultSdkSource.decryptFido2CredentialAutofillViews(
-                    userId = MOCK_USER_STATE.activeUserId,
-                    cipherViews = cipherViewList.toTypedArray(),
-                )
-            }
-        }
-
-    @Suppress("MaxLineLength")
-    @Test
-    fun `getDecryptedFido2CredentialAutofillViews should return correct results when decryption succeeds`() =
-        runTest {
-            fakeAuthDiskSource.userState = MOCK_USER_STATE
-            val cipherViewList = listOf(createMockCipherView(number = 1))
-            val autofillViewList = mockk<List<Fido2CredentialAutofillView>>()
-            val expected = DecryptFido2CredentialAutofillViewResult.Success(
-                fido2CredentialAutofillViews = autofillViewList,
-            )
-            coEvery {
-                vaultSdkSource.decryptFido2CredentialAutofillViews(
-                    userId = MOCK_USER_STATE.activeUserId,
-                    cipherViews = cipherViewList.toTypedArray(),
-                )
-            } returns autofillViewList.asSuccess()
-
-            val result = vaultRepository.getDecryptedFido2CredentialAutofillViews(
-                cipherViewList = cipherViewList,
-            )
-
-            assertEquals(expected, result)
-            coVerify {
-                vaultSdkSource.decryptFido2CredentialAutofillViews(
-                    userId = MOCK_USER_STATE.activeUserId,
-                    cipherViews = cipherViewList.toTypedArray(),
-                )
-            }
         }
 
     @Test
@@ -4804,11 +4810,11 @@ class VaultRepositoryTest {
 
     private fun setupEmptyDecryptionResults() {
         coEvery {
-            vaultSdkSource.decryptCipherList(
+            vaultSdkSource.decryptCipherListWithFailures(
                 userId = MOCK_USER_STATE.activeUserId,
                 cipherList = emptyList(),
             )
-        } returns emptyList<CipherView>().asSuccess()
+        } returns createMockDecryptCipherListResult(number = 1, successes = emptyList()).asSuccess()
         coEvery {
             vaultSdkSource.decryptFolderList(
                 userId = MOCK_USER_STATE.activeUserId,
@@ -4832,11 +4838,11 @@ class VaultRepositoryTest {
 
     private suspend fun setupDataStateFlow(userId: String) {
         coEvery {
-            vaultSdkSource.decryptCipherList(
+            vaultSdkSource.decryptCipherListWithFailures(
                 userId = userId,
                 cipherList = listOf(createMockSdkCipher(1, clock)),
             )
-        } returns listOf(createMockCipherView(1)).asSuccess()
+        } returns createMockDecryptCipherListResult(number = 1).asSuccess()
         coEvery {
             vaultSdkSource.decryptFolderList(
                 userId = userId,
@@ -4876,7 +4882,7 @@ class VaultRepositoryTest {
             assertEquals(
                 DataState.Loaded(
                     data = VaultData(
-                        cipherViewList = listOf(createMockCipherView(1)),
+                        decryptCipherListResult = createMockDecryptCipherListResult(number = 1),
                         collectionViewList = listOf(createMockCollectionView(number = 1)),
                         folderViewList = listOf(createMockFolderView(number = 1)),
                         sendViewList = listOf(createMockSendView(number = 1)),

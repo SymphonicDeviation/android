@@ -22,13 +22,12 @@ import com.x8bit.bitwarden.data.credentials.manager.BitwardenCredentialManager
 import com.x8bit.bitwarden.data.credentials.util.getCreateCredentialRequestOrNull
 import com.x8bit.bitwarden.data.credentials.util.getFido2AssertionRequestOrNull
 import com.x8bit.bitwarden.data.credentials.util.getGetCredentialsRequestOrNull
+import com.x8bit.bitwarden.data.credentials.util.getProviderGetPasswordRequestOrNull
 import com.x8bit.bitwarden.data.platform.manager.AppResumeManager
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.garbage.GarbageCollectionManager
 import com.x8bit.bitwarden.data.platform.manager.model.AppResumeScreenData
 import com.x8bit.bitwarden.data.platform.manager.model.CompleteRegistrationData
-import com.x8bit.bitwarden.data.platform.manager.model.FlagKey
 import com.x8bit.bitwarden.data.platform.manager.model.SpecialCircumstance
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
@@ -68,7 +67,6 @@ private const val ANIMATION_REFRESH_DELAY = 500L
 class MainViewModel @Inject constructor(
     accessibilitySelectionManager: AccessibilitySelectionManager,
     autofillSelectionManager: AutofillSelectionManager,
-    featureFlagManager: FeatureFlagManager,
     private val addTotpItemFromAuthenticatorManager: AddTotpItemFromAuthenticatorManager,
     private val specialCircumstanceManager: SpecialCircumstanceManager,
     private val garbageCollectionManager: GarbageCollectionManager,
@@ -85,9 +83,6 @@ class MainViewModel @Inject constructor(
     initialState = MainState(
         theme = settingsRepository.appTheme,
         isScreenCaptureAllowed = settingsRepository.isScreenCaptureAllowed,
-        isErrorReportingDialogEnabled = featureFlagManager.getFeatureFlag(
-            key = FlagKey.MobileErrorReporting,
-        ),
         isDynamicColorsEnabled = settingsRepository.isDynamicColorsEnabled,
     ),
 ) {
@@ -104,12 +99,6 @@ class MainViewModel @Inject constructor(
         specialCircumstanceManager
             .specialCircumstanceStateFlow
             .onEach { specialCircumstance = it }
-            .launchIn(viewModelScope)
-
-        featureFlagManager
-            .getFeatureFlagFlow(key = FlagKey.MobileErrorReporting)
-            .map { MainAction.Internal.OnMobileErrorReportingReceive(it) }
-            .onEach(::sendAction)
             .launchIn(viewModelScope)
 
         accessibilitySelectionManager
@@ -217,17 +206,6 @@ class MainViewModel @Inject constructor(
             is MainAction.Internal.ThemeUpdate -> handleAppThemeUpdated(action)
             is MainAction.Internal.VaultUnlockStateChange -> handleVaultUnlockStateChange()
             is MainAction.Internal.DynamicColorsUpdate -> handleDynamicColorsUpdate(action)
-            is MainAction.Internal.OnMobileErrorReportingReceive -> {
-                handleOnMobileErrorReportingReceive(action)
-            }
-        }
-    }
-
-    private fun handleOnMobileErrorReportingReceive(
-        action: MainAction.Internal.OnMobileErrorReportingReceive,
-    ) {
-        mutableStateFlow.update {
-            it.copy(isErrorReportingDialogEnabled = action.isErrorReportingEnabled)
         }
     }
 
@@ -325,6 +303,7 @@ class MainViewModel @Inject constructor(
         val createCredentialRequest = intent.getCreateCredentialRequestOrNull()
         val getCredentialsRequest = intent.getGetCredentialsRequestOrNull()
         val fido2AssertCredentialRequest = intent.getFido2AssertionRequestOrNull()
+        val providerGetPasswordRequest = intent.getProviderGetPasswordRequestOrNull()
         when {
             passwordlessRequestData != null -> {
                 authRepository.activeUserId?.let {
@@ -415,6 +394,19 @@ class MainViewModel @Inject constructor(
                     )
             }
 
+            providerGetPasswordRequest != null -> {
+                // Set the user's verification status when a new GetPassword request is
+                // received to force explicit verification if the user's vault is
+                // unlocked when the request is received.
+                bitwardenCredentialManager.isUserVerified =
+                    providerGetPasswordRequest.isUserPreVerified
+
+                specialCircumstanceManager.specialCircumstance =
+                    SpecialCircumstance.ProviderGetPasswordRequest(
+                        passwordGetRequest = providerGetPasswordRequest,
+                    )
+            }
+
             getCredentialsRequest != null -> {
                 specialCircumstanceManager.specialCircumstance =
                     SpecialCircumstance.ProviderGetCredentials(
@@ -495,15 +487,12 @@ data class MainState(
     val theme: AppTheme,
     val isScreenCaptureAllowed: Boolean,
     val isDynamicColorsEnabled: Boolean,
-    private val isErrorReportingDialogEnabled: Boolean,
 ) : Parcelable {
     /**
      * Contains all feature flags that are available to the UI.
      */
     val featureFlagsState: FeatureFlagsState
-        get() = FeatureFlagsState(
-            isErrorReportingDialogEnabled = isErrorReportingDialogEnabled,
-        )
+        get() = FeatureFlagsState
 }
 
 /**
@@ -546,13 +535,6 @@ sealed class MainAction {
          */
         data class AccessibilitySelectionReceive(
             val cipherView: CipherView,
-        ) : Internal()
-
-        /**
-         * Indicates the Mobile Error Reporting feature flag has been updated.
-         */
-        data class OnMobileErrorReportingReceive(
-            val isErrorReportingEnabled: Boolean,
         ) : Internal()
 
         /**
