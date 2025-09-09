@@ -21,14 +21,29 @@ import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.data.repository.util.baseWebSendUrl
 import com.bitwarden.send.SendType
 import com.bitwarden.ui.platform.base.util.toHostOrPathOrNull
+import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.icon.model.IconData
+import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.manager.IntentManager
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.asText
+import com.bitwarden.ui.util.assertLockOrLogoutDialogIsDisplayed
+import com.bitwarden.ui.util.assertLogoutConfirmationDialogIsDisplayed
 import com.bitwarden.ui.util.assertMasterPasswordDialogDisplayed
 import com.bitwarden.ui.util.assertNoDialogExists
+import com.bitwarden.ui.util.assertRemovalConfirmationDialogIsDisplayed
+import com.bitwarden.ui.util.assertSwitcherIsDisplayed
+import com.bitwarden.ui.util.assertSwitcherIsNotDisplayed
 import com.bitwarden.ui.util.isProgressBar
 import com.bitwarden.ui.util.onNodeWithTextAfterScroll
+import com.bitwarden.ui.util.performAccountClick
+import com.bitwarden.ui.util.performAccountIconClick
+import com.bitwarden.ui.util.performAccountLongClick
+import com.bitwarden.ui.util.performLockAccountClick
+import com.bitwarden.ui.util.performLogoutAccountClick
+import com.bitwarden.ui.util.performRemoveAccountClick
+import com.bitwarden.ui.util.performYesDialogButtonClick
 import com.bitwarden.vault.CipherType
 import com.x8bit.bitwarden.data.autofill.model.AutofillSelectionData
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
@@ -39,28 +54,13 @@ import com.x8bit.bitwarden.ui.credentials.manager.model.GetCredentialsResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetPasswordCredentialResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.RegisterFido2CredentialResult
 import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
-import com.x8bit.bitwarden.ui.platform.components.model.AccountSummary
-import com.x8bit.bitwarden.ui.platform.components.snackbar.BitwardenSnackbarData
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
 import com.x8bit.bitwarden.ui.platform.manager.biometrics.BiometricsManager
 import com.x8bit.bitwarden.ui.platform.manager.exit.ExitManager
-import com.x8bit.bitwarden.ui.platform.manager.intent.IntentManager
 import com.x8bit.bitwarden.ui.tools.feature.send.addedit.AddEditSendRoute
 import com.x8bit.bitwarden.ui.tools.feature.send.addedit.ModeType
 import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
 import com.x8bit.bitwarden.ui.tools.feature.send.viewsend.ViewSendRoute
-import com.x8bit.bitwarden.ui.util.assertLockOrLogoutDialogIsDisplayed
-import com.x8bit.bitwarden.ui.util.assertLogoutConfirmationDialogIsDisplayed
-import com.x8bit.bitwarden.ui.util.assertRemovalConfirmationDialogIsDisplayed
-import com.x8bit.bitwarden.ui.util.assertSwitcherIsDisplayed
-import com.x8bit.bitwarden.ui.util.assertSwitcherIsNotDisplayed
-import com.x8bit.bitwarden.ui.util.performAccountClick
-import com.x8bit.bitwarden.ui.util.performAccountIconClick
-import com.x8bit.bitwarden.ui.util.performAccountLongClick
-import com.x8bit.bitwarden.ui.util.performLockAccountClick
-import com.x8bit.bitwarden.ui.util.performLogoutAccountClick
-import com.x8bit.bitwarden.ui.util.performRemoveAccountClick
-import com.x8bit.bitwarden.ui.util.performYesDialogButtonClick
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
 import com.x8bit.bitwarden.ui.vault.feature.item.VaultItemArgs
@@ -2348,6 +2348,96 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
             )
         }
     }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `cipher decryption error dialog should be shown or hidden according to the state`() {
+        val errorTitle = "Decryption error"
+        val errorMessage =
+            "Bitwarden could not decrypt this vault item. Copy and share this error report with customer success to avoid additional data loss."
+        composeTestRule.assertNoDialogExists()
+        composeTestRule
+            .onNodeWithText(errorTitle)
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithText(errorMessage)
+            .assertDoesNotExist()
+
+        mutableStateFlow.update {
+            it.copy(
+                dialogState = VaultItemListingState.DialogState.CipherDecryptionError(
+                    title = errorTitle.asText(),
+                    message = errorMessage.asText(),
+                    selectedCipherId = "1",
+                ),
+            )
+        }
+
+        composeTestRule
+            .onAllNodesWithText(errorTitle)
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsDisplayed()
+        composeTestRule
+            .onAllNodesWithText(errorMessage)
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsDisplayed()
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `share and copy button click on the CipherDecryptionError screen should send ShareCipherDecryptionErrorClick`() {
+        val errorTitle = "Decryption error"
+        val errorMessage =
+            "Bitwarden could not decrypt this vault item. Copy and share this error report with customer success to avoid additional data loss."
+        val shareAndCopyText = "Copy error report"
+        mutableStateFlow.update {
+            it.copy(
+                dialogState = VaultItemListingState.DialogState.CipherDecryptionError(
+                    title = errorTitle.asText(),
+                    message = errorMessage.asText(),
+                    selectedCipherId = "1",
+                ),
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText(shareAndCopyText)
+            .performClick()
+
+        verify {
+            viewModel.trySendAction(
+                VaultItemListingsAction.ShareCipherDecryptionErrorClick("1"),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `close button click on the CipherDecryptionError screen should send DialogDismiss`() {
+        val errorTitle = "Decryption error"
+        val errorMessage =
+            "Bitwarden could not decrypt this vault item. Copy and share this error report with customer success to avoid additional data loss."
+        val closeText = "Close"
+        mutableStateFlow.update {
+            it.copy(
+                dialogState = VaultItemListingState.DialogState.CipherDecryptionError(
+                    title = errorTitle.asText(),
+                    message = errorMessage.asText(),
+                    selectedCipherId = "1",
+                ),
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText(closeText)
+            .performClick()
+
+        verify {
+            viewModel.trySendAction(
+                VaultItemListingsAction.DismissDialogClick,
+            )
+        }
+    }
 }
 
 private val ACTIVE_ACCOUNT_SUMMARY = AccountSummary(
@@ -2409,7 +2499,7 @@ private val STATE_FOR_AUTOFILL = DEFAULT_STATE.copy(
 private fun createDisplayItem(number: Int): VaultItemListingState.DisplayItem =
     VaultItemListingState.DisplayItem(
         id = "mockId-$number",
-        title = "mockTitle-$number",
+        title = "mockTitle-$number".asText(),
         titleTestTag = "SendNameLabel",
         secondSubtitle = null,
         secondSubtitleTestTag = null,
@@ -2465,7 +2555,7 @@ private fun createCipherDisplayItem(
 ): VaultItemListingState.DisplayItem =
     VaultItemListingState.DisplayItem(
         id = "mockId-$number",
-        title = "mockTitle-$number",
+        title = "mockTitle-$number".asText(),
         titleTestTag = "CipherNameLabel",
         secondSubtitle = null,
         secondSubtitleTestTag = null,

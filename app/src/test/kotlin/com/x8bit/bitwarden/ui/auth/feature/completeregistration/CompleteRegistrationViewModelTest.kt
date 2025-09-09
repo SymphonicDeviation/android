@@ -5,7 +5,9 @@ import app.cash.turbine.test
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
 import com.bitwarden.ui.platform.base.BaseViewModelTest
+import com.bitwarden.ui.platform.resource.BitwardenPlurals
 import com.bitwarden.ui.platform.resource.BitwardenString
+import com.bitwarden.ui.util.asPluralsText
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.datasource.sdk.model.PasswordStrength.LEVEL_0
@@ -18,7 +20,6 @@ import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordStrengthResult
 import com.x8bit.bitwarden.data.auth.repository.model.RegisterResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
-import com.x8bit.bitwarden.data.auth.repository.util.generateUriForCaptcha
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.model.SpecialCircumstance.RegistrationEvent
@@ -63,7 +64,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
             login(
                 email = any(),
                 password = any(),
-                captchaToken = any(),
             )
         } returns LoginResult.Success
 
@@ -73,11 +73,10 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                 masterPassword = any(),
                 masterPasswordHint = any(),
                 emailVerificationToken = any(),
-                captchaToken = any(),
                 shouldCheckDataBreaches = any(),
                 isMasterPasswordStrong = any(),
             )
-        } returns RegisterResult.Success(captchaToken = CAPTCHA_BYPASS_TOKEN)
+        } returns RegisterResult.Success
 
         coEvery {
             setOnboardingStatus(OnboardingStatus.NOT_STARTED)
@@ -103,7 +102,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
         specialCircumstanceManager.specialCircumstance = mockCompleteRegistrationCircumstance
         mockkStatic(
             SavedStateHandle::toCompleteRegistrationArgs,
-            ::generateUriForCaptcha,
         )
     }
 
@@ -111,7 +109,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
     fun tearDown() {
         unmockkStatic(
             SavedStateHandle::toCompleteRegistrationArgs,
-            ::generateUriForCaptcha,
         )
     }
 
@@ -153,11 +150,10 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                     masterPassword = PASSWORD,
                     masterPasswordHint = null,
                     emailVerificationToken = TOKEN,
-                    captchaToken = null,
                     shouldCheckDataBreaches = false,
                     isMasterPasswordStrong = true,
                 )
-            } returns RegisterResult.Success(captchaToken = CAPTCHA_BYPASS_TOKEN)
+            } returns RegisterResult.Success
             val viewModel = createCompleteRegistrationViewModel(VALID_INPUT_STATE)
             viewModel.stateEventFlow(backgroundScope) { stateFlow, eventFlow ->
                 assertEquals(VALID_INPUT_STATE, stateFlow.awaitItem())
@@ -186,7 +182,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                 masterPassword = PASSWORD,
                 masterPasswordHint = null,
                 emailVerificationToken = TOKEN,
-                captchaToken = null,
                 shouldCheckDataBreaches = false,
                 isMasterPasswordStrong = true,
             )
@@ -220,7 +215,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
             mockAuthRepository.login(
                 email = EMAIL,
                 password = PASSWORD,
-                captchaToken = CAPTCHA_BYPASS_TOKEN,
             )
         }
     }
@@ -246,7 +240,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                 mockAuthRepository.login(
                     email = EMAIL,
                     password = PASSWORD,
-                    captchaToken = CAPTCHA_BYPASS_TOKEN,
                 )
             } returns LoginResult.TwoFactorRequired
 
@@ -255,7 +248,7 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
             viewModel.eventFlow.test {
                 assertTrue(awaitItem() is CompleteRegistrationEvent.ShowToast)
                 assertEquals(
-                    CompleteRegistrationEvent.NavigateToLogin(EMAIL, CAPTCHA_BYPASS_TOKEN),
+                    CompleteRegistrationEvent.NavigateToLogin(EMAIL),
                     awaitItem(),
                 )
             }
@@ -272,7 +265,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                 masterPassword = PASSWORD,
                 masterPasswordHint = null,
                 emailVerificationToken = TOKEN,
-                captchaToken = null,
                 shouldCheckDataBreaches = false,
                 isMasterPasswordStrong = true,
             )
@@ -285,7 +277,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                 masterPassword = PASSWORD,
                 masterPasswordHint = null,
                 emailVerificationToken = TOKEN,
-                captchaToken = null,
                 shouldCheckDataBreaches = false,
                 isMasterPasswordStrong = true,
             )
@@ -302,7 +293,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                         masterPassword = PASSWORD,
                         masterPasswordHint = null,
                         emailVerificationToken = TOKEN,
-                        captchaToken = null,
                         shouldCheckDataBreaches = true,
                         isMasterPasswordStrong = true,
                     )
@@ -341,7 +331,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                         masterPassword = PASSWORD,
                         masterPasswordHint = null,
                         emailVerificationToken = TOKEN,
-                        captchaToken = null,
                         shouldCheckDataBreaches = true,
                         isMasterPasswordStrong = false,
                     )
@@ -374,7 +363,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                         masterPassword = PASSWORD,
                         masterPasswordHint = null,
                         emailVerificationToken = TOKEN,
-                        captchaToken = null,
                         shouldCheckDataBreaches = true,
                         isMasterPasswordStrong = false,
                     )
@@ -604,7 +592,10 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
                 passwordInput = input,
                 dialog = CompleteRegistrationDialog.Error(
                     title = BitwardenString.an_error_has_occurred.asText(),
-                    message = BitwardenString.master_password_length_val_message_x.asText(12),
+                    message = BitwardenPlurals.master_password_length_val_message_x.asPluralsText(
+                        quantity = 12,
+                        args = arrayOf(12),
+                    ),
                 ),
             )
             viewModel.trySendAction(CompleteRegistrationAction.CallToActionClick)
@@ -681,7 +672,6 @@ class CompleteRegistrationViewModelTest : BaseViewModelTest() {
         private const val PASSWORD = "longenoughtpassword"
         private const val EMAIL = "test@test.com"
         private const val TOKEN = "token"
-        private const val CAPTCHA_BYPASS_TOKEN = "captcha_bypass"
         private val DEFAULT_STATE = CompleteRegistrationState(
             userEmail = EMAIL,
             emailVerificationToken = TOKEN,

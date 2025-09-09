@@ -4,6 +4,7 @@
     <string name="add_folder">新增資料夾</string>
     <string name="add_item">新增項目</string>
     <string name="an_error_has_occurred">發生錯誤。</string>
+    <string name="apply">Apply</string>
     <string name="back">返回</string>
     <string name="bitwarden">Bitwarden</string>
     <string name="cancel">取消</string>
@@ -11,7 +12,7 @@
     <string name="copy_password">複製密碼</string>
     <string name="copy_username">複製使用者名稱</string>
     <string name="delete">刪除</string>
-    <string name="deleting">正在刪除...</string>
+    <string name="deleting">Deleting…</string>
     <string name="do_you_really_want_to_delete">您確定要刪除嗎？刪除後將無法復原。</string>
     <string name="edit">編輯</string>
     <string name="edit_folder">編輯資料夾</string>
@@ -54,7 +55,7 @@
     <string name="password">密碼</string>
     <string name="save">儲存</string>
     <string name="move">移動</string>
-    <string name="saving">正在儲存...</string>
+    <string name="saving">Saving…</string>
     <string name="settings">設定</string>
     <string name="show">顯示</string>
     <string name="item_deleted">已刪除項目</string>
@@ -103,13 +104,15 @@
     <string name="immediately">立即</string>
     <string name="vault_timeout_log_out_confirmation_title">Set session timeout to \"Log out\"?</string>
     <string name="vault_timeout_log_out_confirmation_message">After the timeout period, you will be logged out. You will need to be connected to the internet to log in and access your vault again. Your settings and PIN saved on this device won\'t change.</string>
-    <string name="logging_in">正在登入...</string>
+    <string name="logging_in">Logging in…</string>
     <string name="login_to_bitwarden">Log in to Bitwarden</string>
     <string name="master_password_confirmation_val_message">兩次填寫的主密碼不一致。</string>
     <string name="master_password_description">主密碼是用於存取密碼庫的密碼。它非常重要，請您不要忘記它。若您忘記了主密碼，沒有任何方法能將其復原。</string>
     <string name="master_password_hint">主密碼提示（可省略）</string>
     <string name="master_password_hint_description">主密碼提示可以在您忘記主密碼時幫助您回憶主密碼。</string>
-    <string name="master_password_length_val_message_x">主密碼需要至少 %1$s 個字元。</string>
+    <plurals name="master_password_length_val_message_x">
+        <item quantity="other">Master password must be at least %d characters long.</item>
+    </plurals>
     <string name="min_numbers">最少數字位數</string>
     <string name="min_special">最少符號位數</string>
     <string name="never">永不</string>
@@ -142,11 +145,11 @@
     <string name="select">選擇</string>
     <string name="item_details">Item details</string>
     <string name="item_updated">項目已儲存</string>
-    <string name="submitting">正在送出...</string>
-    <string name="syncing">正在同步...</string>
+    <string name="submitting">Submitting…</string>
+    <string name="syncing">Syncing…</string>
     <string name="syncing_complete">同步完成</string>
     <string name="two_step_login">兩步驟登入</string>
-    <string name="unlock_with">使用 %1$s 解鎖</string>
+    <string name="unlock_with_biometrics">Unlock with Biometrics</string>
     <string name="unlock_with_pin">使用 PIN 碼解鎖</string>
     <string name="verification_code">驗證碼</string>
     <string name="view_login">View login</string>
@@ -162,7 +165,7 @@
     <string name="search_for_a_login_or_add_a_new_login">搜尋登入資訊或新增登入資訊</string>
     <string name="disabled">已停用</string>
     <string name="bitwarden_autofill_service_alert2">Bitwarden 自動填入服務是新增登入資料的最簡單方法。請至「設定」頁面深入了解使用 Bitwarden 自動填入服務的方法 。</string>
-    <string name="autofill">自動填入</string>
+    <string name="autofill_title">Autofill</string>
     <string name="autofill_or_view">您想自動填入還是檢視此項目？</string>
     <string name="search">搜尋</string>
     <string name="learn_org">了解組織</string>
@@ -181,7 +184,7 @@
     <string name="add_new_attachment">新增附件</string>
     <string name="attachments">附件</string>
     <string name="unable_to_download_file">無法下載檔案。</string>
-    <string name="downloading">正在下載...</string>
+    <string name="downloading">Downloading…</string>
     <string name="attachment_large_warning">這個附件大小為 %1$s 。確定要下載至您的裝置嗎？</string>
     <string name="authenticator_key">驗證器金鑰 (TOTP)</string>
     <string name="verification_code_totp">驗證碼 (TOTP)</string>
@@ -286,7 +289,7 @@
     <string name="new_uri">新增 URI</string>
     <string name="add_website">Add website</string>
     <string name="base_domain">基底網域</string>
-    <string name="default_text">預設</string>
+    <string name="default_text">Default (%1$s)</string>
     <string name="exact">完全相符</string>
     <string name="host">主機</string>
     <string name="reg_ex">規則運算式</string>
@@ -308,7 +311,9 @@
     <string name="personal_details">個人詳細資訊</string>
     <string name="contact_info">Contact Info</string>
     <string name="check_password_for_data_breaches">Check password for data breaches</string>
-    <string name="password_exposed">此密碼在資料外洩事件中被暴露了 %1$s 次，應立即變更它。</string>
+    <plurals name="password_exposed">
+        <item quantity="other">This password has been exposed %d times in data breaches. You should change it.</item>
+    </plurals>
     <string name="password_safe">任何已知的外洩密碼資料庫中都沒有此密碼，它目前是安全的。</string>
     <string name="identity_name">身分名稱</string>
     <string name="value">值</string>
@@ -356,7 +361,7 @@
     <string name="clear_clipboard">清除剪貼簿</string>
     <string name="clear_clipboard_description">自動清除剪貼簿中複製的值。</string>
     <string name="default_uri_match_detection">預設的 URI 一致性偵測方式</string>
-    <string name="default_uri_match_detection_description">選擇在執行自動填入等動作時對登入資料進行 URI 一致性偵測的預設方式。</string>
+    <string name="default_uri_match_detection_description">URI match detection controls how Bitwarden identifies autofill suggestions.</string>
     <string name="theme">主題</string>
     <string name="theme_description">變更應用程式的主題色彩。</string>
     <string name="copy_notes">複製備註</string>
@@ -364,15 +369,14 @@
     <string name="exit_confirmation">您確定要結束 Bitwarden 嗎？</string>
     <string name="require_master_password_on_app_restart">在應用程式重啟時重新詢問主密碼嗎？</string>
     <string name="pin_require_master_password_restart">當應用程式重新啟動時，是否要求使用主密碼解鎖？</string>
-    <string name="ask_to_add_login">詢問新增登入資料</string>
-    <string name="ask_to_add_login_description">在密碼庫中找不到相符的項目時詢問是否新增項目。</string>
+    <string name="ask_to_add_item">Ask to add item</string>
+    <string name="ask_to_add_item_description">Ask to add an item if one isn\'t found in your vault.</string>
     <string name="on_restart">於程式重新啟動時</string>
     <string name="capitalize">大寫</string>
     <string name="include_number">包含數字</string>
     <string name="download">下載</string>
     <string name="login_expired">您的登入階段已逾期。</string>
     <string name="biometrics_direction">生物特徵辨識驗證</string>
-    <string name="biometrics">生物特徵辨識</string>
     <string name="biometrics_failed">Biometrics Failed</string>
     <string name="biometrics_decoding_failure">Log in with your Master Password or PIN then re-enable biometric login in Settings.</string>
     <string name="use_biometrics_to_unlock">使用生物特徵辨識解鎖</string>
@@ -393,10 +397,10 @@
     <string name="save_attachment_success">已成功儲存附件</string>
     <string name="autofill_tile_accessibility_required">請到 Bitwarden 設定中開啟「自動填入無障礙服務」以使用自動填入功能。</string>
     <string name="autofill_tile_uri_not_found">未偵測到密碼欄位</string>
-    <string name="soft_deleting">正在傳送至垃圾桶…</string>
+    <string name="soft_deleting">Sending to trash…</string>
     <string name="item_soft_deleted">已將項目傳送至垃圾桶。</string>
     <string name="restore">還原</string>
-    <string name="restoring">正在還原...</string>
+    <string name="restoring">Restoring…</string>
     <string name="item_restored">項目已還原</string>
     <string name="trash">垃圾桶</string>
     <string name="do_you_really_want_to_permanently_delete_cipher">您確定要永久刪除嗎？刪除後將無法復原。</string>
@@ -484,7 +488,6 @@
     <string name="password_prompt">重新詢問主密碼</string>
     <string name="password_confirmation">確認主密碼</string>
     <string name="password_confirmation_desc">此動作受到保護。若要繼續，請重新輸入您的主密碼以驗證您的身分。</string>
-    <string name="captcha_failed">Captcha 驗證失敗，請再試一次。</string>
     <string name="update_master_password">更新主密碼</string>
     <string name="update_master_password_warning">您的主密碼最近被您的組織管理者變更過。您必須現在更新主密碼才能存取密碼庫。繼續操作會登出您目前的工作階段，並要求您重新登入帳戶。其他裝置上的活動工作階段最多會保持一個小時。</string>
     <string name="updating_password">正在更新密碼</string>
@@ -750,7 +753,9 @@
     <string name="bitwarden_cannot_reset_a_lost_or_forgotten_master_password">Bitwarden cannot reset a lost or forgotten master password.</string>
     <string name="choose_your_master_password">選擇您的主密碼</string>
     <string name="choose_a_unique_and_strong_password_to_keep_your_information_safe">選擇一個獨特且強度足夠的密碼來保護您的資訊安全。</string>
-    <string name="minimum_characters">%1$s 個字元</string>
+    <plurals name="minimum_characters">
+        <item quantity="other">%d characters</item>
+    </plurals>
     <string name="expired_link">過期連結</string>
     <string name="please_restart_registration_or_try_logging_in">請重啟註冊或是嘗試登入。您可能已經有一個帳號了。</string>
     <string name="restart_registration">重新啟動註冊</string>
@@ -803,7 +808,7 @@
     <string name="need_help_check_out_import_help">需要幫助嗎？看看我們的<annotation link="importHelp">匯入說明</annotation>。</string>
     <string name="save_the_exported_file_somewhere_on_your_computer_you_can_find_easily">在您的電腦上<annotation emphasis="bold">儲存匯出的檔案</annotation>方便日後尋找。</string>
     <string name="this_is_not_a_recognized_bitwarden_server_you_may_need_to_check_with_your_provider_or_update_your_server">這不是一個 Bitwarden 伺服器。您可能需要聯繫您的提供商或更新您的伺服器。</string>
-    <string name="syncing_logins_loading_message">正在同步登入資訊...</string>
+    <string name="syncing_logins_loading_message">Syncing logins…</string>
     <string name="download_the_browser_extension">下載瀏覽器擴充套件</string>
     <string name="go_to_bitwarden_com_download_to_integrate_bitwarden_into_browser">瀏覽到 bitwarden.com/download 來結合 Bitwarden 到您最愛的瀏覽器提供最好的體驗。</string>
     <string name="use_the_web_app">使用網頁應用程式</string>
@@ -851,7 +856,6 @@
     <string name="need_some_inspiration">"需要一些靈感嗎？"</string>
     <string name="check_out_the_passphrase_generator">"來看看密碼短語產生器"</string>
     <string name="we_couldnt_verify_the_servers_certificate">我們無法驗證伺服器的數位憑證。您裝置上的憑證鍊或代理伺服器設定或您的 Bitwarden 伺服器可能未正確設定。</string>
-    <string name="review_flow_launched">已推出審核流程檢視！</string>
     <string name="copy_private_key">複製私密金鑰</string>
     <string name="login_credentials">登入憑證</string>
     <string name="autofill_options">自動填入選項</string>
@@ -913,7 +917,7 @@
     <string name="no_folder">No folder</string>
     <string name="show_less">Show less</string>
     <string name="add_field">Add field</string>
-    <string name="x_ellipses">%s...</string>
+    <string name="x_ellipses">%s…</string>
     <string name="share_error_details">Share error details</string>
     <string name="flight_recorder">Flight recorder</string>
     <string name="flight_recorder_help">Flight recorder help</string>
@@ -1070,4 +1074,20 @@
     <string name="local_items_are_collapsed_click_to_expand">Local items are collapsed, click to expand.</string>
     <string name="items_expanded_click_to_collapse">Items are expanded, click to collapse.</string>
     <string name="items_are_collapsed_click_to_expand">Items are collapsed, click to expand.</string>
+    <string name="error_cannot_decrypt">[error: cannot decrypt]</string>
+    <string name="copy_error_report">Copy error report</string>
+    <string name="bitwarden_could_not_decrypt_this_vault_item_description_long">Bitwarden could not decrypt this vault item. Copy and share this error report with customer success to avoid additional data loss.</string>
+    <plurals name="bitwarden_could_not_decrypt_x_vault_item_copy_and_share_description_long">
+        <item quantity="other">Bitwarden could not decrypt %1$d vault items. Copy and share this error report with customer success to avoid additional data loss.</item>
+    </plurals>
+    <string name="select_a_card_for_x">Select a card for %s</string>
+    <string name="advanced_options">Advanced options</string>
+    <string name="more_about_match_detection"><annotation link="moreAboutMatchDetection">More about match detection</annotation></string>
+    <string name="keep_your_credential_secure">Keep your credentials secure</string>
+    <string name="learn_more_about_how_to_keep_credentirals_secure">Learn more about how to keep credentials secure when using “%1$s”.</string>
+    <string name="are_you_sure_you_want_to_use">Are you sure you want to use “%1$s”?</string>
+    <string name="default_uri_match_detection_description_advanced_options_incorrectly">URI match detection controls how Bitwarden identifies autofill suggestions.\n<annotation emphasis="bold">Warning:</annotation> “Regular expression” is an advanced option with increased risk of exposing credentials if used incorrectly.</string>
+    <string name="default_uri_match_detection_description_advanced_options">URI match detection controls how Bitwarden identifies autofill suggestions.\n<annotation emphasis="bold">Warning:</annotation> “Starts with” is an advanced option with increased risk of exposing credentials.</string>
+    <string name="advanced_option_with_increased_risk_of_exposing_credentials">“Starts with” is an advanced option with increased risk of exposing credentials.</string>
+    <string name="advanced_option_increased_risk_exposing_credentials_used_incorrectly">“Regular expression” is an advanced option with increased risk of exposing credentials if used incorrectly.</string>
 </resources>

@@ -46,7 +46,6 @@ import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.ForcePasswordResetReason
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
-import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.network.model.DeviceDataModel
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.util.toInt
@@ -55,6 +54,7 @@ import com.x8bit.bitwarden.data.auth.manager.AuthRequestManager
 import com.x8bit.bitwarden.data.auth.manager.KeyConnectorManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
+import com.x8bit.bitwarden.data.auth.manager.UserStateManager
 import com.x8bit.bitwarden.data.auth.manager.model.MigrateExistingUserToKeyConnectorResult
 import com.x8bit.bitwarden.data.auth.repository.model.AuthState
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
@@ -77,51 +77,35 @@ import com.x8bit.bitwarden.data.auth.repository.model.ResetPasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.SendVerificationEmailResult
 import com.x8bit.bitwarden.data.auth.repository.model.SetPasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.SwitchAccountResult
-import com.x8bit.bitwarden.data.auth.repository.model.UserAccountTokens
-import com.x8bit.bitwarden.data.auth.repository.model.UserKeyConnectorState
-import com.x8bit.bitwarden.data.auth.repository.model.UserOrganizations
-import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePinResult
-import com.x8bit.bitwarden.data.auth.repository.model.VaultUnlockType
 import com.x8bit.bitwarden.data.auth.repository.model.VerifiedOrganizationDomainSsoDetailsResult
 import com.x8bit.bitwarden.data.auth.repository.model.VerifyOtpResult
 import com.x8bit.bitwarden.data.auth.repository.model.toLoginErrorResult
-import com.x8bit.bitwarden.data.auth.repository.util.CaptchaCallbackTokenResult
 import com.x8bit.bitwarden.data.auth.repository.util.DuoCallbackTokenResult
 import com.x8bit.bitwarden.data.auth.repository.util.SsoCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.WebAuthResult
 import com.x8bit.bitwarden.data.auth.repository.util.activeUserIdChangesFlow
-import com.x8bit.bitwarden.data.auth.repository.util.currentOnboardingStatus
-import com.x8bit.bitwarden.data.auth.repository.util.onboardingStatusChangesFlow
 import com.x8bit.bitwarden.data.auth.repository.util.policyInformation
 import com.x8bit.bitwarden.data.auth.repository.util.toRemovedPasswordUserStateJson
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.auth.repository.util.toUserState
 import com.x8bit.bitwarden.data.auth.repository.util.toUserStateJsonWithPassword
-import com.x8bit.bitwarden.data.auth.repository.util.userAccountTokens
-import com.x8bit.bitwarden.data.auth.repository.util.userAccountTokensFlow
-import com.x8bit.bitwarden.data.auth.repository.util.userKeyConnectorStateFlow
-import com.x8bit.bitwarden.data.auth.repository.util.userKeyConnectorStateList
-import com.x8bit.bitwarden.data.auth.repository.util.userOrganizationsList
-import com.x8bit.bitwarden.data.auth.repository.util.userOrganizationsListFlow
 import com.x8bit.bitwarden.data.auth.repository.util.userSwitchingChangesFlow
 import com.x8bit.bitwarden.data.auth.util.KdfParamsConstants.DEFAULT_PBKDF2_ITERATIONS
 import com.x8bit.bitwarden.data.auth.util.YubiKeyResult
 import com.x8bit.bitwarden.data.auth.util.toSdkParams
+import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
 import com.x8bit.bitwarden.data.platform.error.MissingPropertyException
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
-import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.LogsManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.PushManager
-import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.platform.manager.util.getActivePolicies
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
-import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockError
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockResult
 import kotlinx.coroutines.CoroutineScope
@@ -129,13 +113,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -145,7 +127,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import java.time.Clock
 import javax.inject.Singleton
 
 /**
@@ -154,6 +136,7 @@ import javax.inject.Singleton
 @Suppress("LargeClass", "LongParameterList", "TooManyFunctions")
 @Singleton
 class AuthRepositoryImpl(
+    private val clock: Clock,
     private val accountsService: AccountsService,
     private val devicesService: DevicesService,
     private val haveIBeenPwnedService: HaveIBeenPwnedService,
@@ -162,6 +145,7 @@ class AuthRepositoryImpl(
     private val authSdkSource: AuthSdkSource,
     private val vaultSdkSource: VaultSdkSource,
     private val authDiskSource: AuthDiskSource,
+    private val settingsDiskSource: SettingsDiskSource,
     private val configDiskSource: ConfigDiskSource,
     private val environmentRepository: EnvironmentRepository,
     private val settingsRepository: SettingsRepository,
@@ -171,12 +155,13 @@ class AuthRepositoryImpl(
     private val trustedDeviceManager: TrustedDeviceManager,
     private val userLogoutManager: UserLogoutManager,
     private val policyManager: PolicyManager,
-    firstTimeActionManager: FirstTimeActionManager,
+    private val userStateManager: UserStateManager,
     logsManager: LogsManager,
     pushManager: PushManager,
     dispatcherManager: DispatcherManager,
 ) : AuthRepository,
-    AuthRequestManager by authRequestManager {
+    AuthRequestManager by authRequestManager,
+    UserStateManager by userStateManager {
     /**
      * A scope intended for use when simply collecting multiple flows in order to combine them. The
      * use of [Dispatchers.Unconfined] allows for this to happen synchronously whenever any of
@@ -188,24 +173,6 @@ class AuthRepositoryImpl(
      * A scope intended for use when operating asynchronously.
      */
     private val ioScope = CoroutineScope(dispatcherManager.io)
-
-    private val mutableHasPendingAccountAdditionStateFlow = MutableStateFlow(false)
-
-    /**
-     * If there is a pending account deletion, continue showing the original UserState until it
-     * is confirmed. This is accomplished by blocking the emissions of the [userStateFlow]
-     * whenever set to `true`.
-     */
-    private val mutableHasPendingAccountDeletionStateFlow = MutableStateFlow(false)
-
-    /**
-     * Whenever a function needs to update multiple underlying data-points that contribute to the
-     * [UserState], we update this [MutableStateFlow] and continue to show the original `UserState`
-     * until the transaction is complete. This is accomplished by blocking the emissions of the
-     * [userStateFlow] whenever this is set to a value above 0 (a count is used if more than one
-     * process is updating data simultaneously).
-     */
-    private val mutableUserStateTransactionCountStateFlow = MutableStateFlow(0)
 
     /**
      * The auth information to make the identity token request will need to be
@@ -267,72 +234,6 @@ class AuthRepositoryImpl(
             initialValue = AuthState.Uninitialized,
         )
 
-    @Suppress("UNCHECKED_CAST", "MagicNumber")
-    override val userStateFlow: StateFlow<UserState?> = combine(
-        authDiskSource.userStateFlow,
-        authDiskSource.userAccountTokensFlow,
-        authDiskSource.userOrganizationsListFlow,
-        authDiskSource.userKeyConnectorStateFlow,
-        authDiskSource.onboardingStatusChangesFlow,
-        firstTimeActionManager.firstTimeStateFlow,
-        vaultRepository.vaultUnlockDataStateFlow,
-        mutableHasPendingAccountAdditionStateFlow,
-        // Ignore the data in the merge, but trigger an update when they emit.
-        merge(
-            mutableHasPendingAccountDeletionStateFlow,
-            mutableUserStateTransactionCountStateFlow,
-            vaultRepository.isActiveUserUnlockingFlow,
-        ),
-    ) { array ->
-        val userStateJson = array[0] as UserStateJson?
-        val userAccountTokens = array[1] as List<UserAccountTokens>
-        val userOrganizationsList = array[2] as List<UserOrganizations>
-        val userIsUsingKeyConnectorList = array[3] as List<UserKeyConnectorState>
-        val onboardingStatus = array[4] as OnboardingStatus?
-        val firstTimeState = array[5] as FirstTimeState
-        val vaultState = array[6] as List<VaultUnlockData>
-        val hasPendingAccountAddition = array[7] as Boolean
-        userStateJson?.toUserState(
-            vaultState = vaultState,
-            userAccountTokens = userAccountTokens,
-            userOrganizationsList = userOrganizationsList,
-            userIsUsingKeyConnectorList = userIsUsingKeyConnectorList,
-            hasPendingAccountAddition = hasPendingAccountAddition,
-            onboardingStatus = onboardingStatus,
-            isBiometricsEnabledProvider = ::isBiometricsEnabled,
-            vaultUnlockTypeProvider = ::getVaultUnlockType,
-            isDeviceTrustedProvider = ::isDeviceTrusted,
-            firstTimeState = firstTimeState,
-        )
-    }
-        .filterNot {
-            mutableHasPendingAccountDeletionStateFlow.value ||
-                mutableUserStateTransactionCountStateFlow.value > 0 ||
-                vaultRepository.isActiveUserUnlockingFlow.value
-        }
-        .stateIn(
-            scope = unconfinedScope,
-            started = SharingStarted.Eagerly,
-            initialValue = authDiskSource
-                .userState
-                ?.toUserState(
-                    vaultState = vaultRepository.vaultUnlockDataStateFlow.value,
-                    userAccountTokens = authDiskSource.userAccountTokens,
-                    userOrganizationsList = authDiskSource.userOrganizationsList,
-                    userIsUsingKeyConnectorList = authDiskSource.userKeyConnectorStateList,
-                    hasPendingAccountAddition = mutableHasPendingAccountAdditionStateFlow.value,
-                    onboardingStatus = authDiskSource.currentOnboardingStatus,
-                    isBiometricsEnabledProvider = ::isBiometricsEnabled,
-                    vaultUnlockTypeProvider = ::getVaultUnlockType,
-                    isDeviceTrustedProvider = ::isDeviceTrusted,
-                    firstTimeState = firstTimeActionManager.currentOrDefaultUserFirstTimeState,
-                ),
-        )
-
-    private val captchaTokenChannel = Channel<CaptchaCallbackTokenResult>(capacity = Int.MAX_VALUE)
-    override val captchaTokenResultFlow: Flow<CaptchaCallbackTokenResult> =
-        captchaTokenChannel.receiveAsFlow()
-
     private val duoTokenChannel = Channel<DuoCallbackTokenResult>(capacity = Int.MAX_VALUE)
     override val duoTokenResultFlow: Flow<DuoCallbackTokenResult> = duoTokenChannel.receiveAsFlow()
 
@@ -361,9 +262,6 @@ class AuthRepositoryImpl(
             }
         }
 
-    override var hasPendingAccountAddition: Boolean
-        by mutableHasPendingAccountAdditionStateFlow::value
-
     override val passwordPolicies: List<PolicyInformation.MasterPassword>
         get() = policyManager.getActivePolicies()
 
@@ -382,7 +280,7 @@ class AuthRepositoryImpl(
 
     init {
         combine(
-            mutableHasPendingAccountAdditionStateFlow,
+            userStateManager.hasPendingAccountAdditionStateFlow,
             authDiskSource.userStateFlow,
             environmentRepository.environmentStateFlow,
         ) { hasPendingAddition, userState, environment ->
@@ -401,14 +299,16 @@ class AuthRepositoryImpl(
             .launchIn(unconfinedScope)
         pushManager
             .syncOrgKeysFlow
-            .onEach {
-                val userId = activeUserId ?: return@onEach
-                // TODO: [PM-20593] Investigate why tokens are explicitly refreshed.
-                refreshAccessTokenSynchronouslyInternal(
-                    userId = userId,
-                    logOutOnFailure = false,
-                )
-                vaultRepository.sync(forced = true)
+            .onEach { userId ->
+                if (userId == activeUserId) {
+                    // TODO: [PM-20593] Investigate why tokens are explicitly refreshed.
+                    refreshAccessTokenSynchronously(userId = userId)
+                    // We just sync now to get the latest data
+                    vaultRepository.sync(forced = true)
+                } else {
+                    // We clear the last sync time to ensure we sync when we become the active user
+                    settingsDiskSource.storeLastSyncTime(userId = userId, lastSyncTime = null)
+                }
             }
             // This requires the ioScope to ensure that refreshAccessTokenSynchronously
             // happens on a background thread
@@ -466,16 +366,12 @@ class AuthRepositoryImpl(
             .launchIn(unconfinedScope)
     }
 
-    override fun clearPendingAccountDeletion() {
-        mutableHasPendingAccountDeletionStateFlow.value = false
-    }
-
     override suspend fun deleteAccountWithMasterPassword(
         masterPassword: String,
     ): DeleteAccountResult {
         val profile = authDiskSource.userState?.activeAccount?.profile
             ?: return DeleteAccountResult.Error(message = null, error = NoActiveUserException())
-        mutableHasPendingAccountDeletionStateFlow.value = true
+        userStateManager.hasPendingAccountDeletion = true
         return authSdkSource
             .hashPassword(
                 email = profile.email,
@@ -495,7 +391,7 @@ class AuthRepositoryImpl(
     override suspend fun deleteAccountWithOneTimePassword(
         oneTimePassword: String,
     ): DeleteAccountResult {
-        mutableHasPendingAccountDeletionStateFlow.value = true
+        userStateManager.hasPendingAccountDeletion = true
         return accountsService
             .deleteAccount(
                 masterPasswordHash = null,
@@ -507,13 +403,13 @@ class AuthRepositoryImpl(
     private fun Result<DeleteAccountResponseJson>.finalizeDeleteAccount(): DeleteAccountResult =
         fold(
             onFailure = {
-                clearPendingAccountDeletion()
+                userStateManager.hasPendingAccountDeletion = false
                 DeleteAccountResult.Error(error = it, message = null)
             },
             onSuccess = { response ->
                 when (response) {
                     is DeleteAccountResponseJson.Invalid -> {
-                        clearPendingAccountDeletion()
+                        userStateManager.hasPendingAccountDeletion = false
                         DeleteAccountResult.Error(message = response.message, error = null)
                     }
 
@@ -564,6 +460,10 @@ class AuthRepositoryImpl(
                             .map { keys }
                     }
                     .onSuccess { keys ->
+                        // TDE and SSO user creation still uses crypto-v1. These users are not
+                        // expected to have the AEAD keys so we only store the private key for now.
+                        // See https://github.com/bitwarden/android/pull/5682#discussion_r2273940332
+                        // for more details.
                         authDiskSource.storePrivateKey(
                             userId = userId,
                             privateKey = keys.privateKey,
@@ -592,11 +492,15 @@ class AuthRepositoryImpl(
         val profile = authDiskSource.userState?.activeAccount?.profile
             ?: return LoginResult.Error(errorMessage = null, error = NoActiveUserException())
         val userId = profile.userId
-        val privateKey = authDiskSource.getPrivateKey(userId = userId)
+        val accountKeys = authDiskSource.getAccountKeys(userId = userId)
+        val privateKey = accountKeys?.publicKeyEncryptionKeyPair?.wrappedPrivateKey
+            ?: authDiskSource.getPrivateKey(userId = userId)
             ?: return LoginResult.Error(
                 errorMessage = null,
                 error = MissingPropertyException("Private Key"),
             )
+        val signingKey = accountKeys?.signatureKeyPair?.wrappedSigningKey
+        val securityState = accountKeys?.securityState?.securityState
 
         checkForVaultUnlockError(
             onVaultUnlockError = { error ->
@@ -606,6 +510,8 @@ class AuthRepositoryImpl(
             unlockVault(
                 accountProfile = profile,
                 privateKey = privateKey,
+                signingKey = signingKey,
+                securityState = securityState,
                 initUserCryptoMethod = InitUserCryptoMethod.AuthRequest(
                     requestPrivateKey = requestPrivateKey,
                     method = AuthRequestMethod.UserKey(protectedUserKey = asymmetricalKey),
@@ -620,7 +526,6 @@ class AuthRepositoryImpl(
     override suspend fun login(
         email: String,
         password: String,
-        captchaToken: String?,
     ): LoginResult = identityService
         .preLogin(email = email)
         .flatMap {
@@ -639,7 +544,6 @@ class AuthRepositoryImpl(
                     username = email,
                     password = passwordHash,
                 ),
-                captchaToken = captchaToken,
             )
         }
         .fold(
@@ -659,7 +563,6 @@ class AuthRepositoryImpl(
         asymmetricalKey: String,
         requestPrivateKey: String,
         masterPasswordHash: String?,
-        captchaToken: String?,
     ): LoginResult =
         loginCommon(
             email = email,
@@ -674,14 +577,12 @@ class AuthRepositoryImpl(
                 asymmetricalKey = asymmetricalKey,
                 privateKey = requestPrivateKey,
             ),
-            captchaToken = captchaToken,
         )
 
     override suspend fun login(
         email: String,
         password: String?,
         twoFactorData: TwoFactorDataModel,
-        captchaToken: String?,
         orgIdentifier: String?,
     ): LoginResult = identityTokenAuthModel
         ?.let {
@@ -690,7 +591,6 @@ class AuthRepositoryImpl(
                 password = password,
                 authModel = it,
                 twoFactorData = twoFactorData,
-                captchaToken = captchaToken ?: twoFactorResponse?.captchaToken,
                 deviceData = twoFactorDeviceData,
                 orgIdentifier = orgIdentifier,
             )
@@ -704,7 +604,6 @@ class AuthRepositoryImpl(
         email: String,
         password: String?,
         newDeviceOtp: String,
-        captchaToken: String?,
         orgIdentifier: String?,
     ): LoginResult = identityTokenAuthModel
         ?.let {
@@ -713,7 +612,6 @@ class AuthRepositoryImpl(
                 password = password,
                 authModel = it,
                 newDeviceOtp = newDeviceOtp,
-                captchaToken = captchaToken ?: twoFactorResponse?.captchaToken,
                 deviceData = twoFactorDeviceData,
                 orgIdentifier = orgIdentifier,
             )
@@ -747,7 +645,6 @@ class AuthRepositoryImpl(
         ssoCode: String,
         ssoCodeVerifier: String,
         ssoRedirectUri: String,
-        captchaToken: String?,
         organizationIdentifier: String,
     ): LoginResult = loginCommon(
         email = email,
@@ -756,15 +653,62 @@ class AuthRepositoryImpl(
             ssoCodeVerifier = ssoCodeVerifier,
             ssoRedirectUri = ssoRedirectUri,
         ),
-        captchaToken = captchaToken,
         orgIdentifier = organizationIdentifier,
     )
 
-    override fun refreshAccessTokenSynchronously(userId: String): Result<RefreshTokenResponseJson> =
-        refreshAccessTokenSynchronouslyInternal(
-            userId = userId,
-            logOutOnFailure = true,
-        )
+    override fun refreshAccessTokenSynchronously(
+        userId: String,
+    ): Result<String> {
+        val refreshToken = authDiskSource
+            .getAccountTokens(userId = userId)
+            ?.refreshToken
+            ?: return IllegalStateException("Must be logged in.").asFailure()
+        return identityService
+            .refreshTokenSynchronously(refreshToken)
+            .flatMap { refreshTokenResponse ->
+                // Check to make sure the user is still logged in after making the request
+                authDiskSource
+                    .userState
+                    ?.accounts
+                    ?.get(userId)
+                    ?.let { refreshTokenResponse.asSuccess() }
+                    ?: IllegalStateException("Must be logged in.").asFailure()
+            }
+            .flatMap { refreshTokenResponse ->
+                when (refreshTokenResponse) {
+                    is RefreshTokenResponseJson.Error -> {
+                        if (refreshTokenResponse.isInvalidGrant) {
+                            logout(userId = userId, reason = LogoutReason.InvalidGrant)
+                        }
+                        IllegalStateException(refreshTokenResponse.error).asFailure()
+                    }
+
+                    is RefreshTokenResponseJson.Forbidden -> {
+                        logout(userId = userId, reason = LogoutReason.RefreshForbidden)
+                        refreshTokenResponse.error.asFailure()
+                    }
+
+                    is RefreshTokenResponseJson.Unauthorized -> {
+                        logout(userId = userId, reason = LogoutReason.RefreshUnauthorized)
+                        refreshTokenResponse.error.asFailure()
+                    }
+
+                    is RefreshTokenResponseJson.Success -> {
+                        // Store the new token information
+                        authDiskSource.storeAccountTokens(
+                            userId = userId,
+                            accountTokens = AccountTokensJson(
+                                accessToken = refreshTokenResponse.accessToken,
+                                refreshToken = refreshTokenResponse.refreshToken,
+                                expiresAtSec = clock.instant().epochSecond +
+                                    refreshTokenResponse.expiresIn,
+                            ),
+                        )
+                        refreshTokenResponse.accessToken.asSuccess()
+                    }
+                }
+            }
+    }
 
     override fun logout(reason: LogoutReason) {
         activeUserId?.let { userId -> logout(userId = userId, reason = reason) }
@@ -832,7 +776,7 @@ class AuthRepositoryImpl(
             // We need to make sure that the environment is set back to the correct spot.
             updateEnvironment()
             // No switching to do but clear any pending account additions
-            hasPendingAccountAddition = false
+            userStateManager.hasPendingAccountAddition = false
             return SwitchAccountResult.NoChange
         }
 
@@ -847,7 +791,7 @@ class AuthRepositoryImpl(
         authDiskSource.userState = currentUserState.copy(activeUserId = userId)
 
         // Clear any pending account additions
-        hasPendingAccountAddition = false
+        userStateManager.hasPendingAccountAddition = false
 
         return SwitchAccountResult.AccountSwitched
     }
@@ -858,7 +802,6 @@ class AuthRepositoryImpl(
         masterPassword: String,
         masterPasswordHint: String?,
         emailVerificationToken: String?,
-        captchaToken: String?,
         shouldCheckDataBreaches: Boolean,
         isMasterPasswordStrong: Boolean,
     ): RegisterResult {
@@ -893,7 +836,6 @@ class AuthRepositoryImpl(
                             email = email,
                             masterPasswordHash = registerKeyResponse.masterPasswordHash,
                             masterPasswordHint = masterPasswordHint,
-                            captchaResponse = captchaToken,
                             key = registerKeyResponse.encryptedUserKey,
                             keys = RegisterRequestJson.Keys(
                                 publicKey = registerKeyResponse.keys.public,
@@ -910,7 +852,6 @@ class AuthRepositoryImpl(
                             masterPasswordHash = registerKeyResponse.masterPasswordHash,
                             masterPasswordHint = masterPasswordHint,
                             emailVerificationToken = emailVerificationToken,
-                            captchaResponse = captchaToken,
                             userSymmetricKey = registerKeyResponse.encryptedUserKey,
                             userAsymmetricKeys = RegisterFinishRequestJson.Keys(
                                 publicKey = registerKeyResponse.keys.public,
@@ -925,18 +866,9 @@ class AuthRepositoryImpl(
             .fold(
                 onSuccess = {
                     when (it) {
-                        is RegisterResponseJson.CaptchaRequired -> {
-                            it.validationErrors.captchaKeys.firstOrNull()
-                                ?.let { key -> RegisterResult.CaptchaRequired(captchaId = key) }
-                                ?: RegisterResult.Error(
-                                    errorMessage = null,
-                                    error = MissingPropertyException("Captcha ID"),
-                                )
-                        }
-
                         is RegisterResponseJson.Success -> {
                             settingsRepository.hasUserLoggedInOrCreatedAccount = true
-                            RegisterResult.Success(captchaToken = it.captchaBypassToken)
+                            RegisterResult.Success
                         }
 
                         is RegisterResponseJson.Invalid -> {
@@ -1150,6 +1082,9 @@ class AuthRepositoryImpl(
                     )
                     .onSuccess {
                         rsaKeys?.private?.let {
+                            // This process is used by TDE and Enterprise accounts during initial
+                            // login. We continue to store the locally generated keys
+                            // until TDE and Enterprise accounts support AEAD keys.
                             authDiskSource.storePrivateKey(userId = userId, privateKey = it)
                         }
                         authDiskSource.storeUserKey(userId = userId, userKey = encryptedUserKey)
@@ -1180,10 +1115,6 @@ class AuthRepositoryImpl(
                 onFailure = { SetPasswordResult.Error(error = it) },
                 onSuccess = { SetPasswordResult.Success },
             )
-    }
-
-    override fun setCaptchaCallbackTokenResult(tokenResult: CaptchaCallbackTokenResult) {
-        captchaTokenChannel.trySend(tokenResult)
     }
 
     override fun setDuoCallbackTokenResult(tokenResult: DuoCallbackTokenResult) {
@@ -1422,42 +1353,6 @@ class AuthRepositoryImpl(
             onFailure = { LeaveOrganizationResult.Error(error = it) },
         )
 
-    private fun refreshAccessTokenSynchronouslyInternal(
-        userId: String,
-        logOutOnFailure: Boolean,
-    ): Result<RefreshTokenResponseJson> {
-        val refreshToken = authDiskSource
-            .getAccountTokens(userId = userId)
-            ?.refreshToken
-            ?: return IllegalStateException("Must be logged in.").asFailure()
-        return identityService
-            .refreshTokenSynchronously(refreshToken)
-            .flatMap { refreshTokenResponse ->
-                // Check to make sure the user is still logged in after making the request
-                authDiskSource
-                    .userState
-                    ?.accounts
-                    ?.get(userId)
-                    ?.let { refreshTokenResponse.asSuccess() }
-                    ?: IllegalStateException("Must be logged in.").asFailure()
-            }
-            .onFailure {
-                if (logOutOnFailure) {
-                    logout(userId = userId, reason = LogoutReason.TokenRefreshFail)
-                }
-            }
-            .onSuccess { refreshTokenResponse ->
-                // Update the existing UserState with updated token information
-                authDiskSource.storeAccountTokens(
-                    userId = userId,
-                    accountTokens = AccountTokensJson(
-                        accessToken = refreshTokenResponse.accessToken,
-                        refreshToken = refreshTokenResponse.refreshToken,
-                    ),
-                )
-            }
-    }
-
     @Suppress("CyclomaticComplexMethod")
     private suspend fun validatePasswordAgainstPolicy(
         password: String,
@@ -1559,27 +1454,6 @@ class AuthRepositoryImpl(
             )
         }
 
-    private fun isBiometricsEnabled(
-        userId: String,
-    ): Boolean = authDiskSource.getUserBiometricUnlockKey(userId = userId) != null
-
-    private fun isDeviceTrusted(
-        userId: String,
-    ): Boolean = authDiskSource.getDeviceKey(userId = userId) != null
-
-    private fun getVaultUnlockType(
-        userId: String,
-    ): VaultUnlockType =
-        when {
-            authDiskSource.getPinProtectedUserKey(userId = userId) != null -> {
-                VaultUnlockType.PIN
-            }
-
-            else -> {
-                VaultUnlockType.MASTER_PASSWORD
-            }
-        }
-
     /**
      * Update the saved state with the force password reset reason.
      */
@@ -1613,7 +1487,6 @@ class AuthRepositoryImpl(
         twoFactorData: TwoFactorDataModel? = null,
         deviceData: DeviceDataModel? = null,
         orgIdentifier: String? = null,
-        captchaToken: String?,
         newDeviceOtp: String? = null,
     ): LoginResult = identityService
         .getToken(
@@ -1621,7 +1494,6 @@ class AuthRepositoryImpl(
             email = email,
             authModel = authModel,
             twoFactorData = twoFactorData ?: getRememberedTwoFactorData(email),
-            captchaToken = captchaToken,
             newDeviceOtp = newDeviceOtp,
         )
         .fold(
@@ -1640,10 +1512,6 @@ class AuthRepositoryImpl(
             },
             onSuccess = { loginResponse ->
                 when (loginResponse) {
-                    is GetTokenResponseJson.CaptchaRequired -> LoginResult.CaptchaRequired(
-                        captchaId = loginResponse.captchaKey,
-                    )
-
                     is GetTokenResponseJson.TwoFactorRequired -> handleLoginCommonTwoFactorRequired(
                         loginResponse = loginResponse,
                         email = email,
@@ -1696,7 +1564,7 @@ class AuthRepositoryImpl(
         deviceData: DeviceDataModel?,
         orgIdentifier: String?,
         userConfirmedKeyConnector: Boolean,
-    ): LoginResult = userStateTransaction {
+    ): LoginResult = userStateManager.userStateTransaction {
         val userStateJson = loginResponse.toUserState(
             previousUserState = authDiskSource.userState,
             environmentUrlData = environmentRepository.environment.environmentUrlData,
@@ -1735,7 +1603,7 @@ class AuthRepositoryImpl(
                 // we should ask him to confirm the domain
                 if (isNewKeyConnectorUser && isNotConfirmed) {
                     keyConnectorResponse = loginResponse
-                    return LoginResult.ConfirmKeyConnectorDomain(
+                    return@userStateTransaction LoginResult.ConfirmKeyConnectorDomain(
                         domain = keyConnectorUrl,
                     )
                 }
@@ -1780,6 +1648,7 @@ class AuthRepositoryImpl(
             accountTokens = AccountTokensJson(
                 accessToken = loginResponse.accessToken,
                 refreshToken = loginResponse.refreshToken,
+                expiresAtSec = clock.instant().epochSecond + loginResponse.expiresInSeconds,
             ),
         )
         settingsRepository.hasUserLoggedInOrCreatedAccount = true
@@ -1790,10 +1659,17 @@ class AuthRepositoryImpl(
             // when we completed the pending admin auth request.
             authDiskSource.storeUserKey(userId = userId, userKey = it)
         }
+        // We continue to store the private key for backwards compatibility. Key connector
+        // conversion still relies on the private key.
         loginResponse.privateKey?.let {
             // Only set the value if it's present, since we may have set it already
             // when we completed the key connector conversion.
             authDiskSource.storePrivateKey(userId = userId, privateKey = it)
+        }
+        loginResponse.accountKeys?.let {
+            // Only set the value if it's present, since we may have set it already
+            // when we completed the key connector conversion.
+            authDiskSource.storeAccountKeys(userId = userId, accountKeys = it)
         }
         // If the user just authenticated with a two-factor code and selected the option to
         // remember it, then the API response will return a token that will be used in place
@@ -1895,6 +1771,8 @@ class AuthRepositoryImpl(
                             masterKey = it.masterKey,
                             userKey = key,
                         ),
+                        securityState = loginResponse.accountKeys?.securityState?.securityState,
+                        signingKey = loginResponse.accountKeys?.signatureKeyPair?.wrappedSigningKey,
                     )
                 }
                 .fold(
@@ -1918,6 +1796,8 @@ class AuthRepositoryImpl(
                     val result = unlockVault(
                         accountProfile = profile,
                         privateKey = keyConnectorResponse.keys.private,
+                        securityState = loginResponse.accountKeys?.securityState?.securityState,
+                        signingKey = loginResponse.accountKeys?.signatureKeyPair?.wrappedSigningKey,
                         initUserCryptoMethod = InitUserCryptoMethod.KeyConnector(
                             masterKey = keyConnectorResponse.masterKey,
                             userKey = keyConnectorResponse.encryptedUserKey,
@@ -1930,9 +1810,15 @@ class AuthRepositoryImpl(
                             userId = profile.userId,
                             userKey = keyConnectorResponse.encryptedUserKey,
                         )
+                        // We continue to store the private key for backwards compatibility since
+                        // key connector conversion still relies on the private key.
                         authDiskSource.storePrivateKey(
                             userId = profile.userId,
                             privateKey = keyConnectorResponse.keys.private,
+                        )
+                        authDiskSource.storeAccountKeys(
+                            userId = profile.userId,
+                            accountKeys = loginResponse.accountKeys,
                         )
                     }
                     result
@@ -1955,11 +1841,13 @@ class AuthRepositoryImpl(
     ): VaultUnlockResult? {
         // Attempt to unlock the vault with password if possible.
         val masterPassword = password ?: return null
-        val privateKey = loginResponse.privateKey ?: return null
+        val privateKey = loginResponse.privateKeyOrNull() ?: return null
         val key = loginResponse.key ?: return null
         return unlockVault(
             accountProfile = profile,
             privateKey = privateKey,
+            securityState = loginResponse.accountKeys?.securityState?.securityState,
+            signingKey = loginResponse.accountKeys?.signatureKeyPair?.wrappedSigningKey,
             initUserCryptoMethod = InitUserCryptoMethod.Password(
                 password = masterPassword,
                 userKey = key,
@@ -1977,13 +1865,15 @@ class AuthRepositoryImpl(
     ): VaultUnlockResult? {
         // Attempt to unlock the vault with auth request if possible.
         // These values will only be null during the Just-in-Time provisioning flow.
-        val privateKey = loginResponse.privateKey
+        val privateKey = loginResponse.privateKeyOrNull()
         val key = loginResponse.key
         if (privateKey != null && key != null) {
             deviceData?.let { model ->
                 return unlockVault(
                     accountProfile = profile,
                     privateKey = privateKey,
+                    securityState = loginResponse.accountKeys?.securityState?.securityState,
+                    signingKey = loginResponse.accountKeys?.signatureKeyPair?.wrappedSigningKey,
                     initUserCryptoMethod = InitUserCryptoMethod.AuthRequest(
                         requestPrivateKey = model.privateKey,
                         method = model
@@ -2008,13 +1898,26 @@ class AuthRepositoryImpl(
             .userDecryptionOptions
             ?.trustedDeviceUserDecryptionOptions
             ?.let { options ->
-                loginResponse.privateKey?.let { privateKey ->
-                    unlockVaultWithTrustedDeviceUserDecryptionOptionsAndStoreKeys(
-                        options = options,
-                        profile = profile,
-                        privateKey = privateKey,
-                    )
-                }
+                loginResponse.accountKeys
+                    ?.let { accountKeys ->
+                        unlockVaultWithTrustedDeviceUserDecryptionOptionsAndStoreKeys(
+                            options = options,
+                            profile = profile,
+                            privateKey = accountKeys.publicKeyEncryptionKeyPair.wrappedPrivateKey,
+                            securityState = accountKeys.securityState?.securityState,
+                            signingKey = accountKeys.signatureKeyPair?.wrappedSigningKey,
+                        )
+                    }
+                    ?: loginResponse.privateKey
+                        ?.let { privateKey ->
+                            unlockVaultWithTrustedDeviceUserDecryptionOptionsAndStoreKeys(
+                                options = options,
+                                profile = profile,
+                                privateKey = privateKey,
+                                securityState = null,
+                                signingKey = null,
+                            )
+                        }
             }
     }
 
@@ -2026,6 +1929,8 @@ class AuthRepositoryImpl(
         options: TrustedDeviceUserDecryptionOptionsJson,
         profile: AccountJson.Profile,
         privateKey: String,
+        securityState: String?,
+        signingKey: String?,
     ): VaultUnlockResult? {
         var vaultUnlockResult: VaultUnlockResult? = null
         val userId = profile.userId
@@ -2044,6 +1949,8 @@ class AuthRepositoryImpl(
                     vaultUnlockResult = unlockVault(
                         accountProfile = profile,
                         privateKey = privateKey,
+                        signingKey = signingKey,
+                        securityState = securityState,
                         initUserCryptoMethod = InitUserCryptoMethod.AuthRequest(
                             requestPrivateKey = pendingRequest.requestPrivateKey,
                             method = AuthRequestMethod.UserKey(protectedUserKey = userKey),
@@ -2071,6 +1978,8 @@ class AuthRepositoryImpl(
         vaultUnlockResult = unlockVault(
             accountProfile = profile,
             privateKey = privateKey,
+            securityState = securityState,
+            signingKey = signingKey,
             initUserCryptoMethod = InitUserCryptoMethod.DeviceKey(
                 deviceKey = deviceKey,
                 protectedDevicePrivateKey = encryptedPrivateKey,
@@ -2090,6 +1999,8 @@ class AuthRepositoryImpl(
     private suspend fun unlockVault(
         accountProfile: AccountJson.Profile,
         privateKey: String,
+        securityState: String?,
+        signingKey: String?,
         initUserCryptoMethod: InitUserCryptoMethod,
     ): VaultUnlockResult {
         val userId = accountProfile.userId
@@ -2098,6 +2009,8 @@ class AuthRepositoryImpl(
             email = accountProfile.email,
             kdf = accountProfile.toSdkParams(),
             privateKey = privateKey,
+            signingKey = signingKey,
+            securityState = securityState,
             initUserCryptoMethod = initUserCryptoMethod,
             // The value for the organization keys here will typically be null. We can separately
             // unlock the vault for organization data after receiving the sync response if this
@@ -2124,20 +2037,12 @@ class AuthRepositoryImpl(
     }
 
     //endregion LoginCommon
-
-    /**
-     * Run the given [block] while preventing any updates to [UserState]. This is useful in cases
-     * where many individual changes might occur that would normally affect the [UserState] but we
-     * only want a single final emission. In the rare case that multiple threads are running
-     * transactions simultaneously, there will be no [UserState] updates until the last
-     * transaction completes.
-     */
-    private inline fun <T> userStateTransaction(block: () -> T): T {
-        mutableUserStateTransactionCountStateFlow.update { it.inc() }
-        return try {
-            block()
-        } finally {
-            mutableUserStateTransactionCountStateFlow.update { it.dec() }
-        }
-    }
 }
+
+/**
+ * Convenience function to extract the private key from the
+ * [GetTokenResponseJson.Success] response.
+ */
+private fun GetTokenResponseJson.Success.privateKeyOrNull(): String? =
+    this.accountKeys?.publicKeyEncryptionKeyPair?.wrappedPrivateKey
+        ?: this.privateKey

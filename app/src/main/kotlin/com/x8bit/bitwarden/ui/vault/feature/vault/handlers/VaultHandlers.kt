@@ -1,6 +1,6 @@
 package com.x8bit.bitwarden.ui.vault.feature.vault.handlers
 
-import com.x8bit.bitwarden.ui.platform.components.model.AccountSummary
+import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
 import com.x8bit.bitwarden.ui.vault.feature.vault.VaultAction
@@ -45,6 +45,8 @@ data class VaultHandlers(
     val importActionCardClick: () -> Unit,
     val flightRecorderGoToSettingsClick: () -> Unit,
     val dismissFlightRecorderSnackbar: () -> Unit,
+    val onShareCipherDecryptionErrorClick: (selectedCipherId: String) -> Unit,
+    val onShareAllCipherDecryptionErrorsClick: () -> Unit,
 ) {
     @Suppress("UndocumentedPublicClass")
     companion object {
@@ -125,6 +127,18 @@ data class VaultHandlers(
                 dismissFlightRecorderSnackbar = {
                     viewModel.trySendAction(VaultAction.DismissFlightRecorderSnackbar)
                 },
+                onShareCipherDecryptionErrorClick =
+                    {
+                        viewModel.trySendAction(
+                            VaultAction.ShareCipherDecryptionErrorClick(it),
+                        )
+                    },
+                onShareAllCipherDecryptionErrorsClick =
+                    {
+                        viewModel.trySendAction(
+                            VaultAction.ShareAllCipherDecryptionErrorsClick,
+                        )
+                    },
             )
     }
 }

@@ -5,8 +5,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.base.util.isValidEmail
+import com.bitwarden.ui.platform.resource.BitwardenPlurals
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
+import com.bitwarden.ui.util.asPluralsText
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.datasource.sdk.model.PasswordStrength
@@ -177,13 +179,6 @@ class CompleteRegistrationViewModel @Inject constructor(
         action: Internal.ReceiveRegisterResult,
     ) {
         when (val registerAccountResult = action.registerResult) {
-            // TODO PM-6675: Remove captcha from RegisterResult when old flow gets removed
-            is RegisterResult.CaptchaRequired -> {
-                throw IllegalStateException(
-                    "Captcha should not be required for the new registration flow",
-                )
-            }
-
             is RegisterResult.Error -> {
                 mutableStateFlow.update {
                     it.copy(
@@ -202,12 +197,10 @@ class CompleteRegistrationViewModel @Inject constructor(
                     val loginResult = authRepository.login(
                         email = state.userEmail,
                         password = state.passwordInput,
-                        captchaToken = registerAccountResult.captchaToken,
                     )
                     sendAction(
                         Internal.ReceiveLoginResult(
                             loginResult = loginResult,
-                            captchaToken = registerAccountResult.captchaToken,
                         ),
                     )
                 }
@@ -266,7 +259,6 @@ class CompleteRegistrationViewModel @Inject constructor(
             sendEvent(
                 CompleteRegistrationEvent.NavigateToLogin(
                     email = state.userEmail,
-                    captchaToken = action.captchaToken,
                 ),
             )
         }
@@ -331,8 +323,11 @@ class CompleteRegistrationViewModel @Inject constructor(
                 it.copy(
                     dialog = CompleteRegistrationDialog.Error(
                         title = BitwardenString.an_error_has_occurred.asText(),
-                        message = BitwardenString.master_password_length_val_message_x
-                            .asText(MIN_PASSWORD_LENGTH),
+                        message = BitwardenPlurals.master_password_length_val_message_x
+                            .asPluralsText(
+                                quantity = MIN_PASSWORD_LENGTH,
+                                args = arrayOf(MIN_PASSWORD_LENGTH),
+                            ),
                     ),
                 )
             }
@@ -390,7 +385,6 @@ class CompleteRegistrationViewModel @Inject constructor(
                 email = state.userEmail,
                 masterPassword = state.passwordInput,
                 masterPasswordHint = state.passwordHintInput.ifBlank { null },
-                captchaToken = null,
             )
             sendAction(
                 Internal.ReceiveRegisterResult(
@@ -527,11 +521,10 @@ sealed class CompleteRegistrationEvent {
     data object NavigateToMakePasswordStrong : CompleteRegistrationEvent()
 
     /**
-     * Navigates to the captcha verification screen.
+     * Navigates to the Login screen.
      */
     data class NavigateToLogin(
         val email: String,
-        val captchaToken: String?,
     ) : CompleteRegistrationEvent()
 }
 
@@ -615,14 +608,11 @@ sealed class CompleteRegistrationAction {
 
         /**
          * Indicates registration was successful and will now attempt to login and unlock the vault.
-         * @property captchaToken The captcha token to use for login. With the login function this
-         * is possible to be negative.
          *
          * @see [AuthRepository.login]
          */
         data class ReceiveLoginResult(
             val loginResult: LoginResult,
-            val captchaToken: String?,
         ) : Internal()
     }
 }

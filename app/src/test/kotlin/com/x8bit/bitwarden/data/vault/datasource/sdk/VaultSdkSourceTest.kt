@@ -1,5 +1,7 @@
 package com.x8bit.bitwarden.data.vault.datasource.sdk
 
+import com.bitwarden.collections.Collection
+import com.bitwarden.collections.CollectionView
 import com.bitwarden.core.DeriveKeyConnectorRequest
 import com.bitwarden.core.DerivePinKeyResponse
 import com.bitwarden.core.InitOrgCryptoRequest
@@ -10,6 +12,7 @@ import com.bitwarden.core.data.util.asSuccess
 import com.bitwarden.crypto.Kdf
 import com.bitwarden.crypto.TrustDeviceResponse
 import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
+import com.bitwarden.exporters.Account
 import com.bitwarden.exporters.ExportFormat
 import com.bitwarden.fido.ClientData
 import com.bitwarden.fido.Fido2CredentialAutofillView
@@ -37,8 +40,6 @@ import com.bitwarden.vault.Attachment
 import com.bitwarden.vault.AttachmentView
 import com.bitwarden.vault.Cipher
 import com.bitwarden.vault.CipherView
-import com.bitwarden.vault.Collection
-import com.bitwarden.vault.CollectionView
 import com.bitwarden.vault.DecryptCipherListResult
 import com.bitwarden.vault.EncryptionContext
 import com.bitwarden.vault.Folder
@@ -1131,6 +1132,69 @@ class VaultSdkSourceTest {
                 result,
             )
         }
+
+    @Test
+    fun `exportVaultDataToCxf should call SDK and return a Result with the correct data`() =
+        runTest {
+            val userId = "userId"
+            val account = mockk<Account>()
+            val ciphers = listOf(createMockSdkCipher(1))
+            val expected = "TestResult"
+
+            coEvery {
+                clientExporters.exportCxf(
+                    account = account,
+                    ciphers = ciphers,
+                )
+            } returns expected
+
+            val result = vaultSdkSource.exportVaultDataToCxf(
+                userId = userId,
+                account = account,
+                ciphers = ciphers,
+            )
+
+            coVerify {
+                clientExporters.exportCxf(
+                    account = account,
+                    ciphers = ciphers,
+                )
+            }
+
+            assertEquals(
+                expected.asSuccess(),
+                result,
+            )
+        }
+
+    @Test
+    fun `importCxf should call SDK and return a Result with the correct data`() = runTest {
+        val userId = "userId"
+        val expected = listOf(createMockSdkCipher(number = 1))
+        val cxf = "cxf"
+
+        coEvery {
+            clientExporters.importCxf(
+                payload = cxf,
+            )
+        } returns expected
+
+        val result = vaultSdkSource.importCxf(
+            userId = userId,
+            payload = cxf,
+        )
+
+        coVerify {
+            clientExporters.importCxf(
+                payload = cxf,
+            )
+        }
+
+        assertEquals(
+            expected.asSuccess(),
+            result,
+        )
+    }
 
     @Suppress("MaxLineLength")
     @Test

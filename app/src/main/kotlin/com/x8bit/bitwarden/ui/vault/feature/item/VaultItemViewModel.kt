@@ -12,8 +12,11 @@ import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.ui.platform.base.BackgroundEvent
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.components.icon.model.IconData
+import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.resource.BitwardenPlurals
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
+import com.bitwarden.ui.util.asPluralsText
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
 import com.bitwarden.vault.CipherView
@@ -30,7 +33,6 @@ import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.DownloadAttachmentResult
 import com.x8bit.bitwarden.data.vault.repository.model.RestoreCipherResult
-import com.x8bit.bitwarden.ui.platform.components.snackbar.BitwardenSnackbarData
 import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
 import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
 import com.x8bit.bitwarden.ui.vault.feature.item.model.TotpCodeItemData
@@ -207,7 +209,11 @@ class VaultItemViewModel @Inject constructor(
             .launchIn(viewModelScope)
 
         snackbarRelayManager
-            .getSnackbarDataFlow(SnackbarRelay.CIPHER_MOVED_TO_ORGANIZATION)
+            .getSnackbarDataFlow(
+                SnackbarRelay.CIPHER_DELETED_SOFT,
+                SnackbarRelay.CIPHER_MOVED_TO_ORGANIZATION,
+                SnackbarRelay.CIPHER_UPDATED,
+            )
             .map { VaultItemAction.Internal.SnackbarDataReceived(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
@@ -974,7 +980,10 @@ class VaultItemViewModel @Inject constructor(
             is BreachCountResult.Success -> {
                 VaultItemState.DialogState.Generic(
                     message = if (result.breachCount > 0) {
-                        BitwardenString.password_exposed.asText(result.breachCount)
+                        BitwardenPlurals.password_exposed.asPluralsText(
+                            quantity = result.breachCount,
+                            args = arrayOf(result.breachCount),
+                        )
                     } else {
                         BitwardenString.password_safe.asText()
                     },

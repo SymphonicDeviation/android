@@ -1,6 +1,7 @@
 package com.x8bit.bitwarden.data.vault.repository
 
 import android.net.Uri
+import com.bitwarden.collections.CollectionView
 import com.bitwarden.core.DateTime
 import com.bitwarden.core.InitOrgCryptoRequest
 import com.bitwarden.core.InitUserCryptoMethod
@@ -34,7 +35,6 @@ import com.bitwarden.vault.CipherListView
 import com.bitwarden.vault.CipherListViewType
 import com.bitwarden.vault.CipherType
 import com.bitwarden.vault.CipherView
-import com.bitwarden.vault.CollectionView
 import com.bitwarden.vault.DecryptCipherListResult
 import com.bitwarden.vault.FolderView
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
@@ -73,6 +73,7 @@ import com.x8bit.bitwarden.data.vault.repository.model.DeleteSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.DomainsData
 import com.x8bit.bitwarden.data.vault.repository.model.ExportVaultDataResult
 import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
+import com.x8bit.bitwarden.data.vault.repository.model.ImportCxfPayloadResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.SendData
 import com.x8bit.bitwarden.data.vault.repository.model.SyncVaultDataResult
@@ -82,6 +83,7 @@ import com.x8bit.bitwarden.data.vault.repository.model.UpdateSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockResult
 import com.x8bit.bitwarden.data.vault.repository.util.sortAlphabetically
+import com.x8bit.bitwarden.data.vault.repository.util.sortAlphabeticallyByTypeAndOrganization
 import com.x8bit.bitwarden.data.vault.repository.util.toDomainsData
 import com.x8bit.bitwarden.data.vault.repository.util.toEncryptedNetworkFolder
 import com.x8bit.bitwarden.data.vault.repository.util.toEncryptedNetworkSend
@@ -113,7 +115,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -928,11 +929,9 @@ class VaultRepositoryImpl(
     }
 
     private suspend fun clearFolderIdFromCiphers(folderId: String, userId: String) {
-        vaultDiskSource.getCiphersFlow(userId).firstOrNull()?.forEach {
+        vaultDiskSource.getCiphers(userId = userId).forEach {
             if (it.folderId == folderId) {
-                vaultDiskSource.saveCipher(
-                    userId, it.copy(folderId = null),
-                )
+                vaultDiskSource.saveCipher(userId = userId, cipher = it.copy(folderId = null))
             }
         }
     }
@@ -970,6 +969,20 @@ class VaultRepositoryImpl(
             .fold(
                 onSuccess = { ExportVaultDataResult.Success(it) },
                 onFailure = { ExportVaultDataResult.Error(error = it) },
+            )
+    }
+
+    override suspend fun importCxfPayload(payload: String): ImportCxfPayloadResult {
+        val userId = activeUserId
+            ?: return ImportCxfPayloadResult.Error(error = NoActiveUserException())
+        return vaultSdkSource
+            .importCxf(
+                userId = userId,
+                payload = payload,
+            )
+            .fold(
+                onSuccess = { ImportCxfPayloadResult.Success(it) },
+                onFailure = { ImportCxfPayloadResult.Error(error = it) },
             )
     }
 
@@ -1014,6 +1027,10 @@ class VaultRepositoryImpl(
                 userId = userId,
                 privateKey = profile.privateKey,
             )
+            storeAccountKeys(
+                userId = userId,
+                accountKeys = profile.accountKeys,
+            )
             storeOrganizationKeys(
                 userId = userId,
                 organizationKeys = profile.organizations
@@ -1038,10 +1055,16 @@ class VaultRepositoryImpl(
     ): VaultUnlockResult {
         val account = authDiskSource.userState?.accounts?.get(userId)
             ?: return VaultUnlockResult.InvalidStateError(error = NoActiveUserException())
-        val privateKey = authDiskSource.getPrivateKey(userId = userId)
+        val accountKeys = authDiskSource.getAccountKeys(userId = userId)
+        val privateKey = accountKeys
+            ?.publicKeyEncryptionKeyPair
+            ?.wrappedPrivateKey
+            ?: authDiskSource.getPrivateKey(userId = userId)
             ?: return VaultUnlockResult.InvalidStateError(
                 error = MissingPropertyException("Private key"),
             )
+        val signingKey = accountKeys?.signatureKeyPair?.wrappedSigningKey
+        val securityState = accountKeys?.securityState?.securityState
         val organizationKeys = authDiskSource
             .getOrganizationKeys(userId = userId)
         return unlockVault(
@@ -1049,6 +1072,8 @@ class VaultRepositoryImpl(
             email = account.profile.email,
             kdf = account.profile.toSdkParams(),
             privateKey = privateKey,
+            signingKey = signingKey,
+            securityState = securityState,
             initUserCryptoMethod = initUserCryptoMethod,
             organizationKeys = organizationKeys,
         )
@@ -1091,7 +1116,6 @@ class VaultRepositoryImpl(
                     )
                     .fold(
                         onSuccess = { result ->
-                            // TODO (PM-18210): Display decryption result failures
                             DataState.Loaded(
                                 result.copy(successes = result.successes.sortAlphabetically()),
                             )
@@ -1156,7 +1180,11 @@ class VaultRepositoryImpl(
                     .fold(
                         onSuccess = { collections ->
                             DataState.Loaded(
-                                collections.sortAlphabetically(),
+                                collections.sortAlphabeticallyByTypeAndOrganization(
+                                    userOrganizations = authDiskSource
+                                        .getOrganizations(userId = userId)
+                                        .orEmpty(),
+                                ),
                             )
                         },
                         onFailure = { throwable -> DataState.Error(throwable) },
@@ -1234,12 +1262,9 @@ class VaultRepositoryImpl(
      * Deletes the cipher specified by [syncCipherDeleteData] from disk.
      */
     private suspend fun deleteCipher(syncCipherDeleteData: SyncCipherDeleteData) {
-        val userId = activeUserId ?: return
-
-        val cipherId = syncCipherDeleteData.cipherId
         vaultDiskSource.deleteCipher(
-            userId = userId,
-            cipherId = cipherId,
+            userId = syncCipherDeleteData.userId,
+            cipherId = syncCipherDeleteData.cipherId,
         )
     }
 
@@ -1256,14 +1281,11 @@ class VaultRepositoryImpl(
         val revisionDate = syncCipherUpsertData.revisionDate
         val isUpdate = syncCipherUpsertData.isUpdate
 
-        val localCipher = decryptCipherListResultStateFlow
-            .mapNotNull { it.data?.successes }
-            .first()
-            .find { it.id == cipherId }
+        val localCipher = vaultDiskSource.getCipher(userId = userId, cipherId = cipherId)
 
         // Return if local cipher is more recent
         if (localCipher != null &&
-            localCipher.revisionDate.epochSecond > revisionDate.toEpochSecond()
+            localCipher.revisionDate.toEpochSecond() > revisionDate.toEpochSecond()
         ) {
             return
         }
@@ -1290,11 +1312,10 @@ class VaultRepositoryImpl(
 
         if (!shouldUpdate && shouldCheckCollections && organizationId != null) {
             // Check if there are any collections in common
-            shouldUpdate = collectionsStateFlow
-                .mapNotNull { it.data }
+            shouldUpdate = vaultDiskSource
+                .getCollections(userId = userId)
                 .first()
-                .mapNotNull { it.id }
-                .any { collectionIds?.contains(it) == true } == true
+                .any { collectionIds?.contains(it.id) == true }
         }
 
         if (!shouldUpdate) return
@@ -1373,12 +1394,9 @@ class VaultRepositoryImpl(
      * Deletes the send specified by [syncSendDeleteData] from disk.
      */
     private suspend fun deleteSend(syncSendDeleteData: SyncSendDeleteData) {
-        val userId = activeUserId ?: return
-
-        val sendId = syncSendDeleteData.sendId
         vaultDiskSource.deleteSend(
-            userId = userId,
-            sendId = sendId,
+            userId = syncSendDeleteData.userId,
+            sendId = syncSendDeleteData.sendId,
         )
     }
 
@@ -1393,15 +1411,14 @@ class VaultRepositoryImpl(
         val isUpdate = syncSendUpsertData.isUpdate
         val revisionDate = syncSendUpsertData.revisionDate
 
-        val localSend = sendDataStateFlow
-            .mapNotNull { it.data }
+        val localSend = vaultDiskSource
+            .getSends(userId = userId)
             .first()
-            .sendViewList
             .find { it.id == sendId }
         val isValidCreate = !isUpdate && localSend == null
         val isValidUpdate = isUpdate &&
             localSend != null &&
-            localSend.revisionDate.epochSecond < revisionDate.toEpochSecond()
+            localSend.revisionDate.toEpochSecond() < revisionDate.toEpochSecond()
 
         if (!isValidCreate && !isValidUpdate) return
 
@@ -1424,16 +1441,13 @@ class VaultRepositoryImpl(
      * Deletes the folder specified by [syncFolderDeleteData] from disk.
      */
     private suspend fun deleteFolder(syncFolderDeleteData: SyncFolderDeleteData) {
-        val userId = activeUserId ?: return
-
-        val folderId = syncFolderDeleteData.folderId
         clearFolderIdFromCiphers(
-            folderId = folderId,
-            userId = userId,
+            folderId = syncFolderDeleteData.folderId,
+            userId = syncFolderDeleteData.userId,
         )
         vaultDiskSource.deleteFolder(
-            folderId = folderId,
-            userId = userId,
+            folderId = syncFolderDeleteData.folderId,
+            userId = syncFolderDeleteData.userId,
         )
     }
 
@@ -1446,21 +1460,20 @@ class VaultRepositoryImpl(
         val folderId = syncFolderUpsertData.folderId
         val isUpdate = syncFolderUpsertData.isUpdate
         val revisionDate = syncFolderUpsertData.revisionDate
-
-        val localFolder = foldersStateFlow
-            .mapNotNull { it.data }
+        val localFolder = vaultDiskSource
+            .getFolders(userId = userId)
             .first()
             .find { it.id == folderId }
         val isValidCreate = !isUpdate && localFolder == null
         val isValidUpdate = isUpdate &&
             localFolder != null &&
-            localFolder.revisionDate.epochSecond < revisionDate.toEpochSecond()
+            localFolder.revisionDate.toEpochSecond() < revisionDate.toEpochSecond()
 
         if (!isValidCreate && !isValidUpdate) return
 
         folderService
-            .getFolder(folderId)
-            .onSuccess { vaultDiskSource.saveFolder(userId, it) }
+            .getFolder(folderId = folderId)
+            .onSuccess { vaultDiskSource.saveFolder(userId = userId, folder = it) }
     }
     //endregion Push Notification helpers
 
