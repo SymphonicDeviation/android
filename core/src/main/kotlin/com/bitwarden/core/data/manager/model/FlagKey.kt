@@ -32,7 +32,9 @@ sealed class FlagKey<out T : Any> {
             listOf(
                 CredentialExchangeProtocolImport,
                 CredentialExchangeProtocolExport,
-                UserManagedPrivilegedApps,
+                ForceUpdateKdfSettings,
+                CipherKeyEncryption,
+                NoLogoutOnKdfChange,
             )
         }
     }
@@ -64,18 +66,26 @@ sealed class FlagKey<out T : Any> {
     }
 
     /**
-     * Data object holding the feature flag key to enabled user-managed privileged apps.
-     */
-    data object UserManagedPrivilegedApps : FlagKey<Boolean>() {
-        override val keyName: String = "pm-18970-user-managed-privileged-apps"
-        override val defaultValue: Boolean = false
-    }
-
-    /**
      *  Indicates the state of Bitwarden authentication.
      */
     data object BitwardenAuthenticationEnabled : FlagKey<Boolean>() {
         override val keyName: String = "bitwarden-authentication-enabled"
+        override val defaultValue: Boolean = false
+    }
+
+    /**
+     *  Data object holding the feature flag key for the Force Update KDF Settings feature.
+     */
+    data object ForceUpdateKdfSettings : FlagKey<Boolean>() {
+        override val keyName: String = "pm-18021-force-update-kdf-settings"
+        override val defaultValue: Boolean = false
+    }
+
+    /**
+     *  Data object holding the feature flag key for the No Logout On KDF Change feature.
+     */
+    data object NoLogoutOnKdfChange : FlagKey<Boolean>() {
+        override val keyName: String = "pm-23995-no-logout-on-kdf-change"
         override val defaultValue: Boolean = false
     }
 

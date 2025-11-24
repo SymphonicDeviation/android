@@ -37,6 +37,7 @@ private const val CLEAR_CLIPBOARD_INTERVAL_KEY = "clearClipboard"
 private const val INITIAL_AUTOFILL_DIALOG_SHOWN = "addSitePromptShown"
 private const val HAS_USER_LOGGED_IN_OR_CREATED_AN_ACCOUNT_KEY = "hasUserLoggedInOrCreatedAccount"
 private const val SHOW_AUTOFILL_SETTING_BADGE = "showAutofillSettingBadge"
+private const val SHOW_BROWSER_AUTOFILL_SETTING_BADGE = "showBrowserAutofillSettingBadge"
 private const val SHOW_UNLOCK_SETTING_BADGE = "showUnlockSettingBadge"
 private const val SHOW_IMPORT_LOGINS_SETTING_BADGE = "showImportLoginsSettingBadge"
 private const val IS_VAULT_REGISTERED_FOR_EXPORT = "isVaultRegisteredForExport"
@@ -48,6 +49,7 @@ private const val SHOULD_SHOW_GENERATOR_COACH_MARK = "shouldShowGeneratorCoachMa
 private const val RESUME_SCREEN = "resumeScreen"
 private const val FLIGHT_RECORDER_KEY = "flightRecorderData"
 private const val IS_DYNAMIC_COLORS_ENABLED = "isDynamicColorsEnabled"
+private const val BROWSER_AUTOFILL_DIALOG_RESHOW_TIME = "browserAutofillDialogReshowTime"
 
 /**
  * Primary implementation of [SettingsDiskSource].
@@ -70,6 +72,9 @@ class SettingsDiskSourceImpl(
         mutableMapOf<String, MutableSharedFlow<Int?>>()
 
     private val mutablePullToRefreshEnabledFlowMap =
+        mutableMapOf<String, MutableSharedFlow<Boolean?>>()
+
+    private val mutableShowBrowserAutofillSettingBadgeFlowMap =
         mutableMapOf<String, MutableSharedFlow<Boolean?>>()
 
     private val mutableShowAutoFillSettingBadgeFlowMap =
@@ -95,8 +100,7 @@ class SettingsDiskSourceImpl(
 
     private val mutableScreenCaptureAllowedFlow = bufferedMutableSharedFlow<Boolean?>()
 
-    private val mutableVaultRegisteredForExportFlow =
-        mutableMapOf<String, MutableSharedFlow<Boolean?>>()
+    private val mutableVaultRegisteredForExportFlow = bufferedMutableSharedFlow<Boolean?>()
 
     private val mutableIsDynamicColorsEnabledFlow = bufferedMutableSharedFlow<Boolean?>()
 
@@ -224,6 +228,12 @@ class SettingsDiskSourceImpl(
     override val flightRecorderDataFlow: Flow<FlightRecorderDataSet?>
         get() = mutableFlightRecorderDataFlow.onSubscription { emit(flightRecorderData) }
 
+    override var browserAutofillDialogReshowTime: Instant?
+        get() = getLong(key = BROWSER_AUTOFILL_DIALOG_RESHOW_TIME)?.let { Instant.ofEpochMilli(it) }
+        set(value) {
+            putLong(key = BROWSER_AUTOFILL_DIALOG_RESHOW_TIME, value = value?.toEpochMilli())
+        }
+
     override fun clearData(userId: String) {
         storeVaultTimeoutInMinutes(userId = userId, vaultTimeoutInMinutes = null)
         storeVaultTimeoutAction(userId = userId, vaultTimeoutAction = null)
@@ -236,7 +246,6 @@ class SettingsDiskSourceImpl(
         storeLastSyncTime(userId = userId, lastSyncTime = null)
         storeClearClipboardFrequencySeconds(userId = userId, frequency = null)
         removeWithPrefix(prefix = ACCOUNT_BIOMETRIC_INTEGRITY_VALID_KEY.appendIdentifier(userId))
-        storeVaultRegisteredForExport(userId = userId, isRegistered = null)
         storeAppResumeScreen(userId = userId, screenData = null)
 
         // The following are intentionally not cleared so they can be
@@ -431,6 +440,21 @@ class SettingsDiskSourceImpl(
             key = HAS_USER_LOGGED_IN_OR_CREATED_AN_ACCOUNT_KEY.appendIdentifier(userId),
         ) == true
 
+    override fun getShowBrowserAutofillSettingBadge(userId: String): Boolean? =
+        getBoolean(key = SHOW_BROWSER_AUTOFILL_SETTING_BADGE.appendIdentifier(userId))
+
+    override fun storeShowBrowserAutofillSettingBadge(userId: String, showBadge: Boolean?) {
+        putBoolean(
+            key = SHOW_BROWSER_AUTOFILL_SETTING_BADGE.appendIdentifier(userId),
+            value = showBadge,
+        )
+        getMutableShowBrowserAutofillSettingBadgeFlow(userId).tryEmit(showBadge)
+    }
+
+    override fun getShowBrowserAutofillSettingBadgeFlow(userId: String): Flow<Boolean?> =
+        getMutableShowBrowserAutofillSettingBadgeFlow(userId = userId)
+            .onSubscription { emit(getShowBrowserAutofillSettingBadge(userId)) }
+
     override fun getShowAutoFillSettingBadge(userId: String): Boolean? =
         getBoolean(
             key = SHOW_AUTOFILL_SETTING_BADGE.appendIdentifier(userId),
@@ -483,17 +507,17 @@ class SettingsDiskSourceImpl(
         getMutableShowImportLoginsSettingBadgeFlow(userId)
             .onSubscription { emit(getShowImportLoginsSettingBadge(userId)) }
 
-    override fun getVaultRegisteredForExport(userId: String): Boolean? =
-        getBoolean(IS_VAULT_REGISTERED_FOR_EXPORT.appendIdentifier(userId))
+    override fun getAppRegisteredForExport(): Boolean? =
+        getBoolean(IS_VAULT_REGISTERED_FOR_EXPORT)
 
-    override fun storeVaultRegisteredForExport(userId: String, isRegistered: Boolean?) {
-        putBoolean(IS_VAULT_REGISTERED_FOR_EXPORT.appendIdentifier(userId), isRegistered)
-        getMutableVaultRegisteredForExportFlow(userId).tryEmit(isRegistered)
+    override fun storeAppRegisteredForExport(isRegistered: Boolean?) {
+        putBoolean(IS_VAULT_REGISTERED_FOR_EXPORT, isRegistered)
+        mutableVaultRegisteredForExportFlow.tryEmit(isRegistered)
     }
 
-    override fun getVaultRegisteredForExportFlow(userId: String): Flow<Boolean?> =
-        getMutableVaultRegisteredForExportFlow(userId)
-            .onSubscription { emit(getVaultRegisteredForExport(userId)) }
+    override fun getAppRegisteredForExportFlow(userId: String): Flow<Boolean?> =
+        mutableVaultRegisteredForExportFlow
+            .onSubscription { emit(getAppRegisteredForExport()) }
 
     override fun getAddCipherActionCount(): Int? = getInt(
         key = ADD_ACTION_COUNT,
@@ -598,6 +622,13 @@ class SettingsDiskSourceImpl(
             bufferedMutableSharedFlow(replay = 1)
         }
 
+    private fun getMutableShowBrowserAutofillSettingBadgeFlow(
+        userId: String,
+    ): MutableSharedFlow<Boolean?> =
+        mutableShowBrowserAutofillSettingBadgeFlowMap.getOrPut(userId) {
+            bufferedMutableSharedFlow(replay = 1)
+        }
+
     private fun getMutableShowAutoFillSettingBadgeFlow(
         userId: String,
     ): MutableSharedFlow<Boolean?> = mutableShowAutoFillSettingBadgeFlowMap.getOrPut(userId) {
@@ -615,12 +646,6 @@ class SettingsDiskSourceImpl(
         mutableShowImportLoginsSettingBadgeFlowMap.getOrPut(userId) {
             bufferedMutableSharedFlow(replay = 1)
         }
-
-    private fun getMutableVaultRegisteredForExportFlow(
-        userId: String,
-    ): MutableSharedFlow<Boolean?> = mutableVaultRegisteredForExportFlow.getOrPut(userId) {
-        bufferedMutableSharedFlow(replay = 1)
-    }
 
     /**
      * Migrates the user-scoped screen capture state to an app-wide state.

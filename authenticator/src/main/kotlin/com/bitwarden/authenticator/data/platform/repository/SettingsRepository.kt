@@ -38,6 +38,16 @@ interface SettingsRepository {
     var defaultSaveOption: DefaultSaveOption
 
     /**
+     * The current setting for enabling dynamic colors.
+     */
+    var isDynamicColorsEnabled: Boolean
+
+    /**
+     * Tracks changes to the [isDynamicColorsEnabled] value.
+     */
+    val isDynamicColorsEnabledFlow: StateFlow<Boolean>
+
+    /**
      * Flow that emits changes to [defaultSaveOption]
      */
     val defaultSaveOptionFlow: Flow<DefaultSaveOption>
@@ -46,6 +56,11 @@ interface SettingsRepository {
      * Whether or not biometric unlocking is enabled for the current user.
      */
     val isUnlockWithBiometricsEnabled: Boolean
+
+    /**
+     * Tracks whether or not biometric unlocking is enabled for the current user.
+     */
+    val isUnlockWithBiometricsEnabledFlow: StateFlow<Boolean>
 
     /**
      * Tracks changes to the expiration alert threshold.
@@ -68,14 +83,14 @@ interface SettingsRepository {
     var isScreenCaptureAllowed: Boolean
 
     /**
-     * A set of Bitwarden account IDs that have previously been synced.
-     */
-    var previouslySyncedBitwardenAccountIds: Set<String>
-
-    /**
      * Whether or not screen capture is allowed for the current user.
      */
     val isScreenCaptureAllowedStateFlow: StateFlow<Boolean>
+
+    /**
+     * A set of Bitwarden account IDs that have previously been synced.
+     */
+    var previouslySyncedBitwardenAccountIds: Set<String>
 
     /**
      * Clears any previously stored encrypted user key used with biometrics for the current user.

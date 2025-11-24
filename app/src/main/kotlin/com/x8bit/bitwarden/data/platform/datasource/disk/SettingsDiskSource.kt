@@ -106,6 +106,11 @@ interface SettingsDiskSource {
     val flightRecorderDataFlow: Flow<FlightRecorderDataSet?>
 
     /**
+     * The time at which the browser autofill dialog is allowed to be shown to the user again.
+     */
+    var browserAutofillDialogReshowTime: Instant?
+
+    /**
      * Clears all the settings data for the given user.
      */
     fun clearData(userId: String)
@@ -285,6 +290,23 @@ interface SettingsDiskSource {
      * Gets whether or not the given [userId] has signalled they want to enable autofill in
      * onboarding.
      */
+    fun getShowBrowserAutofillSettingBadge(userId: String): Boolean?
+
+    /**
+     * Stores the given value for whether or not the given [userId] has signalled they want to
+     * enable the browser autofill integration in onboarding.
+     */
+    fun storeShowBrowserAutofillSettingBadge(userId: String, showBadge: Boolean?)
+
+    /**
+     * Emits updates that track [getShowAutoFillSettingBadge] for the given [userId].
+     */
+    fun getShowBrowserAutofillSettingBadgeFlow(userId: String): Flow<Boolean?>
+
+    /**
+     * Gets whether or not the given [userId] has signalled they want to enable autofill in
+     * onboarding.
+     */
     fun getShowAutoFillSettingBadge(userId: String): Boolean?
 
     /**
@@ -332,21 +354,21 @@ interface SettingsDiskSource {
     fun getShowImportLoginsSettingBadgeFlow(userId: String): Flow<Boolean?>
 
     /**
-     * Gets whether or not the given [userId] has registered for export via the credential exchange
+     * Gets whether or not the application has registered for export via the credential exchange
      * protocol.
      */
-    fun getVaultRegisteredForExport(userId: String): Boolean?
+    fun getAppRegisteredForExport(): Boolean?
 
     /**
-     * Stores the given value for whether or not the given [userId] has registered for export via
+     * Stores the given value for whether or not the application has registered for export via
      * the credential exchange protocol.
      */
-    fun storeVaultRegisteredForExport(userId: String, isRegistered: Boolean?)
+    fun storeAppRegisteredForExport(isRegistered: Boolean?)
 
     /**
-     * Emits updates that track [getVaultRegisteredForExport] for the given [userId].
+     * Emits updates that track [getAppRegisteredForExport].
      */
-    fun getVaultRegisteredForExportFlow(userId: String): Flow<Boolean?>
+    fun getAppRegisteredForExportFlow(userId: String): Flow<Boolean?>
 
     /**
      * Gets the number of qualifying add cipher actions for the device.

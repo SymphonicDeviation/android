@@ -2,6 +2,7 @@ package com.x8bit.bitwarden.data.auth.repository
 
 import com.bitwarden.core.AuthRequestMethod
 import com.bitwarden.core.InitUserCryptoMethod
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.asFailure
 import com.bitwarden.core.data.util.asSuccess
@@ -9,7 +10,6 @@ import com.bitwarden.core.data.util.flatMap
 import com.bitwarden.crypto.HashPurpose
 import com.bitwarden.crypto.Kdf
 import com.bitwarden.data.datasource.disk.ConfigDiskSource
-import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.data.repository.util.toEnvironmentUrls
 import com.bitwarden.data.repository.util.toEnvironmentUrlsOrDefault
 import com.bitwarden.network.model.DeleteAccountResponseJson
@@ -33,6 +33,8 @@ import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.TrustedDeviceUserDecryptionOptionsJson
 import com.bitwarden.network.model.TwoFactorAuthMethod
 import com.bitwarden.network.model.TwoFactorDataModel
+import com.bitwarden.network.model.VerificationCodeResponseJson
+import com.bitwarden.network.model.VerificationOtpResponseJson
 import com.bitwarden.network.model.VerifyEmailTokenRequestJson
 import com.bitwarden.network.model.VerifyEmailTokenResponseJson
 import com.bitwarden.network.service.AccountsService
@@ -51,6 +53,7 @@ import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.util.toInt
 import com.x8bit.bitwarden.data.auth.datasource.sdk.util.toKdfTypeJson
 import com.x8bit.bitwarden.data.auth.manager.AuthRequestManager
+import com.x8bit.bitwarden.data.auth.manager.KdfManager
 import com.x8bit.bitwarden.data.auth.manager.KeyConnectorManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
@@ -77,6 +80,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.ResetPasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.SendVerificationEmailResult
 import com.x8bit.bitwarden.data.auth.repository.model.SetPasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.SwitchAccountResult
+import com.x8bit.bitwarden.data.auth.repository.model.UpdateKdfMinimumsResult
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePinResult
 import com.x8bit.bitwarden.data.auth.repository.model.VerifiedOrganizationDomainSsoDetailsResult
@@ -108,6 +112,7 @@ import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockError
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockResult
+import com.x8bit.bitwarden.data.vault.repository.util.toSdkMasterPasswordUnlock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -127,6 +132,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import timber.log.Timber
 import java.time.Clock
 import javax.inject.Singleton
 
@@ -156,11 +162,13 @@ class AuthRepositoryImpl(
     private val userLogoutManager: UserLogoutManager,
     private val policyManager: PolicyManager,
     private val userStateManager: UserStateManager,
+    private val kdfManager: KdfManager,
     logsManager: LogsManager,
     pushManager: PushManager,
     dispatcherManager: DispatcherManager,
 ) : AuthRepository,
     AuthRequestManager by authRequestManager,
+    KdfManager by kdfManager,
     UserStateManager by userStateManager {
     /**
      * A scope intended for use when simply collecting multiple flows in order to combine them. The
@@ -300,9 +308,14 @@ class AuthRepositoryImpl(
         pushManager
             .syncOrgKeysFlow
             .onEach { userId ->
+                // This will force the next authenticated request to refresh the auth token.
+                authDiskSource.storeAccountTokens(
+                    userId = userId,
+                    accountTokens = authDiskSource
+                        .getAccountTokens(userId = userId)
+                        ?.copy(expiresAtSec = 0L),
+                )
                 if (userId == activeUserId) {
-                    // TODO: [PM-20593] Investigate why tokens are explicitly refreshed.
-                    refreshAccessTokenSynchronously(userId = userId)
                     // We just sync now to get the latest data
                     vaultRepository.sync(forced = true)
                 } else {
@@ -740,7 +753,17 @@ class AuthRepositoryImpl(
             ?.let { jsonRequest ->
                 accountsService.resendVerificationCodeEmail(body = jsonRequest).fold(
                     onFailure = { ResendEmailResult.Error(message = it.message, error = it) },
-                    onSuccess = { ResendEmailResult.Success },
+                    onSuccess = {
+                        when (it) {
+                            VerificationCodeResponseJson.Success -> ResendEmailResult.Success
+                            is VerificationCodeResponseJson.Invalid -> {
+                                ResendEmailResult.Error(
+                                    message = it.firstValidationErrorMessage,
+                                    error = null,
+                                )
+                            }
+                        }
+                    },
                 )
             }
             ?: ResendEmailResult.Error(
@@ -752,8 +775,18 @@ class AuthRepositoryImpl(
         resendNewDeviceOtpRequestJson
             ?.let { jsonRequest ->
                 accountsService.resendNewDeviceOtp(body = jsonRequest).fold(
-                    onFailure = { ResendEmailResult.Error(message = it.message, error = it) },
-                    onSuccess = { ResendEmailResult.Success },
+                    onFailure = { ResendEmailResult.Error(message = null, error = it) },
+                    onSuccess = {
+                        when (it) {
+                            VerificationOtpResponseJson.Success -> ResendEmailResult.Success
+                            is VerificationOtpResponseJson.Invalid -> {
+                                ResendEmailResult.Error(
+                                    message = it.firstValidationErrorMessage,
+                                    error = null,
+                                )
+                            }
+                        }
+                    },
                 )
             }
             ?: ResendEmailResult.Error(
@@ -990,12 +1023,6 @@ class AuthRepositoryImpl(
             }
             .fold(
                 onSuccess = {
-                    // Clear the password reset reason, since it's no longer relevant.
-                    storeUserResetPasswordReason(
-                        userId = activeAccount.profile.userId,
-                        reason = null,
-                    )
-
                     // Update the saved master password hash.
                     authSdkSource
                         .hashPassword(
@@ -1010,6 +1037,10 @@ class AuthRepositoryImpl(
                                 passwordHash = passwordHash,
                             )
                         }
+
+                    // Log out the user after successful password reset.
+                    // This clears all user state including forcePasswordResetReason.
+                    logout(reason = LogoutReason.PasswordReset)
 
                     // Return the success.
                     ResetPasswordResult.Success
@@ -1262,8 +1293,8 @@ class AuthRepositoryImpl(
             ?.activeAccount
             ?.profile
             ?: return ValidatePinResult.Error(error = NoActiveUserException())
-        val pinProtectedUserKey = authDiskSource
-            .getPinProtectedUserKey(userId = activeAccount.userId)
+        val pinProtectedUserKeyEnvelope = authDiskSource
+            .getPinProtectedUserKeyEnvelope(userId = activeAccount.userId)
             ?: return ValidatePinResult.Error(
                 error = MissingPropertyException("Pin Protected User Key"),
             )
@@ -1271,7 +1302,7 @@ class AuthRepositoryImpl(
             .validatePin(
                 userId = activeAccount.userId,
                 pin = pin,
-                pinProtectedUserKey = pinProtectedUserKey,
+                pinProtectedUserKey = pinProtectedUserKeyEnvelope,
             )
             .fold(
                 onSuccess = { ValidatePinResult.Success(isValid = it) },
@@ -1654,6 +1685,16 @@ class AuthRepositoryImpl(
         settingsRepository.hasUserLoggedInOrCreatedAccount = true
 
         authDiskSource.userState = userStateJson
+        password?.let {
+            // Automatically update kdf to minimums after password unlock and userState update
+            kdfManager
+                .updateKdfToMinimumsIfNeeded(password = password)
+                .also { result ->
+                    if (result is UpdateKdfMinimumsResult.Error) {
+                        Timber.e(result.error, message = "Failed to silent update KDF settings.")
+                    }
+                }
+        }
         loginResponse.key?.let {
             // Only set the value if it's present, since we may have set it already
             // when we completed the pending admin auth request.
@@ -1843,15 +1884,27 @@ class AuthRepositoryImpl(
         val masterPassword = password ?: return null
         val privateKey = loginResponse.privateKeyOrNull() ?: return null
         val key = loginResponse.key ?: return null
+
+        val initUserCryptoMethod = loginResponse
+            .userDecryptionOptions
+            ?.masterPasswordUnlock
+            ?.let { masterPasswordUnlock ->
+                InitUserCryptoMethod.MasterPasswordUnlock(
+                    password = masterPassword,
+                    masterPasswordUnlock = masterPasswordUnlock.toSdkMasterPasswordUnlock(),
+                )
+            }
+            ?: InitUserCryptoMethod.Password(
+                password = masterPassword,
+                userKey = key,
+            )
+
         return unlockVault(
             accountProfile = profile,
             privateKey = privateKey,
             securityState = loginResponse.accountKeys?.securityState?.securityState,
             signingKey = loginResponse.accountKeys?.signatureKeyPair?.wrappedSigningKey,
-            initUserCryptoMethod = InitUserCryptoMethod.Password(
-                password = masterPassword,
-                userKey = key,
-            ),
+            initUserCryptoMethod = initUserCryptoMethod,
         )
     }
 

@@ -3,22 +3,26 @@ package com.x8bit.bitwarden.data.platform.repository
 import android.view.autofill.AutofillManager
 import app.cash.turbine.test
 import com.bitwarden.authenticatorbridge.util.generateSecretKey
-import com.bitwarden.core.DerivePinKeyResponse
+import com.bitwarden.core.EnrollPinResponse
+import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.asFailure
 import com.bitwarden.core.data.util.asSuccess
-import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
 import com.bitwarden.data.datasource.disk.model.EnvironmentUrlDataJson
 import com.bitwarden.network.model.KdfTypeJson
 import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.TrustedDeviceUserDecryptionOptionsJson
 import com.bitwarden.network.model.UserDecryptionOptionsJson
+import com.bitwarden.network.model.createMockPolicy
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
+import com.x8bit.bitwarden.data.auth.repository.model.PolicyInformation
 import com.x8bit.bitwarden.data.auth.repository.model.UserFingerprintResult
+import com.x8bit.bitwarden.data.auth.repository.model.createMockVaultTimeoutPolicy
+import com.x8bit.bitwarden.data.auth.repository.model.createMockVaultTimeoutPolicyJsonObject
 import com.x8bit.bitwarden.data.autofill.accessibility.manager.FakeAccessibilityEnabledManager
 import com.x8bit.bitwarden.data.autofill.manager.AutofillEnabledManager
 import com.x8bit.bitwarden.data.autofill.manager.AutofillEnabledManagerImpl
@@ -202,9 +206,9 @@ class SettingsRepositoryTest {
 
         // Updating the Vault settings values and calling setDefaultsIfNecessary again has no
         // effect on the currently stored values since we have a way to unlock the vault.
-        fakeAuthDiskSource.storePinProtectedUserKey(
+        fakeAuthDiskSource.storePinProtectedUserKeyEnvelope(
             userId = USER_ID,
-            pinProtectedUserKey = "pinProtectedKey",
+            pinProtectedUserKeyEnvelope = "pinProtectedKey",
         )
         fakeSettingsDiskSource.apply {
             storeVaultTimeoutInMinutes(
@@ -924,19 +928,19 @@ class SettingsRepositoryTest {
     @Test
     fun `storeUnlockPin when the master password on restart is required should only save an encrypted PIN to disk`() {
         val pin = "1234"
-        val encryptedPin = "encryptedPin"
-        val pinProtectedUserKey = "pinProtectedUserKey"
-        val derivePinKeyResponse = DerivePinKeyResponse(
-            pinProtectedUserKey = pinProtectedUserKey,
-            encryptedPin = encryptedPin,
+        val userKeyEncryptedPin = "encryptedPin"
+        val pinProtectedUserKeyEnvelope = "pinProtectedUserKeyEnvelope"
+        val enrollResponse = EnrollPinResponse(
+            pinProtectedUserKeyEnvelope = pinProtectedUserKeyEnvelope,
+            userKeyEncryptedPin = userKeyEncryptedPin,
         )
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         coEvery {
-            vaultSdkSource.derivePinKey(
+            vaultSdkSource.enrollPin(
                 userId = USER_ID,
                 pin = pin,
             )
-        } returns derivePinKeyResponse.asSuccess()
+        } returns enrollResponse.asSuccess()
 
         settingsRepository.storeUnlockPin(
             pin = pin,
@@ -946,16 +950,16 @@ class SettingsRepositoryTest {
         fakeAuthDiskSource.apply {
             assertEncryptedPin(
                 userId = USER_ID,
-                encryptedPin = encryptedPin,
+                encryptedPin = userKeyEncryptedPin,
             )
-            assertPinProtectedUserKey(
+            assertPinProtectedUserKeyEnvelope(
                 userId = USER_ID,
-                pinProtectedUserKey = pinProtectedUserKey,
+                pinProtectedUserKeyEnvelope = pinProtectedUserKeyEnvelope,
                 inMemoryOnly = true,
             )
         }
         coVerify {
-            vaultSdkSource.derivePinKey(
+            vaultSdkSource.enrollPin(
                 userId = USER_ID,
                 pin = pin,
             )
@@ -966,19 +970,19 @@ class SettingsRepositoryTest {
     @Test
     fun `storeUnlockPin when the master password on restart is not required should save all PIN data to disk`() {
         val pin = "1234"
-        val encryptedPin = "encryptedPin"
-        val pinProtectedUserKey = "pinProtectedUserKey"
-        val derivePinKeyResponse = DerivePinKeyResponse(
-            pinProtectedUserKey = pinProtectedUserKey,
-            encryptedPin = encryptedPin,
+        val userKeyEncryptedPin = "encryptedPin"
+        val pinProtectedUserKeyEnvelope = "pinProtectedUserKeyEnvelope"
+        val enrollResponse = EnrollPinResponse(
+            pinProtectedUserKeyEnvelope = pinProtectedUserKeyEnvelope,
+            userKeyEncryptedPin = userKeyEncryptedPin,
         )
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         coEvery {
-            vaultSdkSource.derivePinKey(
+            vaultSdkSource.enrollPin(
                 userId = USER_ID,
                 pin = pin,
             )
-        } returns derivePinKeyResponse.asSuccess()
+        } returns enrollResponse.asSuccess()
 
         settingsRepository.storeUnlockPin(
             pin = pin,
@@ -988,16 +992,16 @@ class SettingsRepositoryTest {
         fakeAuthDiskSource.apply {
             assertEncryptedPin(
                 userId = USER_ID,
-                encryptedPin = encryptedPin,
+                encryptedPin = userKeyEncryptedPin,
             )
-            assertPinProtectedUserKey(
+            assertPinProtectedUserKeyEnvelope(
                 userId = USER_ID,
-                pinProtectedUserKey = pinProtectedUserKey,
+                pinProtectedUserKeyEnvelope = pinProtectedUserKeyEnvelope,
                 inMemoryOnly = false,
             )
         }
         coVerify {
-            vaultSdkSource.derivePinKey(
+            vaultSdkSource.enrollPin(
                 userId = USER_ID,
                 pin = pin,
             )
@@ -1013,9 +1017,9 @@ class SettingsRepositoryTest {
                 userId = USER_ID,
                 encryptedPin = "encryptedPin",
             )
-            storePinProtectedUserKey(
+            storePinProtectedUserKeyEnvelope(
                 userId = USER_ID,
-                pinProtectedUserKey = "pinProtectedUserKey",
+                pinProtectedUserKeyEnvelope = "pinProtectedUserKeyEnvelope",
             )
         }
 
@@ -1026,9 +1030,9 @@ class SettingsRepositoryTest {
                 userId = USER_ID,
                 encryptedPin = null,
             )
-            assertPinProtectedUserKey(
+            assertPinProtectedUserKeyEnvelope(
                 userId = USER_ID,
-                pinProtectedUserKey = null,
+                pinProtectedUserKeyEnvelope = null,
             )
         }
     }
@@ -1236,43 +1240,172 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun `isVaultRegisteredForExport should return false if no value exists`() {
-        assertFalse(settingsRepository.isVaultRegisteredForExport(userId = "userId"))
+    fun `isAppRegisteredForExport should return false if no value exists`() {
+        assertFalse(settingsRepository.isAppRegisteredForExport())
     }
 
     @Test
-    fun `isVaultRegisteredForExport should return true if it exists`() {
-        val userId = "userId"
-        fakeSettingsDiskSource.storeVaultRegisteredForExport(userId = userId, isRegistered = true)
-        assertTrue(settingsRepository.isVaultRegisteredForExport(userId = userId))
+    fun `isAppRegisteredForExport should return true if it exists`() {
+        fakeSettingsDiskSource.storeAppRegisteredForExport(isRegistered = true)
+        assertTrue(settingsRepository.isAppRegisteredForExport())
     }
 
     @Test
-    fun `storeVaultRegisteredForExport should store value of true to disk`() {
-        val userId = "userId"
-        settingsRepository.storeVaultRegisteredForExport(userId = userId, isRegistered = true)
-        assertTrue(fakeSettingsDiskSource.getVaultRegisteredForExport(userId = userId))
+    fun `storeAppRegisteredForExport should store value of true to disk`() {
+        settingsRepository.storeAppRegisteredForExport(isRegistered = true)
+        assertTrue(fakeSettingsDiskSource.getAppRegisteredForExport())
     }
 
     @Test
-    fun `getVaultRegisteredForExportFlow should react to changes in SettingsDiskSource`() =
+    fun `getAppRegisteredForExportFlow should react to changes in SettingsDiskSource`() =
         runTest {
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             settingsRepository
-                .getVaultRegisteredForExportFlow(userId = USER_ID)
+                .getAppRegisteredForExportFlow(userId = USER_ID)
                 .test {
                     assertFalse(awaitItem())
-                    fakeSettingsDiskSource.storeVaultRegisteredForExport(
-                        userId = USER_ID,
+                    fakeSettingsDiskSource.storeAppRegisteredForExport(
                         isRegistered = true,
                     )
                     assertTrue(awaitItem())
-                    fakeSettingsDiskSource.storeVaultRegisteredForExport(
-                        userId = USER_ID,
+                    fakeSettingsDiskSource.storeAppRegisteredForExport(
                         isRegistered = false,
                     )
                     assertFalse(awaitItem())
                 }
+        }
+
+    @Test
+    fun `mutableActivePolicyFlow without vault timeout policy should do nothing`() =
+        runTest {
+            fakeAuthDiskSource.userState = MOCK_USER_STATE
+            fakeSettingsDiskSource.assertVaultTimeoutAction(userId = USER_ID, expected = null)
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = null)
+
+            mutableActivePolicyFlow.emit(listOf(createMockPolicy()))
+            fakeSettingsDiskSource.assertVaultTimeoutAction(userId = USER_ID, expected = null)
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = null)
+        }
+
+    @Test
+    fun `mutableActivePolicyFlow emissions should update the vault timeout action accordingly`() =
+        runTest {
+            fakeAuthDiskSource.userState = MOCK_USER_STATE
+            fakeSettingsDiskSource.assertVaultTimeoutAction(userId = USER_ID, expected = null)
+
+            val lockPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        action = PolicyInformation.VaultTimeout.Action.LOCK,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(lockPolicy))
+            fakeSettingsDiskSource.assertVaultTimeoutAction(
+                userId = USER_ID,
+                expected = VaultTimeoutAction.LOCK,
+            )
+
+            val logoutPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        action = PolicyInformation.VaultTimeout.Action.LOGOUT,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(logoutPolicy))
+            fakeSettingsDiskSource.assertVaultTimeoutAction(
+                userId = USER_ID,
+                expected = VaultTimeoutAction.LOGOUT,
+            )
+        }
+
+    @Test
+    fun `mutableActivePolicyFlow emissions should update the vault timeout accordingly`() =
+        runTest {
+            fakeAuthDiskSource.userState = MOCK_USER_STATE
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = null)
+            // Storing a larger value so we can verify it changes properly
+            fakeSettingsDiskSource.storeVaultTimeoutInMinutes(
+                userId = USER_ID,
+                vaultTimeoutInMinutes = 100,
+            )
+
+            val nullTypeWithMinutesPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(minutes = 5),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(nullTypeWithMinutesPolicy))
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = 5)
+
+            val customMinutesPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        minutes = 10,
+                        type = PolicyInformation.VaultTimeout.Type.CUSTOM,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(customMinutesPolicy))
+            // No change since 5 is within the range
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = 5)
+
+            val onSystemLockPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        minutes = 10,
+                        type = PolicyInformation.VaultTimeout.Type.ON_SYSTEM_LOCK,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(onSystemLockPolicy))
+            // Set to on app restart
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = -1)
+
+            val onAppRestartPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        minutes = 10,
+                        type = PolicyInformation.VaultTimeout.Type.ON_APP_RESTART,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(onAppRestartPolicy))
+            // No change, ON_APP_RESTART is treated the same as ON_SYSTEM_RESTART
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = -1)
+
+            val immediatePolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        minutes = 10,
+                        type = PolicyInformation.VaultTimeout.Type.IMMEDIATELY,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(immediatePolicy))
+            // Set to Immediate
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = 0)
+
+            val neverPolicy = createMockPolicy(
+                type = PolicyTypeJson.MAXIMUM_VAULT_TIMEOUT,
+                data = createMockVaultTimeoutPolicyJsonObject(
+                    vaultTimeout = createMockVaultTimeoutPolicy(
+                        minutes = 10,
+                        type = PolicyInformation.VaultTimeout.Type.NEVER,
+                    ),
+                ),
+            )
+            mutableActivePolicyFlow.emit(listOf(neverPolicy))
+            // Clear the value completely
+            fakeSettingsDiskSource.assertVaultTimeoutInMinutes(userId = USER_ID, expected = null)
         }
 }
 
@@ -1292,6 +1425,7 @@ private val MOCK_USER_DECRYPTION_OPTIONS: UserDecryptionOptionsJson = UserDecryp
     hasMasterPassword = false,
     trustedDeviceUserDecryptionOptions = MOCK_TRUSTED_DEVICE_USER_DECRYPTION_OPTIONS,
     keyConnectorUserDecryptionOptions = null,
+    masterPasswordUnlock = null,
 )
 
 private val MOCK_PROFILE = AccountJson.Profile(

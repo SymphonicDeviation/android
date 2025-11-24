@@ -2,6 +2,8 @@ package com.x8bit.bitwarden.ui.vault.feature.itemlisting
 
 import android.os.Parcelable
 import androidx.annotation.DrawableRes
+import androidx.credentials.CreatePasswordRequest
+import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.provider.CallingAppInfo
 import androidx.credentials.provider.CredentialEntry
@@ -9,7 +11,6 @@ import androidx.credentials.provider.ProviderCreateCredentialRequest
 import androidx.credentials.provider.ProviderGetCredentialRequest
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.core.data.repository.util.map
@@ -24,6 +25,8 @@ import com.bitwarden.ui.platform.base.util.toHostOrPathOrNull
 import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.icon.model.IconData
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.bitwarden.ui.platform.model.TotpData
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
@@ -53,7 +56,6 @@ import com.x8bit.bitwarden.data.credentials.model.ValidateOriginResult
 import com.x8bit.bitwarden.data.credentials.parser.RelyingPartyParser
 import com.x8bit.bitwarden.data.credentials.repository.PrivilegedAppRepository
 import com.x8bit.bitwarden.data.credentials.util.getCreatePasskeyCredentialRequestOrNull
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.ciphermatching.CipherMatchingManager
@@ -77,14 +79,13 @@ import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import com.x8bit.bitwarden.ui.credentials.manager.model.AssertFido2CredentialResult
+import com.x8bit.bitwarden.ui.credentials.manager.model.CreateCredentialResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetCredentialsResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetPasswordCredentialResult
-import com.x8bit.bitwarden.ui.credentials.manager.model.RegisterFido2CredentialResult
 import com.x8bit.bitwarden.ui.platform.feature.search.SearchTypeData
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
 import com.x8bit.bitwarden.ui.platform.feature.search.util.filterAndOrganize
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
 import com.x8bit.bitwarden.ui.tools.feature.send.util.toSendItemType
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
@@ -102,7 +103,6 @@ import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterType
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toAccountSummaries
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toActiveAccountSummary
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toFilteredList
-import com.x8bit.bitwarden.ui.vault.model.TotpData
 import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import com.x8bit.bitwarden.ui.vault.util.toVaultItemCipherType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -144,10 +144,9 @@ class VaultItemListingViewModel @Inject constructor(
     private val bitwardenCredentialManager: BitwardenCredentialManager,
     private val organizationEventManager: OrganizationEventManager,
     private val networkConnectionManager: NetworkConnectionManager,
-    private val featureFlagManager: FeatureFlagManager,
     private val relyingPartyParser: RelyingPartyParser,
     private val toastManager: ToastManager,
-    snackbarRelayManager: SnackbarRelayManager,
+    snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
 ) : BaseViewModel<VaultItemListingState, VaultItemListingEvent, VaultItemListingsAction>(
     initialState = run {
         val userState = requireNotNull(authRepository.userStateFlow.value)
@@ -171,9 +170,11 @@ class VaultItemListingViewModel @Inject constructor(
             baseIconUrl = environmentRepository.environment.environmentUrlData.baseIconUrl,
             isIconLoadingDisabled = settingsRepository.isIconLoadingDisabled,
             isPullToRefreshSettingEnabled = settingsRepository.getPullToRefreshEnabledFlow().value,
-            dialogState = providerCreateCredentialRequest?.let {
-                VaultItemListingState.DialogState.Loading(BitwardenString.loading.asText())
-            },
+            dialogState = providerCreateCredentialRequest
+                ?.createPublicKeyCredentialRequest
+                ?.let {
+                    VaultItemListingState.DialogState.Loading(BitwardenString.loading.asText())
+                },
             policyDisablesSend = policyManager
                 .getActivePolicies(type = PolicyTypeJson.DISABLE_SEND)
                 .any(),
@@ -429,8 +430,8 @@ class VaultItemListingViewModel @Inject constructor(
         state.createCredentialRequest
             ?.let {
                 sendEvent(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        result = RegisterFido2CredentialResult.Cancelled,
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        result = CreateCredentialResult.Cancelled,
                     ),
                 )
             }
@@ -976,7 +977,7 @@ class VaultItemListingViewModel @Inject constructor(
                 createCredentialRequest
                     .providerRequest
                     .getCreatePasskeyCredentialRequestOrNull()
-                    ?.let { createPasskeyCredentialRequest ->
+                    ?.let {
                         handleItemClickForCreatePublicKeyCredentialRequest(
                             cipherId = action.id,
                             cipherView = cipherView,
@@ -987,7 +988,7 @@ class VaultItemListingViewModel @Inject constructor(
                             VaultItemListingsAction.Internal.CredentialOperationFailureReceive(
                                 title = BitwardenString.an_error_has_occurred.asText(),
                                 message = BitwardenString
-                                    .passkey_operation_failed_because_the_request_is_unsupported
+                                    .credential_operation_failed_because_the_request_is_unsupported
                                     .asText(),
                                 error = null,
                             ),
@@ -1083,6 +1084,27 @@ class VaultItemListingViewModel @Inject constructor(
                         isRequired = true,
                         selectedCipherView = cipherView,
                     ),
+                )
+            }
+        }
+    }
+
+    private fun registerCredentialToCipher(
+        cipherView: CipherView,
+        providerRequest: ProviderCreateCredentialRequest,
+    ) {
+        when (providerRequest.callingRequest) {
+            is CreatePublicKeyCredentialRequest -> {
+                registerFido2CredentialToCipher(
+                    cipherView = cipherView,
+                    providerRequest = providerRequest,
+                )
+            }
+
+            else -> {
+                showCredentialManagerErrorDialog(
+                    BitwardenString.credential_operation_failed_because_the_request_is_invalid
+                        .asText(),
                 )
             }
         }
@@ -1329,8 +1351,8 @@ class VaultItemListingViewModel @Inject constructor(
         when {
             state.createCredentialRequest != null -> {
                 sendEvent(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        result = RegisterFido2CredentialResult.Error(action.message),
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        result = CreateCredentialResult.Error(action.message),
                     ),
                 )
             }
@@ -1533,7 +1555,7 @@ class VaultItemListingViewModel @Inject constructor(
             }
 
             is VaultItemListingsAction.Internal.CreateCredentialRequestReceive -> {
-                handleRegisterFido2CredentialRequestReceive(action)
+                handleRegisterCredentialRequestReceive(action)
             }
 
             is VaultItemListingsAction.Internal.Fido2RegisterCredentialResultReceive -> {
@@ -1903,7 +1925,7 @@ class VaultItemListingViewModel @Inject constructor(
         state.createCredentialRequest
             ?.providerRequest
             ?.let { request ->
-                registerFido2CredentialToCipher(
+                registerCredentialToCipher(
                     cipherView = cipherView,
                     providerRequest = request,
                 )
@@ -2015,6 +2037,32 @@ class VaultItemListingViewModel @Inject constructor(
         }
     }
 
+    private fun handleRegisterCredentialRequestReceive(
+        action: VaultItemListingsAction.Internal.CreateCredentialRequestReceive,
+    ) {
+        when (action.request.providerRequest.callingRequest) {
+            is CreatePublicKeyCredentialRequest -> {
+                handleRegisterFido2CredentialRequestReceive(action)
+            }
+
+            is CreatePasswordRequest -> {
+                observeVaultData()
+            }
+
+            else -> {
+                mutableStateFlow.update {
+                    it.copy(
+                        dialogState =
+                            VaultItemListingState.DialogState.CredentialManagerOperationFail(
+                                title = BitwardenString.an_error_has_occurred.asText(),
+                                message = BitwardenString.generic_error_message.asText(),
+                            ),
+                    )
+                }
+            }
+        }
+    }
+
     private fun handleRegisterFido2CredentialRequestReceive(
         action: VaultItemListingsAction.Internal.CreateCredentialRequestReceive,
     ) {
@@ -2065,8 +2113,10 @@ class VaultItemListingViewModel @Inject constructor(
                 // user to have time to see the message.
                 toastManager.show(messageId = BitwardenString.item_updated)
                 sendEvent(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        RegisterFido2CredentialResult.Success(action.result.responseJson),
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        CreateCredentialResult.Success.Fido2CredentialRegistered(
+                            responseJson = action.result.responseJson,
+                        ),
                     ),
                 )
             }
@@ -2080,8 +2130,8 @@ class VaultItemListingViewModel @Inject constructor(
         // user to have time to see the message.
         toastManager.show(messageId = BitwardenString.an_error_has_occurred)
         sendEvent(
-            VaultItemListingEvent.CompleteFido2Registration(
-                RegisterFido2CredentialResult.Error(
+            VaultItemListingEvent.CompleteCredentialRegistration(
+                CreateCredentialResult.Error(
                     message = error.messageResourceId.asText(),
                 ),
             ),
@@ -2191,8 +2241,7 @@ class VaultItemListingViewModel @Inject constructor(
     }
 
     private fun shouldShowTrustPrompt(error: ValidateOriginResult.Error): Boolean =
-        error is ValidateOriginResult.Error.PrivilegedAppNotAllowed &&
-            featureFlagManager.getFeatureFlag(FlagKey.UserManagedPrivilegedApps)
+        error is ValidateOriginResult.Error.PrivilegedAppNotAllowed
 
     private fun handleFido2AssertionDataReceive(
         action: VaultItemListingsAction.Internal.Fido2AssertionDataReceive,
@@ -3244,12 +3293,12 @@ sealed class VaultItemListingEvent {
     }
 
     /**
-     * Complete the current FIDO 2 credential registration process.
+     * Complete the current credential registration process.
      *
-     * @property result The result of FIDO 2 credential registration.
+     * @property result The result of the credential registration.
      */
-    data class CompleteFido2Registration(
-        val result: RegisterFido2CredentialResult,
+    data class CompleteCredentialRegistration(
+        val result: CreateCredentialResult,
     ) : BackgroundEvent, VaultItemListingEvent()
 
     /**

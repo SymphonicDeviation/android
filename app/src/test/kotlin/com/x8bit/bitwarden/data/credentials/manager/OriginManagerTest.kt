@@ -10,8 +10,6 @@ import com.bitwarden.network.service.DigitalAssetLinkService
 import com.x8bit.bitwarden.data.credentials.model.ValidateOriginResult
 import com.x8bit.bitwarden.data.credentials.repository.PrivilegedAppRepository
 import com.x8bit.bitwarden.data.platform.manager.AssetManager
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
-import com.bitwarden.core.data.manager.model.FlagKey
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -44,9 +42,6 @@ class OriginManagerTest {
         }
     }
     private val mockPrivilegedAppRepository = mockk<PrivilegedAppRepository>()
-    private val mockFeatureFlagManager = mockk<FeatureFlagManager> {
-        every { getFeatureFlag(FlagKey.UserManagedPrivilegedApps) } returns true
-    }
     private val mockMessageDigest = mockk<MessageDigest> {
         every { digest(any()) } returns DEFAULT_APP_SIGNATURE.toByteArray()
     }
@@ -55,7 +50,6 @@ class OriginManagerTest {
         assetManager = mockAssetManager,
         digitalAssetLinkService = mockDigitalAssetLinkService,
         privilegedAppRepository = mockPrivilegedAppRepository,
-        featureFlagManager = mockFeatureFlagManager,
     )
 
     @BeforeEach
@@ -250,30 +244,61 @@ class OriginManagerTest {
         }
 
     @Test
-    fun `validateOrigin should ignore user trust list when feature flag is disabled`() = runTest {
-        every {
-            mockFeatureFlagManager.getFeatureFlag(FlagKey.UserManagedPrivilegedApps)
-        } returns false
+    fun `validateOrigin should prefix www to rpId without www before checking asset links`() =
+        runTest {
+            coEvery {
+                mockDigitalAssetLinkService.checkDigitalAssetLinksRelations(
+                    sourceWebSite = "https://www.example.com",
+                    targetPackageName = DEFAULT_PACKAGE_NAME,
+                    targetCertificateFingerprint = DEFAULT_CERT_FINGERPRINT,
+                    relations = listOf("delegate_permission/common.handle_all_urls"),
+                )
+            } returns DEFAULT_ASSET_LINKS_CHECK_RESPONSE.asSuccess()
+
+            val result = originManager.validateOrigin(
+                relyingPartyId = "example.com",
+                callingAppInfo = mockNonPrivilegedAppInfo,
+            )
+
+            assertEquals(ValidateOriginResult.Success(null), result)
+        }
+
+    @Test
+    fun `validateOrigin should preserve existing www prefix when present`() = runTest {
         coEvery {
-            mockAssetManager.readAsset(GOOGLE_ALLOW_LIST_FILENAME)
-        } returns FAIL_ALLOW_LIST.asSuccess()
-        coEvery {
-            mockAssetManager.readAsset(COMMUNITY_ALLOW_LIST_FILENAME)
-        } returns FAIL_ALLOW_LIST.asSuccess()
+            mockDigitalAssetLinkService.checkDigitalAssetLinksRelations(
+                sourceWebSite = "https://www.example.com",
+                targetPackageName = DEFAULT_PACKAGE_NAME,
+                targetCertificateFingerprint = DEFAULT_CERT_FINGERPRINT,
+                relations = listOf("delegate_permission/common.handle_all_urls"),
+            )
+        } returns DEFAULT_ASSET_LINKS_CHECK_RESPONSE.asSuccess()
 
         val result = originManager.validateOrigin(
-            relyingPartyId = DEFAULT_ORIGIN,
-            callingAppInfo = mockPrivilegedAppInfo,
+            relyingPartyId = "www.example.com",
+            callingAppInfo = mockNonPrivilegedAppInfo,
         )
-        assertEquals(
-            ValidateOriginResult.Error.PrivilegedAppNotAllowed,
-            result,
+
+        assertEquals(ValidateOriginResult.Success(null), result)
+    }
+
+    @Test
+    fun `validateOrigin should handle rpId with https scheme correctly`() = runTest {
+        coEvery {
+            mockDigitalAssetLinkService.checkDigitalAssetLinksRelations(
+                sourceWebSite = "https://www.example.com",
+                targetPackageName = DEFAULT_PACKAGE_NAME,
+                targetCertificateFingerprint = DEFAULT_CERT_FINGERPRINT,
+                relations = listOf("delegate_permission/common.handle_all_urls"),
+            )
+        } returns DEFAULT_ASSET_LINKS_CHECK_RESPONSE.asSuccess()
+
+        val result = originManager.validateOrigin(
+            relyingPartyId = "https://example.com",
+            callingAppInfo = mockNonPrivilegedAppInfo,
         )
-        coVerify(exactly = 1) {
-            mockAssetManager.readAsset(GOOGLE_ALLOW_LIST_FILENAME)
-            mockAssetManager.readAsset(COMMUNITY_ALLOW_LIST_FILENAME)
-        }
-        coVerify(exactly = 0) { mockPrivilegedAppRepository.getUserTrustedAllowListJson() }
+
+        assertEquals(ValidateOriginResult.Success(null), result)
     }
 }
 
@@ -333,4 +358,4 @@ private val DEFAULT_ASSET_LINKS_CHECK_RESPONSE =
         linked = true,
         maxAge = "30s",
         debugString = null,
-)
+    )

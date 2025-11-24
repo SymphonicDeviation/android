@@ -1,6 +1,7 @@
 package com.x8bit.bitwarden.ui.vault.feature.vault
 
 import app.cash.turbine.test
+import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.data.repository.model.Environment
@@ -11,6 +12,7 @@ import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
@@ -21,9 +23,13 @@ import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.SwitchAccountResult
+import com.x8bit.bitwarden.data.auth.repository.model.UpdateKdfMinimumsResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
+import com.x8bit.bitwarden.data.autofill.manager.browser.BrowserAutofillDialogManager
 import com.x8bit.bitwarden.data.platform.datasource.disk.model.FlightRecorderDataSet
+import com.x8bit.bitwarden.data.platform.manager.CredentialExchangeRegistryManager
+import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.ReviewPromptManager
@@ -32,7 +38,9 @@ import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardMan
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.platform.manager.model.OrganizationEvent
+import com.x8bit.bitwarden.data.platform.manager.model.RegisterExportResult
 import com.x8bit.bitwarden.data.platform.manager.model.SpecialCircumstance
+import com.x8bit.bitwarden.data.platform.manager.model.UnregisterExportResult
 import com.x8bit.bitwarden.data.platform.manager.network.NetworkConnectionManager
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCardListView
@@ -50,8 +58,7 @@ import com.x8bit.bitwarden.data.vault.manager.model.GetCipherResult
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterData
@@ -60,7 +67,9 @@ import com.x8bit.bitwarden.ui.vault.feature.vault.util.toSnackbarData
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toViewState
 import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import com.x8bit.bitwarden.ui.vault.model.VaultItemListingType
+import io.mockk.awaits
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -91,7 +100,7 @@ class VaultViewModelTest : BaseViewModelTest() {
     )
 
     private val mutableSnackbarDataFlow = bufferedMutableSharedFlow<BitwardenSnackbarData>()
-    private val snackbarRelayManager: SnackbarRelayManager = mockk {
+    private val snackbarRelayManager: SnackbarRelayManager<SnackbarRelay> = mockk {
         // We return an empty flow here to avoid confusion in the tests.
         // Everything should be tested via the mutableSnackbarDataFlow.
         every { getSnackbarDataFlow(SnackbarRelay.LOGIN_SUCCESS) } returns emptyFlow()
@@ -140,6 +149,10 @@ class VaultViewModelTest : BaseViewModelTest() {
             every { hasPendingAccountAddition = any() } just runs
             every { logout(userId = any(), reason = any()) } just runs
             every { switchAccount(any()) } answers { switchAccountResult }
+            every { needsKdfUpdateToMinimums() } returns false
+            coEvery {
+                updateKdfToMinimumsIfNeeded(password = any())
+            } returns UpdateKdfMinimumsResult.Success
         }
 
     private var mutableFlightRecorderDataFlow =
@@ -151,6 +164,7 @@ class VaultViewModelTest : BaseViewModelTest() {
         every { flightRecorderData } returns FlightRecorderDataSet(data = emptySet())
         every { flightRecorderDataFlow } returns mutableFlightRecorderDataFlow
         every { dismissFlightRecorderBanner() } just runs
+        every { isAutofillEnabledStateFlow } returns MutableStateFlow(false)
     }
 
     private val vaultRepository: VaultRepository =
@@ -178,6 +192,22 @@ class VaultViewModelTest : BaseViewModelTest() {
 
     private val networkConnectionManager: NetworkConnectionManager = mockk {
         every { isNetworkConnected } returns true
+    }
+    private val browserAutofillDialogManager: BrowserAutofillDialogManager = mockk {
+        every { shouldShowDialog } returns false
+        every { browserCount } returns 1
+        every { delayDialog() } just runs
+    }
+
+    private val credentialExchangeRegistryManager: CredentialExchangeRegistryManager = mockk {
+        coEvery { register() } returns RegisterExportResult.Success
+        coEvery { unregister() } returns UnregisterExportResult.Success
+    }
+    private val mutableCxpExportFeatureFlagFlow = MutableStateFlow(false)
+    private val featureFlagManager: FeatureFlagManager = mockk {
+        every {
+            getFeatureFlagFlow(FlagKey.CredentialExchangeProtocolExport)
+        } returns mutableCxpExportFeatureFlagFlow
     }
 
     @AfterEach
@@ -279,6 +309,7 @@ class VaultViewModelTest : BaseViewModelTest() {
                         isUsingKeyConnector = false,
                         onboardingStatus = OnboardingStatus.COMPLETE,
                         firstTimeState = DEFAULT_FIRST_TIME_STATE,
+                        isExportable = true,
                     ),
                 ),
             )
@@ -367,6 +398,7 @@ class VaultViewModelTest : BaseViewModelTest() {
                         isUsingKeyConnector = false,
                         onboardingStatus = OnboardingStatus.COMPLETE,
                         firstTimeState = DEFAULT_FIRST_TIME_STATE,
+                        isExportable = true,
                     ),
                 ),
             )
@@ -459,6 +491,30 @@ class VaultViewModelTest : BaseViewModelTest() {
 
         verify(exactly = 1) {
             settingsRepository.dismissFlightRecorderBanner()
+        }
+    }
+
+    @Test
+    fun `on EnableThirdPartyAutofillClick should send NavigateToAutofillSettings`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.eventFlow.test {
+            viewModel.trySendAction(VaultAction.EnableThirdPartyAutofillClick)
+            assertEquals(VaultEvent.NavigateToAutofillSettings, awaitItem())
+        }
+        verify(exactly = 1) {
+            browserAutofillDialogManager.delayDialog()
+        }
+    }
+
+    @Test
+    fun `on DismissThirdPartyAutofillDialogClick should call delay dialog`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.trySendAction(VaultAction.DismissThirdPartyAutofillDialogClick)
+
+        verify(exactly = 1) {
+            browserAutofillDialogManager.delayDialog()
         }
     }
 
@@ -677,15 +733,6 @@ class VaultViewModelTest : BaseViewModelTest() {
         viewModel.trySendAction(VaultAction.LockClick)
         verify {
             vaultRepository.lockVaultForCurrentUser(isUserInitiated = true)
-        }
-    }
-
-    @Test
-    fun `on ExitConfirmationClick should emit NavigateOutOfApp`() = runTest {
-        val viewModel = createViewModel()
-        viewModel.eventFlow.test {
-            viewModel.trySendAction(VaultAction.ExitConfirmationClick)
-            assertEquals(VaultEvent.NavigateOutOfApp, awaitItem())
         }
     }
 
@@ -2820,6 +2867,245 @@ class VaultViewModelTest : BaseViewModelTest() {
         )
     }
 
+    @Test
+    @Suppress("MaxLineLength")
+    fun `UpdatedKdfToMinimumsReceived with Success should clear dialog and send a ShowSnackbar event`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.eventFlow.test {
+                viewModel.trySendAction(
+                    action = VaultAction.Internal.UpdatedKdfToMinimumsReceived(
+                        result = UpdateKdfMinimumsResult.Success,
+                    ),
+                )
+                assertEquals(
+                    DEFAULT_STATE.copy(dialog = null),
+                    viewModel.stateFlow.value,
+                )
+                assertEquals(
+                    VaultEvent.ShowSnackbar(BitwardenString.encryption_settings_updated.asText()),
+                    awaitItem(),
+                )
+            }
+        }
+
+    @Test
+    fun `UpdatedKdfToMinimumsReceived with ActiveAccountNotFound should show error dialog`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.trySendAction(
+                action = VaultAction.Internal.UpdatedKdfToMinimumsReceived(
+                    result = UpdateKdfMinimumsResult.ActiveAccountNotFound,
+                ),
+            )
+            assertEquals(
+                DEFAULT_STATE.copy(
+                    dialog = VaultState.DialogState.Error(
+                        title = BitwardenString.an_error_has_occurred.asText(),
+                        message = BitwardenString
+                            .kdf_update_failed_active_account_not_found
+                            .asText(),
+                    ),
+                ),
+                viewModel.stateFlow.value,
+            )
+        }
+
+    @Test
+    fun `UpdatedKdfToMinimumsReceived with Error should show error dialog`() = runTest {
+        val testError = Exception("Test error")
+        val viewModel = createViewModel()
+        viewModel.trySendAction(
+            action = VaultAction.Internal.UpdatedKdfToMinimumsReceived(
+                result = UpdateKdfMinimumsResult.Error(testError),
+            ),
+        )
+        assertEquals(
+            DEFAULT_STATE.copy(
+                dialog = VaultState.DialogState.Error(
+                    title = BitwardenString.an_error_has_occurred.asText(),
+                    message = BitwardenString
+                        .an_error_occurred_while_trying_to_update_your_kdf_settings
+                        .asText(),
+                    error = testError,
+                ),
+            ),
+            viewModel.stateFlow.value,
+        )
+    }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `vaultDataStateFlow Loaded with needsKdfUpdateToMinimums true should show KdfUpdateRequired dialog`() =
+        runTest {
+            coEvery { authRepository.needsKdfUpdateToMinimums() } returns true
+            mutableVaultDataStateFlow.value = DataState.Loaded(
+                data = VaultData(
+                    decryptCipherListResult = createMockDecryptCipherListResult(
+                        number = 1,
+                        successes = listOf(
+                            createMockCipherListView(
+                                number = 1,
+                                type = CipherListViewType.Login(
+                                    createMockLoginListView(number = 1),
+                                ),
+                            ),
+                            createMockCipherListView(
+                                number = 2,
+                                type = CipherListViewType.Login(
+                                    createMockLoginListView(number = 2),
+                                ),
+                            ),
+                        ),
+                        failures = emptyList(),
+                    ),
+                    collectionViewList = emptyList(),
+                    folderViewList = emptyList(),
+                    sendViewList = emptyList(),
+                ),
+            )
+            val viewModel = createViewModel()
+
+            assertEquals(
+                createMockVaultState(
+                    viewState = VaultState.ViewState.Content(
+                        loginItemsCount = 2,
+                        cardItemsCount = 0,
+                        identityItemsCount = 0,
+                        secureNoteItemsCount = 0,
+                        favoriteItems = listOf(),
+                        folderItems = listOf(),
+                        collectionItems = listOf(),
+                        noFolderItems = listOf(),
+                        trashItemsCount = 0,
+                        totpItemsCount = 2,
+                        itemTypesCount = 5,
+                        sshKeyItemsCount = 0,
+                        showCardGroup = true,
+                    ),
+                    dialog = VaultState.DialogState.VaultLoadKdfUpdateRequired(
+                        title = BitwardenString.update_your_encryption_settings.asText(),
+                        message = BitwardenString.the_new_recommended_encryption_settings_will_improve_your_account_desc_long.asText(),
+                    ),
+                ),
+                viewModel.stateFlow.value,
+            )
+        }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `vaultDataStateFlow Loaded with needsKdfUpdateToMinimums false should not show KdfUpdateRequired dialog`() =
+        runTest {
+            coEvery { authRepository.needsKdfUpdateToMinimums() } returns false
+            mutableVaultDataStateFlow.value = DataState.Loaded(
+                data = VaultData(
+                    decryptCipherListResult = createMockDecryptCipherListResult(
+                        number = 1,
+                        successes = listOf(
+                            createMockCipherListView(
+                                number = 1,
+                                type = CipherListViewType.Login(
+                                    createMockLoginListView(number = 1),
+                                ),
+                            ),
+                            createMockCipherListView(
+                                number = 2,
+                                type = CipherListViewType.Login(
+                                    createMockLoginListView(number = 2),
+                                ),
+                            ),
+                        ),
+                        failures = emptyList(),
+                    ),
+                    collectionViewList = emptyList(),
+                    folderViewList = emptyList(),
+                    sendViewList = emptyList(),
+                ),
+            )
+            val viewModel = createViewModel()
+
+            assertEquals(
+                createMockVaultState(
+                    viewState = VaultState.ViewState.Content(
+                        loginItemsCount = 2,
+                        cardItemsCount = 0,
+                        identityItemsCount = 0,
+                        secureNoteItemsCount = 0,
+                        favoriteItems = listOf(),
+                        folderItems = listOf(),
+                        collectionItems = listOf(),
+                        noFolderItems = listOf(),
+                        trashItemsCount = 0,
+                        totpItemsCount = 2,
+                        itemTypesCount = 5,
+                        sshKeyItemsCount = 0,
+                        showCardGroup = true,
+                    ),
+                    dialog = null,
+                ),
+                viewModel.stateFlow.value,
+            )
+        }
+
+    @Test
+    fun `on KdfUpdatePasswordRepromptSubmit should call updateKdfToMinimumsIfNeeded`() = runTest {
+        val password = "mock_password"
+        coEvery {
+            authRepository.updateKdfToMinimumsIfNeeded(password)
+        } returns UpdateKdfMinimumsResult.Success
+
+        val viewModel = createViewModel()
+
+        viewModel.trySendAction(
+            action = VaultAction.KdfUpdatePasswordRepromptSubmit(password = password),
+        )
+
+        coVerify(exactly = 1) {
+            authRepository.updateKdfToMinimumsIfNeeded(password)
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `CredentialExchangeProtocolExportFlagUpdateReceive should register for export when flag is enabled`() =
+        runTest {
+            mutableCxpExportFeatureFlagFlow.value = false
+            coEvery { credentialExchangeRegistryManager.register() } just awaits
+
+            val viewModel = createViewModel()
+
+            viewModel.trySendAction(
+                VaultAction.Internal.CredentialExchangeProtocolExportFlagUpdateReceive(
+                    isCredentialExchangeProtocolExportEnabled = true,
+                ),
+            )
+
+            coVerify {
+                credentialExchangeRegistryManager.register()
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `CredentialExchangeProtocolExportFlagUpdateReceive should unregister when flag is disabled`() =
+        runTest {
+            mutableCxpExportFeatureFlagFlow.value = true
+            every { settingsRepository.isAppRegisteredForExport() } returns true
+            coEvery { credentialExchangeRegistryManager.unregister() } just awaits
+
+            val viewModel = createViewModel()
+
+            viewModel.trySendAction(
+                VaultAction.Internal.CredentialExchangeProtocolExportFlagUpdateReceive(
+                    isCredentialExchangeProtocolExportEnabled = false,
+                ),
+            )
+
+            coVerify {
+                credentialExchangeRegistryManager.unregister()
+            }
+        }
+
     private fun createViewModel(): VaultViewModel =
         VaultViewModel(
             authRepository = authRepository,
@@ -2834,6 +3120,9 @@ class VaultViewModelTest : BaseViewModelTest() {
             reviewPromptManager = reviewPromptManager,
             specialCircumstanceManager = specialCircumstanceManager,
             networkConnectionManager = networkConnectionManager,
+            browserAutofillDialogManager = browserAutofillDialogManager,
+            credentialExchangeRegistryManager = credentialExchangeRegistryManager,
+            featureFlagManager = featureFlagManager,
         )
 }
 
@@ -2879,6 +3168,7 @@ private val DEFAULT_USER_STATE = UserState(
             isUsingKeyConnector = false,
             onboardingStatus = OnboardingStatus.COMPLETE,
             firstTimeState = DEFAULT_FIRST_TIME_STATE,
+            isExportable = true,
         ),
         UserState.Account(
             userId = "lockedUserId",
@@ -2898,6 +3188,7 @@ private val DEFAULT_USER_STATE = UserState(
             isUsingKeyConnector = false,
             onboardingStatus = OnboardingStatus.COMPLETE,
             firstTimeState = DEFAULT_FIRST_TIME_STATE,
+            isExportable = true,
         ),
     ),
 )

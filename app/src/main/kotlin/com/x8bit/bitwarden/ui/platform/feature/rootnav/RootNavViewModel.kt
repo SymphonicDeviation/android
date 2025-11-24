@@ -5,7 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.bitwarden.network.model.OrganizationType
 import com.bitwarden.network.util.parseJwtTokenDataOrNull
 import com.bitwarden.ui.platform.base.BaseViewModel
-import com.bitwarden.ui.platform.manager.IntentManager
+import com.bitwarden.ui.platform.base.util.toAndroidAppUriString
+import com.bitwarden.ui.platform.manager.share.model.ShareData
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.AuthState
@@ -59,7 +60,7 @@ class RootNavViewModel @Inject constructor(
         }
     }
 
-    @Suppress("CyclomaticComplexMethod", "MaxLineLength", "LongMethod")
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     private fun handleUserStateUpdateReceive(
         action: RootNavAction.Internal.UserStateUpdateReceive,
     ) {
@@ -88,6 +89,17 @@ class RootNavViewModel @Inject constructor(
                 }
             }
 
+            specialCircumstance is SpecialCircumstance.CredentialExchangeExport -> {
+                val exportableAccounts = userState.accounts.filter { it.isExportable }
+                if (exportableAccounts.size == 1) {
+                    RootNavState.CredentialExchangeExportSkipAccountSelection(
+                        userId = exportableAccounts.first().userId,
+                    )
+                } else {
+                    RootNavState.CredentialExchangeExport
+                }
+            }
+
             userState.activeAccount.isVaultUnlocked &&
                 userState.shouldShowRemovePassword(authState = action.authState) -> {
                 RootNavState.RemovePassword
@@ -95,15 +107,7 @@ class RootNavViewModel @Inject constructor(
 
             userState.activeAccount.isVaultUnlocked &&
                 userState.activeAccount.onboardingStatus != OnboardingStatus.COMPLETE -> {
-                when (userState.activeAccount.onboardingStatus) {
-                    OnboardingStatus.NOT_STARTED,
-                    OnboardingStatus.ACCOUNT_LOCK_SETUP,
-                        -> RootNavState.OnboardingAccountLockSetup
-
-                    OnboardingStatus.AUTOFILL_SETUP -> RootNavState.OnboardingAutoFillSetup
-                    OnboardingStatus.FINAL_STEP -> RootNavState.OnboardingStepsComplete
-                    OnboardingStatus.COMPLETE -> throw IllegalStateException("Should not have entered here.")
-                }
+                getOnboardingNavState(onboardingStatus = userState.activeAccount.onboardingStatus)
             }
 
             userState.activeAccount.isVaultUnlocked -> {
@@ -130,8 +134,8 @@ class RootNavViewModel @Inject constructor(
                     is SpecialCircumstance.ShareNewSend -> {
                         RootNavState.VaultUnlockedForNewSend(
                             sendType = when (specialCircumstance.data) {
-                                is IntentManager.ShareData.FileSend -> SendItemType.FILE
-                                is IntentManager.ShareData.TextSend -> SendItemType.TEXT
+                                is ShareData.FileSend -> SendItemType.FILE
+                                is ShareData.TextSend -> SendItemType.TEXT
                             },
                         )
                     }
@@ -141,11 +145,31 @@ class RootNavViewModel @Inject constructor(
                     }
 
                     is SpecialCircumstance.ProviderCreateCredential -> {
-                        RootNavState.VaultUnlockedForFido2Save(
-                            activeUserId = userState.activeUserId,
-                            createCredentialRequest =
-                                specialCircumstance.createCredentialRequest,
-                        )
+                        val request = specialCircumstance.createCredentialRequest
+                        val publicKeyRequest = request.createPublicKeyCredentialRequest
+                        val passwordRequest = request.createPasswordCredentialRequest
+
+                        when {
+                            publicKeyRequest != null -> {
+                                RootNavState.VaultUnlockedForFido2Save(
+                                    activeUserId = userState.activeUserId,
+                                    createCredentialRequest = request,
+                                )
+                            }
+
+                            passwordRequest != null -> {
+                                RootNavState.VaultUnlockedForCreatePasswordRequest(
+                                    username = passwordRequest.id,
+                                    password = passwordRequest.password,
+                                    uri = request
+                                        .callingAppInfo
+                                        .packageName
+                                        .toAndroidAppUriString(),
+                                )
+                            }
+
+                            else -> throw IllegalStateException("Should not have entered here.")
+                        }
                     }
 
                     is SpecialCircumstance.Fido2Assertion -> {
@@ -181,7 +205,9 @@ class RootNavViewModel @Inject constructor(
                     null,
                         -> RootNavState.VaultUnlocked(activeUserId = userState.activeAccount.userId)
 
-                    is SpecialCircumstance.RegistrationEvent -> {
+                    is SpecialCircumstance.CredentialExchangeExport,
+                    is SpecialCircumstance.RegistrationEvent,
+                        -> {
                         throw IllegalStateException(
                             "Special circumstance should have been already handled.",
                         )
@@ -192,6 +218,19 @@ class RootNavViewModel @Inject constructor(
             else -> RootNavState.VaultLocked
         }
         mutableStateFlow.update { updatedRootNavState }
+    }
+
+    private fun getOnboardingNavState(
+        onboardingStatus: OnboardingStatus,
+    ): RootNavState = when (onboardingStatus) {
+        OnboardingStatus.NOT_STARTED,
+        OnboardingStatus.ACCOUNT_LOCK_SETUP,
+            -> RootNavState.OnboardingAccountLockSetup
+
+        OnboardingStatus.AUTOFILL_SETUP -> RootNavState.OnboardingAutoFillSetup
+        OnboardingStatus.BROWSER_AUTOFILL_SETUP -> RootNavState.OnboardingBrowserAutofillSetup
+        OnboardingStatus.FINAL_STEP -> RootNavState.OnboardingStepsComplete
+        OnboardingStatus.COMPLETE -> throw IllegalStateException("Should not have entered here.")
     }
 
     private fun getRegistrationEventNavState(
@@ -319,6 +358,21 @@ sealed class RootNavState : Parcelable {
     ) : RootNavState()
 
     /**
+     * App should show an add item screen for a user to complete the saving of data collected by
+     * the credential manager framework.
+     *
+     * @param username The username of the user.
+     * @param password The password of the user.
+     * @param uri The URI to associate this credential with.
+     */
+    @Parcelize
+    data class VaultUnlockedForCreatePasswordRequest(
+        val username: String,
+        val password: String,
+        val uri: String,
+    ) : RootNavState()
+
+    /**
      * App should perform FIDO 2 credential assertion for the user.
      */
     @Parcelize
@@ -397,10 +451,30 @@ sealed class RootNavState : Parcelable {
     data object OnboardingAutoFillSetup : RootNavState()
 
     /**
+     * App should show the set up browser autofill onboarding screen.
+     */
+    @Parcelize
+    data object OnboardingBrowserAutofillSetup : RootNavState()
+
+    /**
      * App should show the onboarding steps complete screen.
      */
     @Parcelize
     data object OnboardingStepsComplete : RootNavState()
+
+    /**
+     * App should begin the export items flow.
+     */
+    @Parcelize
+    data object CredentialExchangeExport : RootNavState()
+
+    /**
+     * App should begin the export items flow, skipping the account selection screen.
+     */
+    @Parcelize
+    data class CredentialExchangeExportSkipAccountSelection(
+        val userId: String,
+    ) : RootNavState()
 }
 
 /**

@@ -1,7 +1,6 @@
 package com.x8bit.bitwarden.ui.tools.feature.send.addedit
 
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -13,7 +12,6 @@ import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -24,12 +22,12 @@ import androidx.compose.ui.test.performTextInput
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
 import com.bitwarden.ui.platform.manager.IntentManager
+import com.bitwarden.ui.platform.manager.exit.ExitManager
 import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.assertNoDialogExists
 import com.bitwarden.ui.util.isEditableText
 import com.bitwarden.ui.util.isProgressBar
 import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
-import com.x8bit.bitwarden.ui.platform.manager.exit.ExitManager
 import com.x8bit.bitwarden.ui.platform.manager.permissions.FakePermissionManager
 import com.x8bit.bitwarden.ui.tools.feature.send.addedit.model.AddEditSendType
 import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
@@ -190,15 +188,15 @@ class AddEditSendScreenTest : BitwardenComposeTest() {
         composeTestRule
             .onNodeWithText("Remove password")
             .assert(hasAnyAncestor(isPopup()))
-            .isDisplayed()
+            .assertIsDisplayed()
         composeTestRule
             .onNodeWithText("Copy link")
             .assert(hasAnyAncestor(isPopup()))
-            .isDisplayed()
+            .assertIsDisplayed()
         composeTestRule
             .onNodeWithText("Share link")
             .assert(hasAnyAncestor(isPopup()))
-            .isDisplayed()
+            .assertIsDisplayed()
     }
 
     @Test
@@ -731,20 +729,17 @@ class AddEditSendScreenTest : BitwardenComposeTest() {
         mutableStateFlow.update {
             it.copy(viewState = AddEditSendState.ViewState.Loading)
         }
-        // There are 2 because of the pull-to-refresh
-        composeTestRule.onAllNodes(isProgressBar).assertCountEquals(2)
+        composeTestRule.onNode(isProgressBar).assertIsDisplayed()
 
         mutableStateFlow.update {
             it.copy(viewState = AddEditSendState.ViewState.Error("Fail".asText()))
         }
-        // Only pull-to-refresh remains
-        composeTestRule.onAllNodes(isProgressBar).assertCountEquals(1)
+        composeTestRule.onNode(isProgressBar).assertDoesNotExist()
 
         mutableStateFlow.update {
             it.copy(viewState = DEFAULT_VIEW_STATE)
         }
-        // Only pull-to-refresh remains
-        composeTestRule.onAllNodes(isProgressBar).assertCountEquals(1)
+        composeTestRule.onNode(isProgressBar).assertDoesNotExist()
     }
 
     @Test

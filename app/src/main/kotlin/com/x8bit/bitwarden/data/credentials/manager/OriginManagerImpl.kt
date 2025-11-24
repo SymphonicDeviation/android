@@ -1,13 +1,12 @@
 package com.x8bit.bitwarden.data.credentials.manager
 
 import androidx.credentials.provider.CallingAppInfo
-import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.network.service.DigitalAssetLinkService
 import com.bitwarden.ui.platform.base.util.prefixHttpsIfNecessary
+import com.bitwarden.ui.platform.base.util.prefixWwwIfNecessary
 import com.x8bit.bitwarden.data.credentials.model.ValidateOriginResult
 import com.x8bit.bitwarden.data.credentials.repository.PrivilegedAppRepository
 import com.x8bit.bitwarden.data.platform.manager.AssetManager
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.util.getSignatureFingerprintAsHexString
 import com.x8bit.bitwarden.data.platform.util.validatePrivilegedApp
 import timber.log.Timber
@@ -23,7 +22,6 @@ class OriginManagerImpl(
     private val assetManager: AssetManager,
     private val digitalAssetLinkService: DigitalAssetLinkService,
     private val privilegedAppRepository: PrivilegedAppRepository,
-    private val featureFlagManager: FeatureFlagManager,
 ) : OriginManager {
 
     override suspend fun validateOrigin(
@@ -43,7 +41,13 @@ class OriginManagerImpl(
     ): ValidateOriginResult {
         return digitalAssetLinkService
             .checkDigitalAssetLinksRelations(
-                sourceWebSite = relyingPartyId.prefixHttpsIfNecessary(),
+                sourceWebSite = relyingPartyId
+                    // The DAL API does not allow redirects, so we add `www.` to prevent redirects
+                    // when it is absent from the `relyingPartyId`. This ensures that relying
+                    // parties storing their `assetlinks.json` at the `www.` subdomain do not fail
+                    // verification checks.
+                    .prefixWwwIfNecessary()
+                    .prefixHttpsIfNecessary(),
                 targetPackageName = callingAppInfo.packageName,
                 targetCertificateFingerprint = callingAppInfo
                     .getSignatureFingerprintAsHexString()
@@ -70,10 +74,7 @@ class OriginManagerImpl(
         validatePrivilegedAppSignatureWithGoogleList(callingAppInfo)
             .takeUnless { it is ValidateOriginResult.Error.PrivilegedAppNotAllowed }
             ?: validatePrivilegedAppSignatureWithCommunityList(callingAppInfo)
-                .takeUnless {
-                    it is ValidateOriginResult.Error.PrivilegedAppNotAllowed &&
-                        featureFlagManager.getFeatureFlag(FlagKey.UserManagedPrivilegedApps)
-                }
+                .takeUnless { it is ValidateOriginResult.Error.PrivilegedAppNotAllowed }
             ?: validatePrivilegedAppSignatureWithUserTrustList(callingAppInfo)
 
     private suspend fun validatePrivilegedAppSignatureWithGoogleList(

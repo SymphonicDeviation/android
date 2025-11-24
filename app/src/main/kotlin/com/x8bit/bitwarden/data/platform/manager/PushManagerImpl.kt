@@ -1,8 +1,9 @@
 package com.x8bit.bitwarden.data.platform.manager
 
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
+import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.decodeFromStringOrNull
-import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.network.model.PushTokenRequest
 import com.bitwarden.network.service.PushService
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
@@ -13,6 +14,7 @@ import com.x8bit.bitwarden.data.platform.manager.model.NotificationLogoutData
 import com.x8bit.bitwarden.data.platform.manager.model.NotificationPayload
 import com.x8bit.bitwarden.data.platform.manager.model.NotificationType
 import com.x8bit.bitwarden.data.platform.manager.model.PasswordlessRequestData
+import com.x8bit.bitwarden.data.platform.manager.model.PushNotificationLogOutReason
 import com.x8bit.bitwarden.data.platform.manager.model.SyncCipherDeleteData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncCipherUpsertData
 import com.x8bit.bitwarden.data.platform.manager.model.SyncFolderDeleteData
@@ -44,18 +46,20 @@ private val PUSH_TOKEN_UPDATE_DELAY: Duration = 7.days
 /**
  * Primary implementation of [PushManager].
  */
+@Suppress("LongParameterList")
 class PushManagerImpl @Inject constructor(
     private val authDiskSource: AuthDiskSource,
     private val pushDiskSource: PushDiskSource,
     private val pushService: PushService,
     private val clock: Clock,
     private val json: Json,
+    private val featureFlagManager: FeatureFlagManager,
     dispatcherManager: DispatcherManager,
 ) : PushManager {
     private val ioScope = CoroutineScope(dispatcherManager.io)
     private val unconfinedScope = CoroutineScope(dispatcherManager.unconfined)
 
-    private val mutableFullSyncSharedFlow = bufferedMutableSharedFlow<Unit>()
+    private val mutableFullSyncSharedFlow = bufferedMutableSharedFlow<String>()
     private val mutableLogoutSharedFlow = bufferedMutableSharedFlow<NotificationLogoutData>()
     private val mutablePasswordlessRequestSharedFlow =
         bufferedMutableSharedFlow<PasswordlessRequestData>()
@@ -73,7 +77,7 @@ class PushManagerImpl @Inject constructor(
     private val mutableSyncSendUpsertSharedFlow =
         bufferedMutableSharedFlow<SyncSendUpsertData>()
 
-    override val fullSyncFlow: SharedFlow<Unit>
+    override val fullSyncFlow: SharedFlow<String>
         get() = mutableFullSyncSharedFlow.asSharedFlow()
 
     override val logoutFlow: SharedFlow<NotificationLogoutData>
@@ -157,8 +161,15 @@ class PushManagerImpl @Inject constructor(
                     .decodeFromString<NotificationPayload.UserNotification>(
                         string = notification.payload,
                     )
-                    .userId
-                    ?.let { mutableLogoutSharedFlow.tryEmit(NotificationLogoutData(it)) }
+                    .takeUnless {
+                        featureFlagManager.getFeatureFlag(FlagKey.NoLogoutOnKdfChange) &&
+                            it.pushNotificationLogOutReason ==
+                            PushNotificationLogOutReason.KDF_CHANGE
+                    }
+                    ?.userId
+                    ?.let {
+                        mutableLogoutSharedFlow.tryEmit(NotificationLogoutData(userId = it))
+                    }
             }
 
             NotificationType.SYNC_CIPHER_CREATE,
@@ -204,7 +215,10 @@ class PushManagerImpl @Inject constructor(
             NotificationType.SYNC_SETTINGS,
             NotificationType.SYNC_VAULT,
                 -> {
-                mutableFullSyncSharedFlow.tryEmit(Unit)
+                json
+                    .decodeFromString<NotificationPayload.SyncNotification>(notification.payload)
+                    .userId
+                    ?.let { mutableFullSyncSharedFlow.tryEmit(it) }
             }
 
             NotificationType.SYNC_FOLDER_CREATE,

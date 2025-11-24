@@ -2,14 +2,16 @@ package com.x8bit.bitwarden.data.vault.datasource.sdk
 
 import com.bitwarden.collections.Collection
 import com.bitwarden.collections.CollectionView
+import com.bitwarden.core.DeriveKeyConnectorException
 import com.bitwarden.core.DeriveKeyConnectorRequest
-import com.bitwarden.core.DerivePinKeyResponse
+import com.bitwarden.core.EnrollPinResponse
 import com.bitwarden.core.InitOrgCryptoRequest
 import com.bitwarden.core.InitUserCryptoRequest
+import com.bitwarden.core.UpdateKdfResponse
 import com.bitwarden.core.UpdatePasswordResponse
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.crypto.Kdf
 import com.bitwarden.crypto.TrustDeviceResponse
-import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.exporters.Account
 import com.bitwarden.exporters.ExportFormat
 import com.bitwarden.fido.Fido2CredentialAutofillView
@@ -93,35 +95,38 @@ class VaultSdkSourceImpl(
                         ),
                     )
                 DeriveKeyConnectorResult.Success(key)
-            } catch (exception: BitwardenException) {
-                when {
-                    exception.message == "Wrong password" -> {
+            } catch (ex: BitwardenException.DeriveKeyConnector) {
+                when (ex.v1) {
+                    is DeriveKeyConnectorException.WrongPassword -> {
                         DeriveKeyConnectorResult.WrongPasswordError
                     }
-
-                    else -> DeriveKeyConnectorResult.Error(exception)
+                    is DeriveKeyConnectorException.Crypto -> {
+                        DeriveKeyConnectorResult.Error(error = ex)
+                    }
                 }
+            } catch (exception: BitwardenException) {
+                DeriveKeyConnectorResult.Error(error = exception)
             }
         }
 
-    override suspend fun derivePinKey(
+    override suspend fun enrollPin(
         userId: String,
         pin: String,
-    ): Result<DerivePinKeyResponse> =
+    ): Result<EnrollPinResponse> =
         runCatchingWithLogs {
             getClient(userId = userId)
                 .crypto()
-                .derivePinKey(pin = pin)
+                .enrollPin(pin = pin)
         }
 
-    override suspend fun derivePinProtectedUserKey(
+    override suspend fun enrollPinWithEncryptedPin(
         userId: String,
         encryptedPin: String,
-    ): Result<String> =
+    ): Result<EnrollPinResponse> =
         runCatchingWithLogs {
             getClient(userId = userId)
                 .crypto()
-                .derivePinUserKey(encryptedPin = encryptedPin)
+                .enrollPinWithEncryptedPin(encryptedPin = encryptedPin)
         }
 
     override suspend fun validatePin(
@@ -474,7 +479,7 @@ class VaultSdkSourceImpl(
     ): Result<UpdatePasswordResponse> = runCatchingWithLogs {
         getClient(userId = userId)
             .crypto()
-            .updatePassword(newPassword = newPassword)
+            .makeUpdatePassword(newPassword = newPassword)
     }
 
     override suspend fun exportVaultDataToString(
@@ -603,5 +608,15 @@ class VaultSdkSourceImpl(
                 credentialStore = fido2CredentialStore,
             )
             .silentlyDiscoverCredentials(relyingPartyId)
+    }
+
+    override suspend fun makeUpdateKdf(
+        userId: String,
+        password: String,
+        kdf: Kdf,
+    ): Result<UpdateKdfResponse> = runCatchingWithLogs {
+        getClient(userId = userId)
+            .crypto()
+            .makeUpdateKdf(password = password, kdf = kdf)
     }
 }

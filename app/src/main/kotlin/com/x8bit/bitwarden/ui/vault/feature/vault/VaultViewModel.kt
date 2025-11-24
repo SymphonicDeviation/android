@@ -3,6 +3,7 @@ package com.x8bit.bitwarden.ui.vault.feature.vault
 import android.os.Parcelable
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewModelScope
+import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.core.util.persistentListOfNotNull
 import com.bitwarden.data.repository.util.baseIconUrl
@@ -14,6 +15,7 @@ import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.account.util.initials
 import com.bitwarden.ui.platform.components.icon.model.IconData
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
@@ -24,9 +26,13 @@ import com.bitwarden.vault.DecryptCipherListResult
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.SwitchAccountResult
+import com.x8bit.bitwarden.data.auth.repository.model.UpdateKdfMinimumsResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
+import com.x8bit.bitwarden.data.autofill.manager.browser.BrowserAutofillDialogManager
 import com.x8bit.bitwarden.data.platform.datasource.disk.model.FlightRecorderDataSet
+import com.x8bit.bitwarden.data.platform.manager.CredentialExchangeRegistryManager
+import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.ReviewPromptManager
@@ -41,8 +47,7 @@ import com.x8bit.bitwarden.data.vault.manager.model.GetCipherResult
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.components.util.toVaultItemCipherTypeOrNull
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
@@ -79,6 +84,7 @@ import javax.inject.Inject
 
 private const val VAULT_DATA_RECEIVED_DELAY: Long = 550L
 private const val LOGIN_SUCCESS_SNACKBAR_DELAY: Long = 550L
+private const val BROWSER_AUTOFILL_DIALOG_DELAY: Long = 550L
 
 /**
  * Manages [VaultState], handles [VaultAction], and launches [VaultEvent] for the [VaultScreen].
@@ -97,7 +103,10 @@ class VaultViewModel @Inject constructor(
     private val reviewPromptManager: ReviewPromptManager,
     private val specialCircumstanceManager: SpecialCircumstanceManager,
     private val networkConnectionManager: NetworkConnectionManager,
-    snackbarRelayManager: SnackbarRelayManager,
+    private val browserAutofillDialogManager: BrowserAutofillDialogManager,
+    private val credentialExchangeRegistryManager: CredentialExchangeRegistryManager,
+    featureFlagManager: FeatureFlagManager,
+    snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
 ) : BaseViewModel<VaultState, VaultEvent, VaultAction>(
     initialState = run {
         val userState = requireNotNull(authRepository.userStateFlow.value)
@@ -108,9 +117,8 @@ class VaultViewModel @Inject constructor(
                 .getActivePolicies(type = PolicyTypeJson.PERSONAL_OWNERSHIP)
                 .any(),
         )
-        val appBarTitle = vaultFilterData.toAppBarTitle()
         VaultState(
-            appBarTitle = appBarTitle,
+            appBarTitle = vaultFilterData.toAppBarTitle(),
             initials = activeAccountSummary.initials,
             avatarColorString = activeAccountSummary.avatarColorHex,
             accountSummaries = accountSummaries,
@@ -187,6 +195,7 @@ class VaultViewModel @Inject constructor(
                 SnackbarRelay.CIPHER_DELETED_SOFT,
                 SnackbarRelay.CIPHER_RESTORED,
                 SnackbarRelay.CIPHER_UPDATED,
+                SnackbarRelay.FOLDER_CREATED,
                 SnackbarRelay.LOGINS_IMPORTED,
             ),
         )
@@ -206,6 +215,26 @@ class VaultViewModel @Inject constructor(
             .map { VaultAction.Internal.PolicyUpdateReceive(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
+
+        featureFlagManager.getFeatureFlagFlow(FlagKey.CredentialExchangeProtocolExport)
+            .map { VaultAction.Internal.CredentialExchangeProtocolExportFlagUpdateReceive(it) }
+            .onEach(::sendAction)
+            .launchIn(viewModelScope)
+
+        viewModelScope.launch {
+            delay(timeMillis = BROWSER_AUTOFILL_DIALOG_DELAY)
+            mutableStateFlow.update { vaultState ->
+                vaultState.copy(
+                    dialog = VaultState.DialogState
+                        .ThirdPartyBrowserAutofill(browserAutofillDialogManager.browserCount)
+                        .takeIf {
+                            vaultState.dialog == null &&
+                                browserAutofillDialogManager.shouldShowDialog
+                        }
+                        ?: vaultState.dialog,
+                )
+            }
+        }
     }
 
     override fun handleAction(action: VaultAction) {
@@ -224,7 +253,6 @@ class VaultViewModel @Inject constructor(
             is VaultAction.AddAccountClick -> handleAddAccountClick()
             is VaultAction.SyncClick -> handleSyncClick()
             is VaultAction.LockClick -> handleLockClick()
-            is VaultAction.ExitConfirmationClick -> handleExitConfirmationClick()
             is VaultAction.VaultFilterTypeSelect -> handleVaultFilterTypeSelect(action)
             is VaultAction.SecureNoteGroupClick -> handleSecureNoteClick()
             is VaultAction.SshKeyGroupClick -> handleSshKeyClick()
@@ -256,6 +284,15 @@ class VaultViewModel @Inject constructor(
             VaultAction.ShareAllCipherDecryptionErrorsClick -> {
                 handleShareAllCipherDecryptionErrorsClick()
             }
+
+            is VaultAction.KdfUpdatePasswordRepromptSubmit -> {
+                handleKdfUpdatePasswordRepromptSubmit(action)
+            }
+
+            VaultAction.EnableThirdPartyAutofillClick -> handleEnableThirdPartyAutofillClick()
+            VaultAction.DismissThirdPartyAutofillDialogClick -> {
+                handleDismissThirdPartyAutofillDialogClick()
+            }
         }
     }
 
@@ -285,6 +322,17 @@ class VaultViewModel @Inject constructor(
                     .joinToString(separator = "\n"),
             ),
         )
+    }
+
+    private fun handleEnableThirdPartyAutofillClick() {
+        browserAutofillDialogManager.delayDialog()
+        mutableStateFlow.update { it.copy(dialog = null) }
+        sendEvent(VaultEvent.NavigateToAutofillSettings)
+    }
+
+    private fun handleDismissThirdPartyAutofillDialogClick() {
+        browserAutofillDialogManager.delayDialog()
+        mutableStateFlow.update { it.copy(dialog = null) }
     }
 
     private fun handleSelectAddItemType() {
@@ -461,10 +509,6 @@ class VaultViewModel @Inject constructor(
 
     private fun handleLockClick() {
         vaultRepository.lockVaultForCurrentUser(isUserInitiated = true)
-    }
-
-    private fun handleExitConfirmationClick() {
-        sendEvent(VaultEvent.NavigateOutOfApp)
     }
 
     private fun handleVaultFilterTypeSelect(action: VaultAction.VaultFilterTypeSelect) {
@@ -756,6 +800,63 @@ class VaultViewModel @Inject constructor(
             is VaultAction.Internal.DecryptionErrorReceive -> {
                 handleDecryptionErrorReceive(action)
             }
+
+            is VaultAction.Internal.UpdatedKdfToMinimumsReceived -> {
+                handleUpdatedKdfToMinimumsReceived(action)
+            }
+
+            is VaultAction.Internal.CredentialExchangeProtocolExportFlagUpdateReceive -> {
+                handleCredentialExchangeProtocolExportFlagUpdateReceive(action)
+            }
+        }
+    }
+
+    private fun handleUpdatedKdfToMinimumsReceived(
+        action: VaultAction.Internal.UpdatedKdfToMinimumsReceived,
+    ) {
+        mutableStateFlow.update {
+            it.copy(dialog = null)
+        }
+
+        when (val result = action.result) {
+            UpdateKdfMinimumsResult.ActiveAccountNotFound -> {
+                showGenericError(
+                    message = BitwardenString.kdf_update_failed_active_account_not_found.asText(),
+                )
+                Timber.e(message = "Failed to update kdf to minimums: Active account not found")
+            }
+
+            is UpdateKdfMinimumsResult.Error -> {
+                showGenericError(
+                    message = BitwardenString
+                        .an_error_occurred_while_trying_to_update_your_kdf_settings
+                        .asText(),
+                    error = result.error,
+                )
+                Timber.e(result.error, message = "Failed to update kdf to minimums.")
+            }
+
+            UpdateKdfMinimumsResult.Success -> {
+                sendEvent(
+                    event = VaultEvent.ShowSnackbar(
+                        data = BitwardenSnackbarData(
+                            message = BitwardenString.encryption_settings_updated.asText(),
+                        ),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun handleCredentialExchangeProtocolExportFlagUpdateReceive(
+        action: VaultAction.Internal.CredentialExchangeProtocolExportFlagUpdateReceive,
+    ) {
+        viewModelScope.launch {
+            if (action.isCredentialExchangeProtocolExportEnabled) {
+                credentialExchangeRegistryManager.register()
+            } else {
+                credentialExchangeRegistryManager.unregister()
+            }
         }
     }
 
@@ -909,26 +1010,44 @@ class VaultViewModel @Inject constructor(
         }
 
         val shouldShowDecryptionAlert = !state.hasShownDecryptionFailureAlert &&
-            vaultData.data.decryptCipherListResult.failures.isNotEmpty()
+            vaultData.data.decryptCipherListResult.failures.isNotEmpty() &&
+            state.dialog == null
 
         updateVaultState(
             vaultData = vaultData.data,
-            dialog = if (shouldShowDecryptionAlert ||
-                state.dialog is VaultState.DialogState.VaultLoadCipherDecryptionError
-            ) {
-                VaultState.DialogState.VaultLoadCipherDecryptionError(
-                    title = BitwardenString.decryption_error.asText(),
-                    cipherCount = vaultData.data.decryptCipherListResult.failures.size,
-                )
-            } else {
-                null
-            },
+            dialog = getDialogVaultLoaded(
+                shouldShowDecryptionAlert = shouldShowDecryptionAlert,
+                vaultData = vaultData,
+            ),
             hasShownDecryptionFailureAlert = if (shouldShowDecryptionAlert) {
                 true
             } else {
                 state.hasShownDecryptionFailureAlert
             },
         )
+    }
+
+    private fun getDialogVaultLoaded(
+        shouldShowDecryptionAlert: Boolean,
+        vaultData: DataState.Loaded<VaultData>,
+    ): VaultState.DialogState? = if (authRepository.needsKdfUpdateToMinimums()) {
+        VaultState.DialogState.VaultLoadKdfUpdateRequired(
+            title = BitwardenString.update_your_encryption_settings.asText(),
+            message = BitwardenString
+                .the_new_recommended_encryption_settings_will_improve_your_account_desc_long
+                .asText(),
+        )
+    } else if (shouldShowDecryptionAlert ||
+        state.dialog is VaultState.DialogState.VaultLoadCipherDecryptionError
+    ) {
+        VaultState.DialogState.VaultLoadCipherDecryptionError(
+            title = BitwardenString.decryption_error.asText(),
+            cipherCount = vaultData.data.decryptCipherListResult.failures.size,
+        )
+    } else if (state.dialog is VaultState.DialogState.ThirdPartyBrowserAutofill) {
+        state.dialog
+    } else {
+        null
     }
 
     private fun updateVaultState(
@@ -1089,6 +1208,30 @@ class VaultViewModel @Inject constructor(
 
             is GetCipherResult.Success -> result.cipherView
         }
+
+    private fun handleKdfUpdatePasswordRepromptSubmit(
+        action: VaultAction.KdfUpdatePasswordRepromptSubmit,
+    ) {
+        viewModelScope.launch {
+            val result = authRepository.updateKdfToMinimumsIfNeeded(password = action.password)
+            sendAction(action = VaultAction.Internal.UpdatedKdfToMinimumsReceived(result))
+        }
+    }
+
+    private fun showGenericError(
+        message: Text = BitwardenString.generic_error_message.asText(),
+        error: Throwable? = null,
+    ) {
+        mutableStateFlow.update {
+            it.copy(
+                dialog = VaultState.DialogState.Error(
+                    title = BitwardenString.an_error_has_occurred.asText(),
+                    message = message,
+                    error = error,
+                ),
+            )
+        }
+    }
 }
 
 /**
@@ -1458,12 +1601,29 @@ data class VaultState(
         ) : DialogState()
 
         /**
+         * Represents a dialog indicating that a 3rd party browser required Autofill configuration.
+         */
+        @Parcelize
+        data class ThirdPartyBrowserAutofill(
+            val browserCount: Int,
+        ) : DialogState()
+
+        /**
          * Represents a dialog indicating that there was a decryption error loading ciphers.
          */
         @Parcelize
         data class VaultLoadCipherDecryptionError(
             val title: Text,
             val cipherCount: Int,
+        ) : DialogState()
+
+        /**
+         * Represents a dialog indicating that the user needs to update their kdf settings.
+         */
+        @Parcelize
+        data class VaultLoadKdfUpdateRequired(
+            val title: Text,
+            val message: Text,
         ) : DialogState()
 
         /**
@@ -1530,11 +1690,6 @@ sealed class VaultEvent {
     data object NavigateToVerificationCodeScreen : VaultEvent()
 
     /**
-     * Navigate out of the app.
-     */
-    data object NavigateOutOfApp : VaultEvent()
-
-    /**
      * Navigate to the import logins screen.
      */
     data object NavigateToImportLogins : VaultEvent()
@@ -1579,6 +1734,11 @@ sealed class VaultEvent {
      * Navigate to settings.
      */
     data object NavigateToAbout : VaultEvent()
+
+    /**
+     * Navigate to Autofill settings screen.
+     */
+    data object NavigateToAutofillSettings : VaultEvent()
 }
 
 /**
@@ -1650,12 +1810,6 @@ sealed class VaultAction {
     data object LockClick : VaultAction()
 
     /**
-     * User confirmed that they want to exit the app after clicking the Sync option in the overflow
-     * menu.
-     */
-    data object ExitConfirmationClick : VaultAction()
-
-    /**
      * User selected a [VaultFilterType] from the Vault Filter menu.
      */
     data class VaultFilterTypeSelect(
@@ -1709,10 +1863,27 @@ sealed class VaultAction {
     data object SecureNoteGroupClick : VaultAction()
 
     /**
+     * Click to enabled 3rd party autofill for a browser.
+     */
+    data object EnableThirdPartyAutofillClick : VaultAction()
+
+    /**
+     * Click to dismiss 3rd party autofill dialog.
+     */
+    data object DismissThirdPartyAutofillDialogClick : VaultAction()
+
+    /**
      * Click to share cipher decryption error details.
      */
     data class ShareCipherDecryptionErrorClick(
         val selectedCipherId: String,
+    ) : VaultAction()
+
+    /**
+     * Click to submit the update kdf password reprompt form.
+     */
+    data class KdfUpdatePasswordRepromptSubmit(
+        val password: String,
     ) : VaultAction()
 
     /**
@@ -1872,6 +2043,20 @@ sealed class VaultAction {
             val title: Text,
             val message: Text,
             val error: Throwable?,
+        ) : Internal()
+
+        /**
+         * Indicates that a result for updating the kdf has been received.
+         */
+        data class UpdatedKdfToMinimumsReceived(
+            val result: UpdateKdfMinimumsResult,
+        ) : Internal()
+
+        /**
+         * Indicates that the Credential Exchange Protocol export flag has been updated.
+         */
+        data class CredentialExchangeProtocolExportFlagUpdateReceive(
+            val isCredentialExchangeProtocolExportEnabled: Boolean,
         ) : Internal()
     }
 }

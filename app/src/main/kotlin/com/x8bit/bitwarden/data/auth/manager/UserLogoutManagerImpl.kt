@@ -1,15 +1,16 @@
 package com.x8bit.bitwarden.data.auth.manager
 
 import androidx.annotation.StringRes
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
-import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.auth.manager.model.LogoutEvent
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.platform.datasource.disk.PushDiskSource
 import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
+import com.x8bit.bitwarden.data.platform.manager.CredentialExchangeRegistryManager
 import com.x8bit.bitwarden.data.tools.generator.datasource.disk.GeneratorDiskSource
 import com.x8bit.bitwarden.data.tools.generator.datasource.disk.PasswordHistoryDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
@@ -34,10 +35,12 @@ class UserLogoutManagerImpl(
     private val toastManager: ToastManager,
     private val vaultDiskSource: VaultDiskSource,
     private val vaultSdkSource: VaultSdkSource,
+    private val credentialExchangeRegistryManager: CredentialExchangeRegistryManager,
     dispatcherManager: DispatcherManager,
 ) : UserLogoutManager {
-    private val scope = CoroutineScope(dispatcherManager.unconfined)
+    private val unconfinedScope = CoroutineScope(dispatcherManager.unconfined)
     private val mainScope = CoroutineScope(dispatcherManager.main)
+    private val ioScope = CoroutineScope(dispatcherManager.io)
 
     private val mutableLogoutEventFlow: MutableSharedFlow<LogoutEvent> =
         bufferedMutableSharedFlow()
@@ -58,8 +61,10 @@ class UserLogoutManagerImpl(
         )
 
         if (!ableToSwitchToNewAccount) {
-            // Update the user information and log out
+            // Update the user information and log out.
             authDiskSource.userState = null
+            // Unregister the application from CXP Export since there are no other accounts.
+            ioScope.launch { credentialExchangeRegistryManager.unregister() }
         }
 
         clearData(userId = userId)
@@ -72,15 +77,10 @@ class UserLogoutManagerImpl(
         if (isExpired) {
             showToast(message = BitwardenString.login_expired)
         }
-        authDiskSource.storeAccountTokens(
-            userId = userId,
-            accountTokens = null,
-        )
 
         // Save any data that will still need to be retained after otherwise clearing all dat
         val vaultTimeoutInMinutes = settingsDiskSource.getVaultTimeoutInMinutes(userId = userId)
         val vaultTimeoutAction = settingsDiskSource.getVaultTimeoutAction(userId = userId)
-        val pinProtectedUserKey = authDiskSource.getPinProtectedUserKey(userId = userId)
 
         switchUserIfAvailable(
             currentUserId = userId,
@@ -102,10 +102,6 @@ class UserLogoutManagerImpl(
                 vaultTimeoutAction = vaultTimeoutAction,
             )
         }
-        authDiskSource.storePinProtectedUserKey(
-            userId = userId,
-            pinProtectedUserKey = pinProtectedUserKey,
-        )
     }
 
     private fun clearData(userId: String) {
@@ -114,7 +110,7 @@ class UserLogoutManagerImpl(
         generatorDiskSource.clearData(userId = userId)
         pushDiskSource.clearData(userId = userId)
         settingsDiskSource.clearData(userId = userId)
-        scope.launch {
+        unconfinedScope.launch {
             passwordHistoryDiskSource.clearPasswordHistories(userId = userId)
             vaultDiskSource.deleteVaultData(userId = userId)
         }

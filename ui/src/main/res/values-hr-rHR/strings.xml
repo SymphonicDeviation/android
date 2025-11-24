@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="about">O aplikaciji</string>
     <string name="add_folder">Dodaj mapu</string>
     <string name="add_item">Dodaj stavku</string>
@@ -46,7 +46,7 @@
     <string name="my_vault">Moj trezor</string>
     <string name="name">Naziv</string>
     <string name="item_name_required">Naziv stavke (obavezno)</string>
-    <string name="send_name_required">"Naziv Senda (obavezno)"</string>
+    <string name="send_name_required">Naziv Senda (obavezno)</string>
     <string name="no">Ne</string>
     <string name="notes">Bilješke</string>
     <string name="private_notes">Privatne napomene</string>
@@ -101,7 +101,7 @@
     <string name="one_minute">1 minuta</string>
     <string name="four_hours">4 sata</string>
     <string name="immediately">Odmah</string>
-    <string name="vault_timeout_log_out_confirmation_title">Postavi istek sesije na „Odjava”</string>
+    <string name="vault_timeout_log_out_confirmation_title">Postavi istek sesije na „Odjava”?</string>
     <string name="vault_timeout_log_out_confirmation_message">Nakon isteka trezora biti će napravljena odjava. Za prijavu i ponovni pristup svom trezoru moraš biti spojen na internet. Tvoje postavke i PIN, spremljeni na ovom uređaju neće se promijeniti.</string>
     <string name="logging_in">Prijava…</string>
     <string name="login_to_bitwarden">Prijavi se u Bitwarden</string>
@@ -137,7 +137,7 @@
     <string name="other">Ostalo</string>
     <string name="password_generator">Generator lozinki</string>
     <string name="password_hint">Podsjetnik za lozinku</string>
-    <string name="password_hint_alert">Poslali smo e-poštu s podsjetnikom glavne lozinke.</string>
+    <string name="password_hint_alert">Poslali smo vam e-poštu s podsjetnikom glavne lozinke.</string>
     <string name="password_override_alert">Sigurno želiš prebrisati trenutnu lozinku?</string>
     <string name="retype_master_password">Ponovno upiši glavnu lozinku</string>
     <string name="retype_new_master_password_required">Ponovno unesi glavnu lozinku (obavezno)</string>
@@ -173,7 +173,7 @@
     <string name="authenticator_app_title">Autentifikatorska aplikacija</string>
     <string name="enter_verification_code_app">Unesi 6-znamenkasti kôd za provjeru iz autentifikatorske aplikacije.</string>
     <string name="enter_verification_code_email">Unesi 6-znamenkasti kôd za provjeru poslan e-poštom na %1$s</string>
-    <string name="enter_verification_code_new_device">Ne prepoznajemo ovaj uređaj. Unesi 8-znamenkasti kôd za provjeru poslan e-poštom na [%1$s].</string>
+    <string name="enter_verification_code_new_device">Ne prepoznajemo ovaj uređaj. Za potvrdu identiteta unesi kôd poslan e-poštom.</string>
     <string name="recovery_code_title">Kôd za oporavak</string>
     <string name="remember">Zapamti</string>
     <string name="remember_email">Zapamti adresu e-pošte</string>
@@ -365,10 +365,8 @@
     <string name="default_uri_match_detection">Zadano otkrivanje URI podudaranja</string>
     <string name="default_uri_match_detection_description">Otkrivanje podudaranja URI-ja upravlja kako Bitwarden identificira prijedloge za auto-ispunu.</string>
     <string name="theme">Tema</string>
-    <string name="theme_description">Mijenja boju aplikacije.</string>
+    <string name="theme_description">Mijenja boju aplikacije</string>
     <string name="copy_notes">Kopiraj bilješku</string>
-    <string name="exit">Izlaz</string>
-    <string name="exit_confirmation">Sigurno želiš izaći iz Bitwarden-a?</string>
     <string name="require_master_password_on_app_restart">Traži glavnu lozinku kod ponovnog pokretanja aplikacije?</string>
     <string name="pin_require_master_password_restart">Obavezno otključavanje glavnom lozinkom pri ponovnom pokretanju aplikacije?</string>
     <string name="ask_to_add_item">Upitaj za dodvanje stavke</string>
@@ -379,6 +377,7 @@
     <string name="download">Preuzmi</string>
     <string name="login_expired">Sesija je istekla.</string>
     <string name="biometrics_direction">Biometrijska autentifikacija</string>
+    <string name="device_verification">Provjera uređaja</string>
     <string name="biometrics_failed">Biometrija neuspješna</string>
     <string name="biometrics_decoding_failure">Prijavi se svojom Glavnom lozinkom ili PIN-om i isključi, pa ponovno uključi biometrijsku prijavu u Postavkama.</string>
     <string name="use_biometrics_to_unlock">Koristi biometriju za otključavanje</string>
@@ -397,7 +396,7 @@
     <string name="password_generator_policy_in_effect">Jedno ili više pravila organizacije utječe na postavke generatora.</string>
     <string name="unable_to_save_attachment">Dogodio se problem prilikom spremanja ovog privitka. Ako se problem ponavlja, privitak možeš spremiti koristeći web trezor.</string>
     <string name="save_attachment_success">Privitak uspješno spremljen</string>
-    <string name="autofill_tile_accessibility_required">U Bitwarden postavkama -&gt; „Usluga auto-ispune kroz pristupačnost” uključi opciju „Koristi pristupačnost”.</string>
+    <string name="autofill_tile_accessibility_required">Za korištenje pločice auto-ispune: BItwarden postavke -> „Auto-ispuna” uključi opciju „Koristi pristupačnost”.</string>
     <string name="autofill_tile_uri_not_found">Nema pronađenih polja za unos lozinke</string>
     <string name="soft_deleting">Slanje u smeće…</string>
     <string name="item_soft_deleted">Stavka je poslana u smeće.</string>
@@ -412,7 +411,7 @@
     <string name="enable_sync_on_refresh">Uključi sinkronizaciju pri osvježavanju</string>
     <string name="enable_sync_on_refresh_description">Sinkronizacija trezora povlačenjem prema dolje.</string>
     <string name="log_in_sso">Jedinstvena prijava na razini tvrtke (SSO)</string>
-    <string name="log_in_sso_summary">Prijavi se koristeći SSO portal tvoje tvrtke. Za nastavak unesi identifikator organizacije.</string>
+    <string name="log_in_sso_summary">Prijavi se koristeći Sso portal tvoje tvrtke. Za nastavak unesi identifikator organizacije.</string>
     <string name="org_identifier">Identifikator organizacije</string>
     <string name="login_sso_error">Trenutno nije moguća SSO prijava</string>
     <string name="set_master_password">Postavi glavnu lozinku</string>
@@ -481,6 +480,7 @@
     <string name="seven_days">7 dana</string>
     <string name="thirty_days">30 dana</string>
     <string name="custom">Prilagođeno</string>
+    <string name="custom_timeout">Osobni istek</string>
     <string name="add_this_authenticator_key_to_a_login">Dodaj ovaj ključ autentifikatora postojećoj prijavi, ili stvori novu prijavu.</string>
     <string name="send_disabled_warning">Pravila tvrtke omogućuju brisanje samo postojećeg Senda</string>
     <string name="about_send">O Sendu</string>
@@ -499,9 +499,22 @@
     <string name="fido2_authenticate_web_authn">Autentifikacija WebAuthn</string>
     <string name="fido2_return_to_app">Povratak u aplikaciju</string>
     <string name="reset_password_auto_enroll_invite_warning">Pravilo ove organizacija automatski će te učlaniti u ponovno postavljanje lozinke. Učlanjenje će omogućiti administratorima organizacije promjenu tvoje glavne lozinke.</string>
-    <string name="vault_timeout_policy_in_effect">Pravilo tvoje organizacije utječe na istek trezora. Najveće dozvoljeno vrijeme isteka je %1$s:%2$s h.</string>
-    <string name="vault_timeout_policy_with_action_in_effect">Pravila tvoje organizacije utječu na vremenski istek trezora. Maksimalno dopušteno vrijeme isteka je %1$s:%2$s h. Vaša radnja nakon isteka trezora je %3$s.</string>
-    <string name="vault_timeout_action_policy_in_effect">Pravilo tvoje organizacije podesilo je radnju nakon isteka trezora na: %1$s.</string>
+    <string name="hours_minutes_format" comment="Used to display a number of hours and minutes">%1$s, %2$s</string>
+    <plurals name="hours_format" comment="Can be injected into a sentence with %1$s and %2$s">
+        <item quantity="one">%1$d sat</item>
+        <item quantity="few">%1$d sata</item>
+        <item quantity="other">%1$d sati</item>
+    </plurals>
+    <plurals name="minutes_format" comment="Can be injected into a sentence with %1$s and %2$s">
+        <item quantity="one">%1$d minuta</item>
+        <item quantity="few">%1$d minute</item>
+        <item quantity="other">%1$d minuta</item>
+    </plurals>
+    <string name="vault_timeout_policy_in_effect_hours_minutes_format" comment="First value will be the number of hours (2 hours, 1 hour) and second value will be the number of minutes (15 minutes, 1 minute)">Tvoja organizacaija je postavila zadani istek sesije na %1$s i %2$s.</string>
+    <string name="vault_timeout_policy_in_effect_format" comment="Value will be a number of hours or minutes (15 minutes, or 1 minute)">Tvoja organizacaija je postavila zadani istek sesije na %1$s.</string>
+    <string name="this_setting_is_managed_by_your_organization">Ovom postavkom upravlja tvoje organizacija.</string>
+    <string name="your_organization_has_set_the_default_session_timeout_to_never">Tvoja organizacaija je postavila zadani istek sesije na nikada.</string>
+    <string name="your_organization_has_set_the_default_session_timeout_to_on_app_restart">Tvoja organizacaija je postavila zadani istek sesije na ponovno pokretanje aplikacije.</string>
     <string name="vault_timeout_to_large">Vrijeme isteka premašuje ograničenje koje je postavila tvoja organizacija.</string>
     <string name="disable_personal_vault_export_policy_in_effect">Jedno ili više pravila organizacija onemogućuje izvoz osobnog trezora.</string>
     <string name="add_account">Dodaj račun</string>
@@ -680,6 +693,7 @@
     <string name="follow_the_steps_from_duo_to_finish_logging_in">Pratite Duo korake za dovršetak prijave.</string>
     <string name="launch_duo">Pokreni Duo</string>
     <string name="your_passkey_will_be_saved_to_your_bitwarden_vault_for_x">Tvoj pristupni ključ za %1$s će biti spremljen u trezor</string>
+    <string name="your_password_will_be_saved_to_your_bitwarden_vault_for_x">Your password will be saved to your Bitwarden vault for %1$s</string>
     <string name="passkeys_not_supported_for_this_app">Pristupni ključ nije podržan za ovu aplikaciju</string>
     <string name="passkey_operation_failed_because_browser_is_not_privileged">Operacija lozinke nije uspjela jer preglednik nema privilegiju</string>
     <string name="passkey_operation_failed_because_browser_signature_does_not_match">Operacija pristupnog ključa nije uspjela jer se potpis preglednika ne podudara</string>
@@ -740,7 +754,7 @@
     <string name="learn_about_ways_to_prevent_account_lockout"><annotation link="onPreventAccountLockout">Saznaj više o drugim načinima za sprječavanje blokade računa</annotation></string>
     <string name="help_with_server_geolocations">Pomoć s geolokacijama poslužitelja.</string>
     <string name="email_address_required">Adresa e-pošte je obavezna</string>
-    <string name="select_the_link_in_the_email_to_verify_your_email_address_and_continue_creating_your_account">"Odaberi vezu poslanu e-poštom za potvrdu svoje adrese i nastavi s izradom računa. "</string>
+    <string name="select_the_link_in_the_email_to_verify_your_email_address_and_continue_creating_your_account">Odaberi vezu poslanu e-poštom za potvrdu svoje adrese i nastavi s izradom računa.</string>
     <string name="change_email_address">Promjeni adresu e-pošte</string>
     <string name="next">Sljedeće</string>
     <string name="bitwarden_cannot_recover_a_lost_or_forgotten_master_password">Bitwarden ne može vratiti izgubljenu ili zaboravljenu glavnu lozinku.</string>
@@ -759,9 +773,16 @@
     <string name="allow_bitwarden_authenticator_syncing">Dozvoli sinkronizaciju s Bitwarden Autentifikatorom</string>
     <string name="there_was_an_issue_validating_the_registration_token">Došlo je do problema s potvrđivanjem registracijskog tokena.</string>
     <string name="turn_on_autofill">Uključi auto-ispunu</string>
+    <string name="autofill_setup">Postavke auto-ispune</string>
+    <string name="turn_on_browser_autofill_integration">Uključi integraciju auto-ispune preglednika</string>
+    <string name="browser_requires_special_permissions_for_bitwarden_singular">Koristiš preglednik koji zahtijeva posebno dopuštenje za automatsku ispunu lozinki putem Bitwardena.</string>
+    <string name="browser_requires_special_permissions_for_bitwarden_plural">Koristiš preglednike koji zahtijevaju posebna dopuštenja za automatsku ispunu lozinki putem Bitwardena.</string>
+    <string name="youre_using_a_browser_that_requires_special_permissions_singular">Koristiš preglednik koji zahtijeva posebna dopuštenja za automatsku ispunu lozinki putem Bitwardena. Omogući željenu integraciju automatske ispune u nastavku.</string>
+    <string name="youre_using_a_browser_that_requires_special_permissions_plural">Koristiš preglednike koji zahtijevaju posebna dopuštenja za automatsku ispunu lozinki putem Bitwardena. Omogući željenu integraciju automatske ispune u nastavku.</string>
     <string name="use_autofill_to_log_into_your_accounts">Koristi auto-ispunu za prijavu u svoje račune jednim dodirom.</string>
     <string name="turn_on_later">Uključi kasnije</string>
     <string name="turn_on_autofill_later">Kasnije uključi auto-ispunu?</string>
+    <string name="turn_on_browser_autofill_integration_later">Uključi integraciju auto-ispune preglednika kasnije?</string>
     <string name="return_to_complete_this_step_anytime_in_settings">Kasnije se možeš vratiti u Postavke i dovršiti ovaj korak.</string>
     <string name="what_bitwarden_has_to_offer">Sada možeš koristiti auto-ispunu za prijavu u aplikacije i web stranice koristeći svoje spremljene lozinke. Istraži sve ostalo što Bitwarden nudi.</string>
     <string name="youre_all_set">Sve je spremno!</string>
@@ -850,8 +871,8 @@
     <string name="put_the_words_together_in_any_order_to_form_your_passphrase">Stavi riječi bilo kojim redoslijedom za formiranje svoje frazne lozinke. <annotation emphasis="bold">Koristi crtice, razmake ili ostavi spojene kao jednu dugu riječ</annotation> – tvoj izbor!</string>
     <string name="make_it_yours">Učinite sve svojim</string>
     <string name="add_a_number_or_symbol_to_make_it_even_stronger"><annotation emphasis="bold">Dodaj broj ili znak</annotation> kako bi bila još sigurnija. Sada imaš jedinstvenu, sigurnu i pamtljivu fraznu lozinku!</string>
-    <string name="need_some_inspiration">"Trebaš inspiraciju?"</string>
-    <string name="check_out_the_passphrase_generator">"Pogledaj generator fraznih lozinki"</string>
+    <string name="need_some_inspiration">Trebaš inspiraciju?</string>
+    <string name="check_out_the_passphrase_generator">Pogledaj generator fraznih lozinki</string>
     <string name="we_couldnt_verify_the_servers_certificate">Nismo mogli provjeriti certifikat poslužitelja. Postavke lanca certifikata ili proxyja na tvom uređaju ili Bitwarden poslužitelju možda nisu ispravno postavljene.</string>
     <string name="copy_private_key">Kopiraj privatni ključ</string>
     <string name="login_credentials">Vjerodajnice za prijavu</string>
@@ -869,7 +890,7 @@
     <string name="import_client_certificate">Uvezi klijentski certifikat</string>
     <string name="enter_the_client_certificate_password_and_alias">Unesi lozinku klijentskog certifikata i željeni alias za ovaj certifikat.</string>
     <string name="alias">Alisas</string>
-    <string name="use_the_generator_to_create_secure_passwords_passphrases_and_usernames">"Koristi generator za stvaranje sigurnih lozinki, fraznih lozinki i korisničkih imena. "</string>
+    <string name="use_the_generator_to_create_secure_passwords_passphrases_and_usernames">Koristi generator za stvaranje sigurnih lozinki, fraznih lozinki i korisničkih imena.</string>
     <string name="passphrases_are_strong_passwords_that_are_often_easier_to_remember_and_type_than_random_passwords">Frazne lozinke su jake lozinke koje je često lakše zapamtiti i upisati nego nasumične lozinke. Korisne su za prijavu na račune gdje automatsko popunjavanje nije dostupno, poput usluge strujanja na TV-u.</string>
     <string name="unique_usernames_add_an_extra_layer_of_security_and_can_help_prevent_hackers_from_finding_your_accounts">Jedinstvena korisnička imena dodaju dodatni sloj sigurnosti i mogu spriječiti hakere da pronađu tvoje račune.</string>
     <string name="coachmark_1_of_6">1 od 6</string>
@@ -879,7 +900,7 @@
     <string name="coachmark_5_of_6">5 od 6</string>
     <string name="coachmark_6_of_6">6 od 6</string>
     <string name="use_these_options_to_adjust_your_password_to_your_account_requirements">Koristi ove opcije za prilagodbu lozinke prema zahtjevima web stranice.</string>
-    <string name="after_you_save_your_new_password_to_bitwarden_don_t_forget_to_update_it_on_your_account_website">"Nakon što spremiš svoju novu lozinku na Bitwarden, ne zaboravi ju ažurirati na web stranici. "</string>
+    <string name="after_you_save_your_new_password_to_bitwarden_don_t_forget_to_update_it_on_your_account_website">Nakon što spremiš svoju novu lozinku na Bitwarden, ne zaboravi ju ažurirati na web stranici.</string>
     <string name="verify_your_identity">Potvrdi svoj identitet</string>
     <string name="error_loading_certificate">Greška kod učitavanja certifikata</string>
     <string name="certificate_alias">Alias certifikata</string>
@@ -901,6 +922,8 @@
     <string name="passkey_operation_failed_because_the_request_is_unsupported">Operacija s pristupnim ključem nije uspjela jer zahtjev nije podržan.</string>
     <string name="password_operation_failed_because_the_selected_item_does_not_exist">Operacija lozinke nije uspjela jer odabrana stavka ne postoji.</string>
     <string name="password_operation_failed_because_no_item_was_selected">Operacija lozinke nije uspjela jer nije odabrana niti jedna stavka.</string>
+    <string name="credential_operation_failed_because_the_request_is_invalid">Credential operation failed because the request is invalid.</string>
+    <string name="credential_operation_failed_because_the_request_is_unsupported">Credential operation failed because the request is unsupported.</string>
     <string name="credential_operation_failed_because_user_verification_attempts_exceeded">Operacije vjerodajnice nije uspjela jer je premašen broj provjere korisnika.</string>
     <string name="credential_operation_failed_because_user_is_locked_out">Operacija vjerodajnice nije uspjela jer je korisnik zaključan.</string>
     <string name="credential_operation_failed_because_the_selected_item_does_not_exist">Operacija vjerodajnice nije uspjela jer ne postoji odabrana stavka.</string>
@@ -908,7 +931,7 @@
     <string name="self_host_server_url">URL vlastitog poslužitelja</string>
     <string name="use_brave_autofill_integration">Koristi auto-ispunu s Brave integracijom</string>
     <string name="use_chrome_autofill_integration">Koristi Chrome integraciju auto-ispune</string>
-    <string name="use_chrome_beta_autofill_integration">Koristi Chrome integraciju auto-ispune (Beta)</string>
+    <string name="use_chrome_beta_autofill_integration">Koristi Chrome Beta integraciju auto-ispune</string>
     <string name="improves_login_filling_for_supported_websites_on_selected_browsers">Poboljšava ispunjavanje prijava za podržane web-lokacije na odabranim preglednicima. Nakon uključivanja, slijedi preusmjerenja na postavke preglednika za omogućavanje auto-ispune treće strane.</string>
     <string name="show_more">Prikaži više</string>
     <string name="no_folder">Nema mape</string>
@@ -987,7 +1010,6 @@ bilo kakav problem.</string>
     <string name="delete_x">Izbriši %s</string>
     <string name="failed_to_decrypt_cipher_contact_support">Dešifriranje šifre nije uspjelo. Obrati se podršci.</string>
     <string name="decryption_error">Pogreška pri dešifriranju</string>
-    <string name="add_item_rotation">Dodaj stavku rotacije</string>
     <string name="scan_a_qr_code">Skeniraj QR kôd</string>
     <string name="cannot_add_authenticator_key">Nije moguće dodati ključ autentifikatora?</string>
     <string name="enable_camera_permission_to_use_the_scanner">Za skeniranje, odobri korištenje kamere</string>
@@ -1001,7 +1023,11 @@ bilo kakav problem.</string>
     <string name="advanced">Napredno</string>
     <string name="collapse_advanced_options">Sakrij napredne mogućnosti</string>
     <string name="number_of_digits">Broj znamenki</string>
-    <string name="refresh_period_seconds" tools:ignore="PluralsCandidate">%d sek.</string>
+    <plurals name="refresh_period_seconds">
+        <item quantity="one">%d sekunda</item>
+        <item quantity="few">%d sekunde</item>
+        <item quantity="other">%d sekundi</item>
+    </plurals>
     <string name="item_saved">Stavka spremljena</string>
     <string name="information">Informacije</string>
     <string name="otp_type">Vrsta OTP-a</string>
@@ -1061,9 +1087,9 @@ bilo kakav problem.</string>
     <string name="account_synced_from_bitwarden_app">Račun sinkroniziran iz aplikacije Bitwarden</string>
     <string name="local_codes">Lokalni kodovi (%1$d)</string>
     <string name="required_information_missing">Potrebni podaci nedostaju</string>
-    <string name="required_information_missing_message">"Nedostaju potrebni podaci (npr. „usluge” ili „tajno”). Provjeri svoju datoteku i pokušaj ponovno. Posjeti bitwarden.com/help za podršku"</string>
-    <string name="file_could_not_be_processed">"Datoteka se ne može obraditi"</string>
-    <string name="file_could_not_be_processed_message">"Datoteka se ne može obraditi. Provjeri je li JSON ispravan i pokušaj ponovno. Za pomoć posjeti bitwarden.com/help"</string>
+    <string name="required_information_missing_message">Nedostaju potrebni podaci (npr. „usluge” ili „tajno”). Provjeri svoju datoteku i pokušaj ponovno. Posjeti bitwarden.com/help za podršku</string>
+    <string name="file_could_not_be_processed">Datoteka se ne može obraditi</string>
+    <string name="file_could_not_be_processed_message">Datoteka se ne može obraditi. Provjeri je li JSON ispravan i pokušaj ponovno. Za pomoć posjeti bitwarden.com/help</string>
     <string name="get_help">Potraži pomoć</string>
     <string name="expand_advanced_options">Proširi napredne mogućnosti</string>
     <string name="local_items_are_expanded_click_to_collapse">Lokalne stavke su proširene. Klikni za sažimanje.</string>
@@ -1088,4 +1114,57 @@ bilo kakav problem.</string>
     <string name="default_uri_match_detection_description_advanced_options">Otkrivanje podudaranja URI-ja upravlja kako Bitwarden identificira prijedloge za auto-ispunu.\n<annotation emphasis="bold">Upozorenje:</annotation>„Počinje s” je napredna mogućnost s povećanim rizikom curenja vjerodajnica u slučaju krivog korištenja.</string>
     <string name="advanced_option_with_increased_risk_of_exposing_credentials">„Počinje s” je napredna mogućnost s povećnim rizikom od otkrivanja vjerodajnica.</string>
     <string name="advanced_option_increased_risk_exposing_credentials_used_incorrectly">„Regularni izraz” je napredna mogućnost s povećanim rizikom curenja vjerodajnica u slučaju krivog korištenja.</string>
+    <string name="later">Kasnije</string>
+    <string name="encryption_settings_updated">Postavke šifriranje su ažurirane</string>
+    <string name="update_your_encryption_settings">Ažuriraj svoje postakve šifriranja</string>
+    <string name="the_new_recommended_encryption_settings_will_improve_your_account_desc_long">Nove preporučene postavke šifriranja poboljšat će sigurnost tvojeg računa. Za ažuriranje, unesi svoju glavnu lozinku.</string>
+    <string name="import_was_cancelled_in_the_selected_app">Uvoz vjerodajnica je otkazan u odabranoj aplikaciji. Niti jedna stavka nije uvezena.</string>
+    <string name="import_cancelled">Uvoz otkazan</string>
+    <string name="no_items_imported">Niti jedna stavka nije uvezena</string>
+    <string name="no_items_received_from_the_selected_app">Niti jedna stavka nije primljena iz odabrane aplikacije.</string>
+    <string name="vault_sync_failed">Sinkronizacija trezora nije uspjela</string>
+    <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">Tvoje stavke su uspješno uvezene, ali neće biti vidljive u tvojem trezoru dok se ne izvrši sinkronizacija.</string>
+    <string name="there_was_a_problem_importing_your_items">Došlo je do problema s uvozom tvojih stavki. Pokušaj ponovno. Ako se problem nastavi, obrati se podršci.</string>
+    <string name="saving_items">Spremanje stavki…</string>
+    <string name="unable_to_import_your_items">Nije moguć uvoz tvojih stavki</string>
+    <string name="import_from_computer">Uvezi s računala</string>
+    <string name="import_from_another_app">Uvezi iz druge aplikacije</string>
+    <plurals name="x_items_have_been_imported_to_your_vault">
+        <item quantity="one">U tvoj je trezor uvezena %1$d stavka.</item>
+        <item quantity="few">U tvoj su trezor uvezene %1$d stavke.</item>
+        <item quantity="other">U tvoj je trezor uvezeno %1$d stavki.</item>
+    </plurals>
+    <string name="enable_browser_autofill_to_keep_filling_passwords">Za nastavk korištenja auto-ispune lozinki, omogući ovu postavku u svom pregledniku</string>
+    <string name="your_browser_recently_updated_how_autofill_works_singular">Tvoj je preglednik nedavno ažurirao način rada automatskog ispunjavanja. Za nastavak korištenja auto-ispune s Bitwardenom, omogući automatsko ispunjavanje u postavkama tvog preglednika.</string>
+    <string name="your_browser_recently_updated_how_autofill_works_plural">Tvoji su preglednici nedavno ažurirali način rada automatskog ispunjavanja. Za nastavak korištenja auto-ispune s Bitwardenom, omogući automatsko ispunjavanje u postavkama tvojih preglednika.</string>
+    <string name="not_now">Ne sada</string>
+    <string name="import_from_bitwarden">Uvezi iz Bitwardena</string>
+    <string name="select_account">Odaberi račun</string>
+    <string name="no_accounts_available">Nema dostupnih računa</string>
+    <string name="you_dont_have_any_accounts_you_can_import_from">Nemaš niti jedan račun s kojeg možeš uvesti stavke. Sigurnosna politika tvoje organizacije može ograničiti uvoz stavki iz Bitwardena u drugu aplikaciju.</string>
+    <string name="import_restricted_unable_to_import_credit_cards">Uvoz je ograničen, nije moguće uvesti platne kartice s ovog računa.</string>
+    <string name="verify_your_master_password">Potvrdi glavnu lozinku</string>
+    <string name="having_trouble_with_autofill">Imaš problema s auto-ispunom?</string>
+    <string name="access_help_and_troubleshooting_documentation_here">Ovdje možeš pristupiti pomoći i dokumentaciji za rješavanje problema</string>
+    <string name="import_passwords_passkeys_and_other_item_types_from_your_vault">Uvezi lozinke, pristupne ključeve i druge vrste stavki iz svog Bitwarden trezora.</string>
+    <string name="items_to_import">Stavke za uvoz</string>
+    <string name="exporting_items">Izvoz stavaka…</string>
+    <string name="export_failed">Izvoz nije uspio</string>
+    <string name="passwords">Lozinke</string>
+    <string name="passkeys">Pristupni ključevi</string>
+    <string name="why_is_this_step_required">Zašto je potreban ovaj korak?</string>
+    <string name="kdf_update_failed_active_account_not_found">Ažuriranje KDF-a nije uspjelo, aktivni račun nije pronađen. Pokušaj ponovno ili nas kontaktiraj.</string>
+    <string name="an_error_occurred_while_trying_to_update_your_kdf_settings">Došlo je do pogreške prilikom pokušaja ažuriranja tvojih KDF postavki. Pokušaj ponovno ili nas kontaktiraj.</string>
+    <string name="the_import_request_could_not_be_processed">Zahtjev za uvoz nije mogao biti obrađen.</string>
+    <string name="your_vault_may_be_empty_or_import_some_item_types_isnt_supported">Tvoj trezor je možda prazan ili uvoz nekih vrsta stavki nije dopušten za tvoj račun.</string>
+    <string name="no_items_available_to_import">Nema dostupnih stavki za uvoz</string>
+    <string name="select_a_different_account">Odaberi drugi račun</string>
+    <string name="verify_your_account_email_address">Potvrdi adresu e-pošte svojeg računa</string>
+    <string name="enter_the_6_digit_code_that_was_emailed_to_the_address_below">Unesi 6-znamenkasti kôd poslan e-poštom na donju adresu</string>
+    <string name="lock_app">Zaključaj aplikaciju</string>
+    <string name="use_your_devices_lock_method_to_unlock_the_app">Upotrijebi metodu zaključavanja uređaja za otključavanje aplikacije</string>
+    <string name="loading_vault_data">Učitavanje podataka trezora…</string>
+    <string name="compatibility_mode_warning">Način kompatibilnosti treba omogućiti samo ako automatsko popunjavanje ne radi u tvojem pregledniku. Ova postavka smanjuje sigurnost i mogla bi omogućiti zlonamjernim stranicama da snime tvoje lozinke. Omogući samo ako prihvaćaš taj rizik.</string>
+    <string name="use_compatibility_mode_for_browser_autofill">Koristi način kompatibilnosti za auto-ispunu preglednika</string>
+    <string name="use_a_less_secure_autofill_method_compatible_with_more_browsers">Koristi manje sigurnu metodu auto-ispune kompatibilnu s više preglednika.\n<annotation link="learnMore">Saznaj više o načinu kompatibilnosti</annotation></string>
 </resources>

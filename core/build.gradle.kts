@@ -34,6 +34,10 @@ android {
         sourceCompatibility(libs.versions.jvmTarget.get())
         targetCompatibility(libs.versions.jvmTarget.get())
     }
+    @Suppress("UnstableApiUsage")
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {
@@ -47,10 +51,12 @@ dependencies {
 
     testImplementation(platform(libs.junit.bom))
     testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.junit.junit5)
+    testImplementation(libs.junit.jupiter)
     testImplementation(libs.junit.vintage)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk.mockk)
+
+    testFixturesImplementation(libs.kotlinx.coroutines.test)
 }
 
 kotlin {

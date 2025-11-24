@@ -10,6 +10,7 @@ import com.bitwarden.data.repository.util.baseWebSendUrl
 import com.bitwarden.send.SendType
 import com.bitwarden.send.SendView
 import com.bitwarden.ui.platform.components.icon.model.IconData
+import com.bitwarden.ui.platform.model.TotpData
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.asText
@@ -33,7 +34,6 @@ import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSendView
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.VaultItemListingState
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterType
-import com.x8bit.bitwarden.ui.vault.model.TotpData
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -946,7 +946,7 @@ class VaultItemListingDataExtensionsTest {
                 message = BitwardenString.search_for_a_login_or_add_a_new_login.asText(),
                 shouldShowAddButton = false,
                 buttonText = BitwardenString.new_item.asText(),
-                vectorRes = BitwardenDrawable.img_folder_question,
+                vectorRes = BitwardenDrawable.ill_folder_question,
             ),
             vaultData.toViewState(
                 itemListingType = VaultItemListingState.ItemListingType.Vault.Trash,

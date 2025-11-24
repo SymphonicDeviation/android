@@ -2,17 +2,24 @@ package com.x8bit.bitwarden
 
 import android.content.Intent
 import android.os.Parcelable
+import androidx.browser.auth.AuthTabIntent
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.bitwarden.core.data.manager.toast.ToastManager
+import com.bitwarden.cxf.model.ImportCredentialsRequestData
+import com.bitwarden.cxf.util.getProviderImportCredentialsRequest
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
-import com.bitwarden.ui.platform.manager.IntentManager
+import com.bitwarden.ui.platform.manager.share.ShareManager
+import com.bitwarden.ui.platform.model.TotpData
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.vault.CipherView
 import com.x8bit.bitwarden.data.auth.manager.AddTotpItemFromAuthenticatorManager
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.EmailTokenResult
+import com.x8bit.bitwarden.data.auth.repository.util.getDuoCallbackTokenResult
+import com.x8bit.bitwarden.data.auth.repository.util.getSsoCallbackResult
+import com.x8bit.bitwarden.data.auth.repository.util.getWebAuthResult
 import com.x8bit.bitwarden.data.auth.util.getCompleteRegistrationDataIntentOrNull
 import com.x8bit.bitwarden.data.auth.util.getPasswordlessRequestDataIntentOrNull
 import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilitySelectionManager
@@ -40,7 +47,6 @@ import com.x8bit.bitwarden.ui.platform.model.FeatureFlagsState
 import com.x8bit.bitwarden.ui.platform.util.isAccountSecurityShortcut
 import com.x8bit.bitwarden.ui.platform.util.isMyVaultShortcut
 import com.x8bit.bitwarden.ui.platform.util.isPasswordGeneratorShortcut
-import com.x8bit.bitwarden.ui.vault.model.TotpData
 import com.x8bit.bitwarden.ui.vault.util.getTotpDataOrNull
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
@@ -75,7 +81,7 @@ class MainViewModel @Inject constructor(
     private val specialCircumstanceManager: SpecialCircumstanceManager,
     private val garbageCollectionManager: GarbageCollectionManager,
     private val bitwardenCredentialManager: BitwardenCredentialManager,
-    private val intentManager: IntentManager,
+    private val shareManager: ShareManager,
     private val settingsRepository: SettingsRepository,
     private val vaultRepository: VaultRepository,
     private val authRepository: AuthRepository,
@@ -179,6 +185,9 @@ class MainViewModel @Inject constructor(
             MainAction.OpenDebugMenu -> handleOpenDebugMenu()
             is MainAction.ResumeScreenDataReceived -> handleAppResumeDataUpdated(action)
             is MainAction.AppSpecificLanguageUpdate -> handleAppSpecificLanguageUpdate(action)
+            is MainAction.DuoResult -> handleDuoResult(action)
+            is MainAction.SsoResult -> handleSsoResult(action)
+            is MainAction.WebAuthnResult -> handleWebAuthnResult(action)
             is MainAction.Internal -> handleInternalAction(action)
         }
     }
@@ -205,6 +214,20 @@ class MainViewModel @Inject constructor(
 
     private fun handleAppSpecificLanguageUpdate(action: MainAction.AppSpecificLanguageUpdate) {
         settingsRepository.appLanguage = action.appLanguage
+    }
+
+    private fun handleDuoResult(action: MainAction.DuoResult) {
+        authRepository.setDuoCallbackTokenResult(
+            tokenResult = action.authResult.getDuoCallbackTokenResult(),
+        )
+    }
+
+    private fun handleSsoResult(action: MainAction.SsoResult) {
+        authRepository.setSsoCallbackResult(result = action.authResult.getSsoCallbackResult())
+    }
+
+    private fun handleWebAuthnResult(action: MainAction.WebAuthnResult) {
+        authRepository.setWebAuthResult(webAuthResult = action.authResult.getWebAuthResult())
     }
 
     private fun handleAppResumeDataUpdated(action: MainAction.ResumeScreenDataReceived) {
@@ -272,7 +295,7 @@ class MainViewModel @Inject constructor(
         val passwordlessRequestData = intent.getPasswordlessRequestDataIntentOrNull()
         val autofillSaveItem = intent.getAutofillSaveItemOrNull()
         val autofillSelectionData = intent.getAutofillSelectionDataOrNull()
-        val shareData = intentManager.getShareDataFromIntent(intent)
+        val shareData = shareManager.getShareDataOrNull(intent = intent)
         val totpData: TotpData? =
             // First grab TOTP URI directly from the intent data:
             intent.getTotpDataOrNull()
@@ -295,6 +318,7 @@ class MainViewModel @Inject constructor(
         val getCredentialsRequest = intent.getGetCredentialsRequestOrNull()
         val fido2AssertCredentialRequest = intent.getFido2AssertionRequestOrNull()
         val providerGetPasswordRequest = intent.getProviderGetPasswordRequestOrNull()
+        val importCredentialsRequest = intent.getProviderImportCredentialsRequest()
         when {
             passwordlessRequestData != null -> {
                 authRepository.activeUserId?.let {
@@ -418,6 +442,16 @@ class MainViewModel @Inject constructor(
                 specialCircumstanceManager.specialCircumstance =
                     SpecialCircumstance.AccountSecurityShortcut
             }
+
+            importCredentialsRequest != null -> {
+                specialCircumstanceManager.specialCircumstance =
+                    SpecialCircumstance.CredentialExchangeExport(
+                        data = ImportCredentialsRequestData(
+                            uri = importCredentialsRequest.uri,
+                            requestJson = importCredentialsRequest.request.requestJson,
+                        ),
+                    )
+            }
         }
     }
 
@@ -485,6 +519,21 @@ data class MainState(
  * Models actions for the [MainActivity].
  */
 sealed class MainAction {
+    /**
+     * Receive the result from the Duo login flow.
+     */
+    data class DuoResult(val authResult: AuthTabIntent.AuthResult) : MainAction()
+
+    /**
+     * Receive the result from the SSO login flow.
+     */
+    data class SsoResult(val authResult: AuthTabIntent.AuthResult) : MainAction()
+
+    /**
+     * Receive the result from the WebAuthn login flow.
+     */
+    data class WebAuthnResult(val authResult: AuthTabIntent.AuthResult) : MainAction()
+
     /**
      * Receive first Intent by the application.
      */

@@ -5,23 +5,28 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import app.cash.turbine.test
+import com.bitwarden.core.EnrollPinResponse
 import com.bitwarden.core.InitOrgCryptoRequest
 import com.bitwarden.core.InitUserCryptoMethod
 import com.bitwarden.core.InitUserCryptoRequest
+import com.bitwarden.core.MasterPasswordUnlockData
+import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.core.data.manager.realtime.RealtimeManager
 import com.bitwarden.core.data.util.asFailure
 import com.bitwarden.core.data.util.asSuccess
 import com.bitwarden.crypto.HashPurpose
-import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
+import com.bitwarden.crypto.Kdf
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
+import com.x8bit.bitwarden.data.auth.manager.KdfManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
 import com.x8bit.bitwarden.data.auth.manager.model.LogoutEvent
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
+import com.x8bit.bitwarden.data.auth.repository.model.UpdateKdfMinimumsResult
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.platform.manager.model.AppCreationState
 import com.x8bit.bitwarden.data.platform.manager.model.AppForegroundState
@@ -104,6 +109,15 @@ class VaultLockManagerTest {
     private val realtimeManager: RealtimeManager = mockk {
         every { elapsedRealtimeMs } returns FIXED_CLOCK.millis()
     }
+    private val kdfManager: KdfManager = mockk {
+        every { needsKdfUpdateToMinimums() } returns false
+        coEvery {
+            updateKdfToMinimumsIfNeeded(password = any())
+        } returns UpdateKdfMinimumsResult.Success
+    }
+    private val pinProtectedUserKeyManager: PinProtectedUserKeyManager = mockk {
+        coEvery { migratePinProtectedUserKeyIfNeeded(userId = any()) } just runs
+    }
 
     private val vaultLockManager: VaultLockManager = VaultLockManagerImpl(
         context = context,
@@ -117,6 +131,8 @@ class VaultLockManagerTest {
         userLogoutManager = userLogoutManager,
         trustedDeviceManager = trustedDeviceManager,
         dispatcherManager = fakeDispatcherManager,
+        kdfManager = kdfManager,
+        pinProtectedUserKeyManager = pinProtectedUserKeyManager,
     )
 
     @Test
@@ -991,6 +1007,7 @@ class VaultLockManagerTest {
                     request = InitOrgCryptoRequest(organizationKeys = organizationKeys),
                 )
                 trustedDeviceManager.trustThisDeviceIfNecessary(userId = USER_ID)
+                kdfManager.updateKdfToMinimumsIfNeeded(masterPassword)
             }
         }
 
@@ -1625,6 +1642,206 @@ class VaultLockManagerTest {
             vaultSdkSource.clearCrypto(USER_ID)
         }
     }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVault with initializeCrypto success should migrate pinProtectedUserKey`() =
+        runTest {
+            val kdf = MOCK_PROFILE.toSdkParams()
+            val email = MOCK_PROFILE.email
+            val masterPassword = "drowssap"
+            val userKey = "12345"
+            val privateKey = "54321"
+            val organizationKeys = mapOf("orgId1" to "orgKey1")
+            val userKeyEncryptedPin = "encryptedPin"
+            val pinProtectedUserKeyEnvelope = "pinProtectedUserKeyEnvelope"
+            val enrollResponse = EnrollPinResponse(
+                pinProtectedUserKeyEnvelope = pinProtectedUserKeyEnvelope,
+                userKeyEncryptedPin = userKeyEncryptedPin,
+            )
+            coEvery {
+                vaultSdkSource.initializeCrypto(
+                    userId = USER_ID,
+                    request = InitUserCryptoRequest(
+                        userId = USER_ID,
+                        kdfParams = kdf,
+                        email = email,
+                        privateKey = privateKey,
+                        method = InitUserCryptoMethod.Password(
+                            password = masterPassword,
+                            userKey = userKey,
+                        ),
+                        signingKey = null,
+                        securityState = null,
+                    ),
+                )
+            } returns InitializeCryptoResult.Success.asSuccess()
+            coEvery {
+                vaultSdkSource.initializeOrganizationCrypto(
+                    userId = USER_ID,
+                    request = InitOrgCryptoRequest(organizationKeys = organizationKeys),
+                )
+            } returns InitializeCryptoResult.Success.asSuccess()
+            coEvery {
+                trustedDeviceManager.trustThisDeviceIfNecessary(userId = USER_ID)
+            } returns false.asSuccess()
+            assertEquals(
+                emptyList<VaultUnlockData>(),
+                vaultLockManager.vaultUnlockDataStateFlow.value,
+            )
+            mutableVaultTimeoutStateFlow.value = VaultTimeout.ThirtyMinutes
+
+            val result = vaultLockManager.unlockVault(
+                userId = USER_ID,
+                email = email,
+                kdf = kdf,
+                privateKey = privateKey,
+                signingKey = null,
+                securityState = null,
+                initUserCryptoMethod = InitUserCryptoMethod.Password(
+                    password = masterPassword,
+                    userKey = userKey,
+                ),
+                organizationKeys = organizationKeys,
+            )
+
+            assertEquals(VaultUnlockResult.Success, result)
+            assertEquals(
+                listOf(
+                    VaultUnlockData(
+                        userId = USER_ID,
+                        status = VaultUnlockData.Status.UNLOCKED,
+                    ),
+                ),
+                vaultLockManager.vaultUnlockDataStateFlow.value,
+            )
+
+            coVerify(exactly = 1) {
+                vaultSdkSource.initializeCrypto(
+                    userId = USER_ID,
+                    request = InitUserCryptoRequest(
+                        userId = USER_ID,
+                        kdfParams = kdf,
+                        email = email,
+                        privateKey = privateKey,
+                        method = InitUserCryptoMethod.Password(
+                            password = masterPassword,
+                            userKey = userKey,
+                        ),
+                        signingKey = null,
+                        securityState = null,
+                    ),
+                )
+                vaultSdkSource.initializeOrganizationCrypto(
+                    userId = USER_ID,
+                    request = InitOrgCryptoRequest(organizationKeys = organizationKeys),
+                )
+                trustedDeviceManager.trustThisDeviceIfNecessary(userId = USER_ID)
+                pinProtectedUserKeyManager.migratePinProtectedUserKeyIfNeeded(userId = USER_ID)
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVault with initUserCryptoMethod masterPasswordUnlock success should hash and store master password`() =
+        runTest {
+            val kdf = MOCK_PROFILE.toSdkParams()
+            val email = MOCK_PROFILE.email
+            val masterPassword = "drowssap"
+            val privateKey = "54321"
+            val organizationKeys = mapOf("orgId1" to "orgKey1")
+            val initUserCryptoMethod = InitUserCryptoMethod.MasterPasswordUnlock(
+                password = masterPassword,
+                masterPasswordUnlock = MasterPasswordUnlockData(
+                    kdf = mockk<Kdf>(relaxed = true),
+                    masterKeyWrappedUserKey = "mockKey",
+                    salt = "mockSalt",
+                ),
+            )
+            coEvery {
+                vaultSdkSource.initializeCrypto(
+                    userId = USER_ID,
+                    request = InitUserCryptoRequest(
+                        userId = USER_ID,
+                        kdfParams = kdf,
+                        email = email,
+                        privateKey = privateKey,
+                        method = initUserCryptoMethod,
+                        signingKey = null,
+                        securityState = null,
+                    ),
+                )
+            } returns InitializeCryptoResult.Success.asSuccess()
+            coEvery {
+                vaultSdkSource.initializeOrganizationCrypto(
+                    userId = USER_ID,
+                    request = InitOrgCryptoRequest(organizationKeys = organizationKeys),
+                )
+            } returns InitializeCryptoResult.Success.asSuccess()
+            coEvery {
+                trustedDeviceManager.trustThisDeviceIfNecessary(userId = USER_ID)
+            } returns false.asSuccess()
+            assertEquals(
+                emptyList<VaultUnlockData>(),
+                vaultLockManager.vaultUnlockDataStateFlow.value,
+            )
+            mutableVaultTimeoutStateFlow.value = VaultTimeout.ThirtyMinutes
+            fakeAuthDiskSource.storeUserAutoUnlockKey(
+                userId = USER_ID,
+                userAutoUnlockKey = null,
+            )
+
+            val result = vaultLockManager.unlockVault(
+                userId = USER_ID,
+                email = email,
+                kdf = kdf,
+                privateKey = privateKey,
+                signingKey = null,
+                securityState = null,
+                initUserCryptoMethod = initUserCryptoMethod,
+                organizationKeys = organizationKeys,
+            )
+
+            assertEquals(VaultUnlockResult.Success, result)
+            assertEquals(
+                listOf(
+                    VaultUnlockData(
+                        userId = USER_ID,
+                        status = VaultUnlockData.Status.UNLOCKED,
+                    ),
+                ),
+                vaultLockManager.vaultUnlockDataStateFlow.value,
+            )
+
+            fakeAuthDiskSource.assertUserAutoUnlockKey(
+                userId = USER_ID,
+                userAutoUnlockKey = null,
+            )
+            fakeAuthDiskSource.assertMasterPasswordHash(
+                userId = USER_ID,
+                passwordHash = "hashedPassword",
+            )
+            coVerify(exactly = 1) {
+                vaultSdkSource.initializeCrypto(
+                    userId = USER_ID,
+                    request = InitUserCryptoRequest(
+                        userId = USER_ID,
+                        kdfParams = kdf,
+                        email = email,
+                        privateKey = privateKey,
+                        method = initUserCryptoMethod,
+                        signingKey = null,
+                        securityState = null,
+                    ),
+                )
+                vaultSdkSource.initializeOrganizationCrypto(
+                    userId = USER_ID,
+                    request = InitOrgCryptoRequest(organizationKeys = organizationKeys),
+                )
+                trustedDeviceManager.trustThisDeviceIfNecessary(userId = USER_ID)
+                kdfManager.updateKdfToMinimumsIfNeeded(password = masterPassword)
+            }
+        }
 
     /**
      * Resets the verification call count for the given [mock] while leaving all other mocked

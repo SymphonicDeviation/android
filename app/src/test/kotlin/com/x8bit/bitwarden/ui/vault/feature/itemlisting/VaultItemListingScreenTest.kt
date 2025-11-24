@@ -1,13 +1,11 @@
 package com.x8bit.bitwarden.ui.vault.feature.itemlisting
 
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -25,6 +23,7 @@ import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.icon.model.IconData
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
 import com.bitwarden.ui.platform.manager.IntentManager
+import com.bitwarden.ui.platform.manager.exit.ExitManager
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.asText
@@ -50,13 +49,12 @@ import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherView
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockLoginView
 import com.x8bit.bitwarden.ui.credentials.manager.CredentialProviderCompletionManager
 import com.x8bit.bitwarden.ui.credentials.manager.model.AssertFido2CredentialResult
+import com.x8bit.bitwarden.ui.credentials.manager.model.CreateCredentialResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetCredentialsResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetPasswordCredentialResult
-import com.x8bit.bitwarden.ui.credentials.manager.model.RegisterFido2CredentialResult
 import com.x8bit.bitwarden.ui.platform.base.BitwardenComposeTest
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
 import com.x8bit.bitwarden.ui.platform.manager.biometrics.BiometricsManager
-import com.x8bit.bitwarden.ui.platform.manager.exit.ExitManager
 import com.x8bit.bitwarden.ui.tools.feature.send.addedit.AddEditSendRoute
 import com.x8bit.bitwarden.ui.tools.feature.send.addedit.ModeType
 import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
@@ -108,7 +106,7 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
         every { launchUri(any()) } just runs
     }
     private val credentialProviderCompletionManager: CredentialProviderCompletionManager = mockk {
-        every { completeFido2Registration(any()) } just runs
+        every { completeCredentialRegistration(any()) } just runs
         every { completeFido2Assertion(any()) } just runs
         every { completePasswordGet(any()) } just runs
         every { completeProviderGetCredentialsRequest(any()) } just runs
@@ -581,9 +579,7 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
     @Test
     fun `progressbar should be displayed according to state`() {
         mutableStateFlow.update { DEFAULT_STATE }
-
-        // There are 2 because of the pull-to-refresh
-        composeTestRule.onAllNodes(isProgressBar).assertCountEquals(2)
+        composeTestRule.onNode(isProgressBar).assertIsDisplayed()
 
         mutableStateFlow.update {
             it.copy(
@@ -595,9 +591,7 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
                 ),
             )
         }
-
-        // Only pull-to-refresh remains
-        composeTestRule.onAllNodes(isProgressBar).assertCountEquals(1)
+        composeTestRule.onNode(isProgressBar).assertDoesNotExist()
     }
 
     @Test
@@ -1317,11 +1311,11 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
         composeTestRule
             .onAllNodesWithText(text = "Sync")
             .filterToOne(hasAnyAncestor(isPopup()))
-            .isDisplayed()
+            .assertIsDisplayed()
         composeTestRule
             .onAllNodesWithText(text = "Lock")
             .filterToOne(hasAnyAncestor(isPopup()))
-            .isDisplayed()
+            .assertIsDisplayed()
     }
 
     @Test
@@ -1972,11 +1966,11 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `CompleteFido2Registration event should call CredentialProviderCompletionManager with result`() {
-        val result = RegisterFido2CredentialResult.Success("mockResponse")
-        mutableEventFlow.tryEmit(VaultItemListingEvent.CompleteFido2Registration(result))
+    fun `CompleteCredentialRegistration event should call CredentialProviderCompletionManager with result`() {
+        val result = CreateCredentialResult.Success.Fido2CredentialRegistered("mockResponse")
+        mutableEventFlow.tryEmit(VaultItemListingEvent.CompleteCredentialRegistration(result))
         verify {
-            credentialProviderCompletionManager.completeFido2Registration(result)
+            credentialProviderCompletionManager.completeCredentialRegistration(result)
         }
     }
 

@@ -1,8 +1,8 @@
 package com.x8bit.bitwarden.data.vault.datasource.disk
 
 import app.cash.turbine.test
+import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.core.di.CoreModule
-import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
 import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.createMockCipher
 import com.bitwarden.network.model.createMockCollection
@@ -356,6 +356,7 @@ private val VAULT_DATA: SyncResponseJson = SyncResponseJson(
     policies = null,
     domains = DOMAINS_1,
     sends = listOf(SEND_1),
+    userDecryption = null,
 )
 
 private const val CIPHER_JSON = """
@@ -425,6 +426,7 @@ private const val CIPHER_JSON = """
   "folderId": "mockFolderId-1",
   "organizationId": "mockOrganizationId-1",
   "deletedDate": "2023-10-27T12:00:00.000Z",
+  "archivedDate": "2023-10-27T12:00:00.000Z",
   "identity": {
     "passportNumber": "mockPassportNumber-1",
     "lastName": "mockLastName-1",

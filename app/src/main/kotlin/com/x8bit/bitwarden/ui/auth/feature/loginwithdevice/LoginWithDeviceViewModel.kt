@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
@@ -13,8 +14,7 @@ import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
 import com.x8bit.bitwarden.ui.auth.feature.loginwithdevice.model.LoginWithDeviceType
 import com.x8bit.bitwarden.ui.auth.feature.loginwithdevice.util.toAuthRequestType
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelay
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
@@ -34,7 +34,7 @@ private const val KEY_STATE = "state"
 @HiltViewModel
 class LoginWithDeviceViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val snackbarRelayManager: SnackbarRelayManager,
+    private val snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
     savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<LoginWithDeviceState, LoginWithDeviceEvent, LoginWithDeviceAction>(
     initialState = savedStateHandle[KEY_STATE]
@@ -99,13 +99,11 @@ class LoginWithDeviceViewModel @Inject constructor(
     ) {
         when (val result = action.result) {
             is CreateAuthRequestResult.Success -> {
+                updateContent { content ->
+                    content.copy(isResendNotificationLoading = false)
+                }
                 mutableStateFlow.update {
                     it.copy(
-                        viewState = LoginWithDeviceState.ViewState.Content(
-                            loginWithDeviceType = it.loginWithDeviceType,
-                            fingerprintPhrase = "",
-                            isResendNotificationLoading = false,
-                        ),
                         dialogState = null,
                         loginData = LoginWithDeviceState.LoginData(
                             accessCode = result.accessCode,
@@ -133,13 +131,11 @@ class LoginWithDeviceViewModel @Inject constructor(
             }
 
             is CreateAuthRequestResult.Error -> {
+                updateContent { content ->
+                    content.copy(isResendNotificationLoading = false)
+                }
                 mutableStateFlow.update {
                     it.copy(
-                        viewState = LoginWithDeviceState.ViewState.Content(
-                            loginWithDeviceType = it.loginWithDeviceType,
-                            fingerprintPhrase = "",
-                            isResendNotificationLoading = false,
-                        ),
                         dialogState = LoginWithDeviceState.DialogState.Error(
                             title = BitwardenString.an_error_has_occurred.asText(),
                             message = BitwardenString.generic_error_message.asText(),
@@ -153,13 +149,11 @@ class LoginWithDeviceViewModel @Inject constructor(
             CreateAuthRequestResult.Declined -> Unit
 
             CreateAuthRequestResult.Expired -> {
+                updateContent { content ->
+                    content.copy(isResendNotificationLoading = false)
+                }
                 mutableStateFlow.update {
                     it.copy(
-                        viewState = LoginWithDeviceState.ViewState.Content(
-                            loginWithDeviceType = it.loginWithDeviceType,
-                            fingerprintPhrase = "",
-                            isResendNotificationLoading = false,
-                        ),
                         dialogState = LoginWithDeviceState.DialogState.Error(
                             title = null,
                             message = BitwardenString.login_request_has_already_expired.asText(),

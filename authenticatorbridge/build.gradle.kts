@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // For more info on versioning, see the README.
-val version = "1.0.1"
+val version = "1.0.2"
 
 plugins {
     alias(libs.plugins.android.library)
@@ -66,11 +66,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.kotlinx.serialization)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.timber)
 
     // Test environment dependencies:
     testImplementation(platform(libs.junit.bom))
     testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.junit.junit5)
+    testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockk.mockk)
     testImplementation(libs.square.turbine)
 }

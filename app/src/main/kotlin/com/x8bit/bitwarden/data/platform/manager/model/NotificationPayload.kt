@@ -50,9 +50,15 @@ sealed class NotificationPayload {
      */
     @Serializable
     data class UserNotification(
-        @JsonNames("UserId", "userId") override val userId: String?,
+        @JsonNames("UserId", "userId")
+        override val userId: String?,
+
         @Contextual
-        @JsonNames("Date", "date") val date: ZonedDateTime?,
+        @JsonNames("Date", "date")
+        val date: ZonedDateTime?,
+
+        @JsonNames("Reason", "reason")
+        val pushNotificationLogOutReason: PushNotificationLogOutReason?,
     ) : NotificationPayload()
 
     /**
@@ -82,5 +88,13 @@ sealed class NotificationPayload {
     data class SynchronizeOrganizationKeysNotifications(
         @JsonNames("UserId", "userId") override val userId: String?,
         @JsonNames("Id", "id") val loginRequestId: String?,
+    ) : NotificationPayload()
+
+    /**
+     * A notification payload for syncing a users vault.
+     */
+    @Serializable
+    data class SyncNotification(
+        @JsonNames("UserId", "userId") override val userId: String?,
     ) : NotificationPayload()
 }

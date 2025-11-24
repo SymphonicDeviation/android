@@ -15,13 +15,12 @@ import androidx.credentials.provider.ProviderGetCredentialRequest
 import androidx.credentials.provider.PublicKeyCredentialEntry
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
-import com.bitwarden.core.data.manager.model.FlagKey
+import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.asFailure
 import com.bitwarden.core.data.util.asSuccess
-import com.bitwarden.data.datasource.disk.base.FakeDispatcherManager
 import com.bitwarden.data.repository.model.Environment
 import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.data.repository.util.baseWebSendUrl
@@ -32,6 +31,8 @@ import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.icon.model.IconData
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
+import com.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.bitwarden.ui.platform.model.TotpData
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.Text
@@ -68,7 +69,6 @@ import com.x8bit.bitwarden.data.credentials.model.createMockGetCredentialsReques
 import com.x8bit.bitwarden.data.credentials.model.createMockProviderGetPasswordCredentialRequest
 import com.x8bit.bitwarden.data.credentials.parser.RelyingPartyParser
 import com.x8bit.bitwarden.data.credentials.repository.PrivilegedAppRepository
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManagerImpl
@@ -99,21 +99,19 @@ import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import com.x8bit.bitwarden.ui.credentials.manager.model.AssertFido2CredentialResult
+import com.x8bit.bitwarden.ui.credentials.manager.model.CreateCredentialResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetCredentialsResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetPasswordCredentialResult
-import com.x8bit.bitwarden.ui.credentials.manager.model.RegisterFido2CredentialResult
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
-import com.x8bit.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
+import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import com.x8bit.bitwarden.ui.tools.feature.send.model.SendItemType
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.feature.addedit.util.createMockPasskeyAttestationOptions
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflowAction
 import com.x8bit.bitwarden.ui.vault.feature.itemlisting.util.createMockDisplayItemForCipher
-import com.x8bit.bitwarden.ui.vault.feature.vault.VaultAction
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterType
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toAccountSummaries
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toActiveAccountSummary
-import com.x8bit.bitwarden.ui.vault.model.TotpData
 import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import com.x8bit.bitwarden.ui.vault.model.VaultItemListingType
 import io.mockk.Ordering
@@ -251,10 +249,6 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
         coEvery { addTrustedPrivilegedApp(any(), any()) } just runs
     }
 
-    private val featureFlagManager: FeatureFlagManager = mockk {
-        every { getFeatureFlag(FlagKey.UserManagedPrivilegedApps) } returns true
-    }
-
     private val initialState = createVaultItemListingState()
     private val initialSavedStateHandle
         get() = createSavedStateHandleWithVaultItemListingType(
@@ -267,8 +261,16 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
     private val mockGetPublicKeyCredentialOption = mockk<GetPublicKeyCredentialOption> {
         every { requestJson } returns "mockRequestJson"
     }
+    private val mockCreatePublicKeyCredentialOption = mockk<CreatePublicKeyCredentialRequest> {
+        every { requestJson } returns "mockRequestJson"
+        every { origin } returns "mockOrigin"
+    }
     private val mockProviderGetCredentialRequest = mockk<ProviderGetCredentialRequest> {
         every { credentialOptions } returns listOf(mockGetPublicKeyCredentialOption)
+        every { callingAppInfo } returns mockCallingAppInfo
+    }
+    private val mockProviderCreateCredentialRequest = mockk<ProviderCreateCredentialRequest> {
+        every { callingRequest } returns mockCreatePublicKeyCredentialOption
         every { callingAppInfo } returns mockCallingAppInfo
     }
     private val mockBeginGetPublicKeyCredentialOption = mockk<BeginGetPublicKeyCredentialOption> {
@@ -278,17 +280,10 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
         every { beginGetCredentialOptions } returns listOf(mockBeginGetPublicKeyCredentialOption)
         every { callingAppInfo } returns mockCallingAppInfo
     }
-    private val mockCreatePublicKeyCredentialRequest = mockk<CreatePublicKeyCredentialRequest> {
-        every { requestJson } returns "mockRequestJson"
-        every { origin } returns "mockOrigin"
-    }
-    private val mockProviderCreateCredentialRequest = mockk<ProviderCreateCredentialRequest> {
-        every { callingRequest } returns mockCreatePublicKeyCredentialRequest
-        every { callingAppInfo } returns mockCallingAppInfo
-    }
+
     private val mutableSnackbarDataFlow: MutableSharedFlow<BitwardenSnackbarData> =
         bufferedMutableSharedFlow()
-    private val snackbarRelayManager: SnackbarRelayManager = mockk {
+    private val snackbarRelayManager: SnackbarRelayManager<SnackbarRelay> = mockk {
         every {
             getSnackbarDataFlow(relay = any(), relays = anyVararg())
         } returns mutableSnackbarDataFlow
@@ -309,12 +304,13 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             ProviderGetCredentialRequest.Companion,
             BeginGetCredentialRequest.Companion,
         )
-        every {
-            ProviderCreateCredentialRequest.fromBundle(any())
-        } returns mockProviderCreateCredentialRequest
+
         every {
             ProviderGetCredentialRequest.fromBundle(any())
         } returns mockProviderGetCredentialRequest
+        every {
+            ProviderCreateCredentialRequest.fromBundle(any())
+        } returns mockProviderCreateCredentialRequest
         every {
             BeginGetCredentialRequest.fromBundle(any())
         } returns mockBeginGetCredentialRequest
@@ -354,6 +350,8 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             coEvery {
                 originManager.validateOrigin(any(), any())
             } returns ValidateOriginResult.Success(null)
+
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             viewModel.stateFlow.test {
@@ -517,6 +515,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             shouldFinishWhenComplete = false,
         )
         val searchType = SearchType.Vault.All
+        setupFido2CreateRequest()
         val viewModel = createVaultItemListingViewModel()
         viewModel.eventFlow.test {
             viewModel.trySendAction(VaultItemListingsAction.SearchIconClick)
@@ -683,7 +682,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `ItemClick for vault item during FIDO 2 registration should show FIDO 2 error dialog when cipherView is null`() {
+    fun `ItemClick for vault item during credential registration should show credential error dialog when cipherView is null`() {
         val cipherView = createMockCipherView(number = 1)
         specialCircumstanceManager.specialCircumstance =
             SpecialCircumstance.ProviderCreateCredential(
@@ -761,6 +760,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns Fido2RegisterCredentialResult.Success("mockResponse")
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.ItemClick(
@@ -816,6 +816,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns Fido2RegisterCredentialResult.Success("mockResponse")
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.ItemClick(
@@ -887,6 +888,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns Fido2RegisterCredentialResult.Success("mockResponse")
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.ItemClick(
@@ -940,6 +942,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns Fido2RegisterCredentialResult.Success("mockResponse")
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.ItemClick(
@@ -2319,6 +2322,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 ),
             )
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             mutableVaultDataStateFlow.value = dataState
@@ -2996,6 +3000,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
     @Test
     fun `icon loading state updates should update isIconLoadingDisabled`() = runTest {
+        setupFido2CreateRequest()
         val viewModel = createVaultItemListingViewModel()
 
         assertFalse(viewModel.stateFlow.value.isIconLoadingDisabled)
@@ -3071,6 +3076,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             )
         } returns ValidateOriginResult.Success("mockOrigin")
 
+        setupFido2CreateRequest()
         createVaultItemListingViewModel()
 
         coVerify(ordering = Ordering.ORDERED) {
@@ -3081,9 +3087,10 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
     @Test
     fun `ValidateOriginResult should update dialog state on Unknown error`() = runTest {
+        val mockCredentialsRequest = createMockCreateCredentialRequest(number = 1)
         specialCircumstanceManager.specialCircumstance =
             SpecialCircumstance.ProviderCreateCredential(
-                createMockCreateCredentialRequest(number = 1),
+                mockCredentialsRequest,
             )
         coEvery {
             originManager.validateOrigin(
@@ -3092,6 +3099,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             )
         } returns ValidateOriginResult.Error.Unknown
 
+        setupFido2CreateRequest()
         val viewModel = createVaultItemListingViewModel()
 
         assertEquals(
@@ -3103,9 +3111,8 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
         )
     }
 
-    @Suppress("MaxLineLength")
     @Test
-    fun `ValidateOriginResult should show TrustPrivilegedAddPrompt dialog when feature flag is on`() =
+    fun `ValidateOriginResult should show TrustPrivilegedAddPrompt dialog`() =
         runTest {
             specialCircumstanceManager.specialCircumstance =
                 SpecialCircumstance.ProviderCreateCredential(
@@ -3118,43 +3125,15 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns ValidateOriginResult.Error.PrivilegedAppNotAllowed
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             assertEquals(
                 VaultItemListingState.DialogState.TrustPrivilegedAddPrompt(
-                    message = BitwardenString.passkey_operation_failed_because_browser_x_is_not_trusted
+                    message = BitwardenString
+                        .passkey_operation_failed_because_browser_x_is_not_trusted
                         .asText("mockPackageName"),
                     selectedCipherId = null,
-                ),
-                viewModel.stateFlow.value.dialogState,
-            )
-        }
-
-    @Suppress("MaxLineLength")
-    @Test
-    fun `ValidateOriginResult should show not show TrustPrivilegedAppPrompt dialog when feature flag is off`() =
-        runTest {
-            specialCircumstanceManager.specialCircumstance =
-                SpecialCircumstance.ProviderCreateCredential(
-                    createCredentialRequest = createMockCreateCredentialRequest(number = 1),
-                )
-            coEvery {
-                originManager.validateOrigin(
-                    relyingPartyId = DEFAULT_RELYING_PARTY_ID,
-                    callingAppInfo = mockCallingAppInfo,
-                )
-            } returns ValidateOriginResult.Error.PrivilegedAppNotAllowed
-            every {
-                featureFlagManager.getFeatureFlag(FlagKey.UserManagedPrivilegedApps)
-            } returns false
-
-            val viewModel = createVaultItemListingViewModel()
-
-            assertEquals(
-                VaultItemListingState.DialogState.CredentialManagerOperationFail(
-                    title = BitwardenString.an_error_has_occurred.asText(),
-                    message = BitwardenString.passkey_operation_failed_because_browser_is_not_privileged
-                        .asText(),
                 ),
                 viewModel.stateFlow.value.dialogState,
             )
@@ -3175,6 +3154,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns ValidateOriginResult.Error.PrivilegedAppSignatureNotFound
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             assertEquals(
@@ -3201,6 +3181,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns ValidateOriginResult.Error.PasskeyNotSupportedForApp
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             assertEquals(
@@ -3227,6 +3208,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns ValidateOriginResult.Error.AssetLinkNotFound
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             assertEquals(
@@ -3240,7 +3222,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `Fido2RegisterCredentialResult Error should show toast and emit CompleteFido2Registration result`() =
+    fun `Fido2RegisterCredentialResult Error should show toast and emit CompleteCredentialRegistration result`() =
         runTest {
             val mockResult = Fido2RegisterCredentialResult.Error.InternalError
 
@@ -3253,8 +3235,8 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
             viewModel.eventFlow.test {
                 assertEquals(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        RegisterFido2CredentialResult.Error(
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        CreateCredentialResult.Error(
                             BitwardenString.passkey_registration_failed_due_to_an_internal_error.asText(),
                         ),
                     ),
@@ -3268,7 +3250,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `Fido2RegisterCredentialResult Success should show toast and emit CompleteFido2Registration result`() =
+    fun `Fido2RegisterCredentialResult Success should show toast and emit CompleteCredentialRegistration result`() =
         runTest {
             val mockResult = Fido2RegisterCredentialResult.Success(
                 responseJson = "mockResponse",
@@ -3283,8 +3265,8 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
             viewModel.eventFlow.test {
                 assertEquals(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        RegisterFido2CredentialResult.Success(
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        CreateCredentialResult.Success.Fido2CredentialRegistered(
                             responseJson = "mockResponse",
                         ),
                     ),
@@ -3304,6 +3286,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 SpecialCircumstance.ProviderCreateCredential(
                     createMockCreateCredentialRequest(number = 1),
                 )
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.DismissCredentialManagerErrorDialogClick(
@@ -3313,8 +3296,8 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             viewModel.eventFlow.test {
                 assertNull(viewModel.stateFlow.value.dialogState)
                 assertEquals(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        result = RegisterFido2CredentialResult.Error(
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        result = CreateCredentialResult.Error(
                             "".asText(),
                         ),
                     ),
@@ -4166,12 +4149,13 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `UserVerificationCancelled should clear dialog state, set isUserVerified to false, and emit CompleteFido2Registration with cancelled result`() =
+    fun `UserVerificationCancelled should clear dialog state, set isUserVerified to false, and emit CompleteCredentialRegistration with cancelled result`() =
         runTest {
             specialCircumstanceManager.specialCircumstance =
                 SpecialCircumstance.ProviderCreateCredential(
                     createMockCreateCredentialRequest(number = 1),
                 )
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(VaultItemListingsAction.UserVerificationCancelled)
 
@@ -4179,8 +4163,8 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             assertNull(viewModel.stateFlow.value.dialogState)
             viewModel.eventFlow.test {
                 assertEquals(
-                    VaultItemListingEvent.CompleteFido2Registration(
-                        result = RegisterFido2CredentialResult.Cancelled,
+                    VaultItemListingEvent.CompleteCredentialRegistration(
+                        result = CreateCredentialResult.Cancelled,
                     ),
                     awaitItem(),
                 )
@@ -4313,6 +4297,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 ),
             )
 
+        setupFido2CreateRequest()
         val viewModel = createVaultItemListingViewModel()
         viewModel.trySendAction(
             VaultItemListingsAction.UserVerificationSuccess(
@@ -4350,6 +4335,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 responseJson = "mockResponse",
             )
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.UserVerificationSuccess(
@@ -5049,6 +5035,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 )
             } returns UserVerificationRequirement.REQUIRED
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.ConfirmOverwriteExistingPasskeyClick(
@@ -5375,6 +5362,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
     @Test
     fun `InternetConnectionErrorReceived should show network error if no internet connection`() =
         runTest {
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
             viewModel.trySendAction(
                 VaultItemListingsAction.Internal.InternetConnectionErrorReceived,
@@ -5408,6 +5396,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 originManager.validateOrigin(any(), any())
             } returns ValidateOriginResult.Error.PrivilegedAppNotAllowed
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             viewModel.trySendAction(
@@ -5439,6 +5428,7 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
                 mockCallingAppInfo.getSignatureFingerprintAsHexString()
             } returns null
 
+            setupFido2CreateRequest()
             val viewModel = createVaultItemListingViewModel()
 
             viewModel.trySendAction(
@@ -5827,6 +5817,24 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
         }
     }
 
+    private fun setupFido2CreateRequest(
+        mockCallingAppInfo: CallingAppInfo = this.mockCallingAppInfo,
+        mockCreatePublicKeyCredentialRequest: CreatePublicKeyCredentialRequest =
+            mockk<CreatePublicKeyCredentialRequest> {
+                every { requestJson } returns "mockRequestJson"
+                every { origin } returns "mockOrigin"
+            },
+        mockProviderCreateCredentialRequest: ProviderCreateCredentialRequest =
+            mockk<ProviderCreateCredentialRequest> {
+                every { callingAppInfo } returns mockCallingAppInfo
+                every { callingRequest } returns mockCreatePublicKeyCredentialRequest
+            },
+    ) {
+        every {
+            ProviderCreateCredentialRequest.fromBundle(any())
+        } returns mockProviderCreateCredentialRequest
+    }
+
     private fun createSavedStateHandleWithVaultItemListingType(
         vaultItemListingType: VaultItemListingType,
     ): SavedStateHandle = SavedStateHandle().apply {
@@ -5863,7 +5871,6 @@ class VaultItemListingViewModelTest : BaseViewModelTest() {
             originManager = originManager,
             networkConnectionManager = networkConnectionManager,
             privilegedAppRepository = privilegedAppRepository,
-            featureFlagManager = featureFlagManager,
             snackbarRelayManager = snackbarRelayManager,
             toastManager = toastManager,
             relyingPartyParser = relyingPartyParser,
@@ -5916,6 +5923,7 @@ private val DEFAULT_ACCOUNT = UserState.Account(
     isUsingKeyConnector = false,
     onboardingStatus = OnboardingStatus.COMPLETE,
     firstTimeState = FirstTimeState(showImportLoginsCard = true),
+    isExportable = true,
 )
 
 private val DEFAULT_USER_STATE = UserState(

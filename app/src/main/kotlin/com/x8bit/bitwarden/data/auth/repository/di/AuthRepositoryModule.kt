@@ -1,7 +1,7 @@
 package com.x8bit.bitwarden.data.auth.repository.di
 
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.data.datasource.disk.ConfigDiskSource
-import com.bitwarden.data.manager.DispatcherManager
 import com.bitwarden.network.service.AccountsService
 import com.bitwarden.network.service.DevicesService
 import com.bitwarden.network.service.HaveIBeenPwnedService
@@ -10,6 +10,7 @@ import com.bitwarden.network.service.OrganizationService
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.manager.AuthRequestManager
+import com.x8bit.bitwarden.data.auth.manager.KdfManager
 import com.x8bit.bitwarden.data.auth.manager.KeyConnectorManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
@@ -67,6 +68,7 @@ object AuthRepositoryModule {
         policyManager: PolicyManager,
         logsManager: LogsManager,
         userStateManager: UserStateManager,
+        kdfManager: KdfManager,
     ): AuthRepository = AuthRepositoryImpl(
         clock = clock,
         accountsService = accountsService,
@@ -91,6 +93,7 @@ object AuthRepositoryModule {
         policyManager = policyManager,
         logsManager = logsManager,
         userStateManager = userStateManager,
+        kdfManager = kdfManager,
     )
 
     @Provides
@@ -99,11 +102,13 @@ object AuthRepositoryModule {
         authDiskSource: AuthDiskSource,
         firstTimeActionManager: FirstTimeActionManager,
         vaultLockManager: VaultLockManager,
+        policyManager: PolicyManager,
         dispatcherManager: DispatcherManager,
     ): UserStateManager = UserStateManagerImpl(
         authDiskSource = authDiskSource,
         firstTimeActionManager = firstTimeActionManager,
         vaultLockManager = vaultLockManager,
+        policyManager = policyManager,
         dispatcherManager = dispatcherManager,
     )
 }

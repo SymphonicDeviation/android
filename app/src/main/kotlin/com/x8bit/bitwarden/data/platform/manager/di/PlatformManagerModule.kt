@@ -3,12 +3,15 @@ package com.x8bit.bitwarden.data.platform.manager.di
 import android.app.Application
 import android.content.Context
 import androidx.core.content.getSystemService
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
+import com.bitwarden.core.data.manager.dispatcher.DispatcherManagerImpl
 import com.bitwarden.core.data.manager.realtime.RealtimeManager
 import com.bitwarden.core.data.manager.realtime.RealtimeManagerImpl
 import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.core.data.manager.toast.ToastManagerImpl
-import com.bitwarden.data.manager.DispatcherManager
-import com.bitwarden.data.manager.DispatcherManagerImpl
+import com.bitwarden.cxf.registry.CredentialExchangeRegistry
+import com.bitwarden.cxf.registry.dsl.credentialExchangeRegistry
+import com.bitwarden.data.manager.NativeLibraryManager
 import com.bitwarden.data.repository.ServerConfigRepository
 import com.bitwarden.network.BitwardenServiceClient
 import com.bitwarden.network.service.EventService
@@ -18,6 +21,7 @@ import com.x8bit.bitwarden.data.auth.manager.AddTotpItemFromAuthenticatorManager
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilityEnabledManager
 import com.x8bit.bitwarden.data.autofill.manager.AutofillEnabledManager
+import com.x8bit.bitwarden.data.autofill.manager.browser.BrowserThirdPartyAutofillEnabledManager
 import com.x8bit.bitwarden.data.platform.datasource.disk.EventDiskSource
 import com.x8bit.bitwarden.data.platform.datasource.disk.PushDiskSource
 import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
@@ -32,6 +36,8 @@ import com.x8bit.bitwarden.data.platform.manager.BiometricsEncryptionManager
 import com.x8bit.bitwarden.data.platform.manager.BiometricsEncryptionManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.CertificateManager
 import com.x8bit.bitwarden.data.platform.manager.CertificateManagerImpl
+import com.x8bit.bitwarden.data.platform.manager.CredentialExchangeRegistryManager
+import com.x8bit.bitwarden.data.platform.manager.CredentialExchangeRegistryManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.DatabaseSchemeManager
 import com.x8bit.bitwarden.data.platform.manager.DatabaseSchemeManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.DebugMenuFeatureFlagManagerImpl
@@ -41,8 +47,6 @@ import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.LogsManager
 import com.x8bit.bitwarden.data.platform.manager.LogsManagerImpl
-import com.x8bit.bitwarden.data.platform.manager.NativeLibraryManager
-import com.x8bit.bitwarden.data.platform.manager.NativeLibraryManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.PushManager
@@ -244,10 +248,6 @@ object PlatformManagerModule {
 
     @Provides
     @Singleton
-    fun provideNativeLibraryManager(): NativeLibraryManager = NativeLibraryManagerImpl()
-
-    @Provides
-    @Singleton
     fun provideSdkClientManager(
         featureFlagManager: FeatureFlagManager,
         nativeLibraryManager: NativeLibraryManager,
@@ -302,6 +302,7 @@ object PlatformManagerModule {
         dispatcherManager: DispatcherManager,
         clock: Clock,
         json: Json,
+        featureFlagManager: FeatureFlagManager,
     ): PushManager = PushManagerImpl(
         authDiskSource = authDiskSource,
         pushDiskSource = pushDiskSource,
@@ -309,6 +310,7 @@ object PlatformManagerModule {
         dispatcherManager = dispatcherManager,
         clock = clock,
         json = json,
+        featureFlagManager = featureFlagManager,
     )
 
     @Provides
@@ -355,12 +357,14 @@ object PlatformManagerModule {
         vaultDiskSource: VaultDiskSource,
         dispatcherManager: DispatcherManager,
         autofillEnabledManager: AutofillEnabledManager,
+        thirdPartyAutofillEnabledManager: BrowserThirdPartyAutofillEnabledManager,
     ): FirstTimeActionManager = FirstTimeActionManagerImpl(
         authDiskSource = authDiskSource,
         settingsDiskSource = settingsDiskSource,
         vaultDiskSource = vaultDiskSource,
         dispatcherManager = dispatcherManager,
         autofillEnabledManager = autofillEnabledManager,
+        thirdPartyAutofillEnabledManager = thirdPartyAutofillEnabledManager,
     )
 
     @Provides
@@ -391,8 +395,10 @@ object PlatformManagerModule {
     @Singleton
     fun provideSdkRepositoryFactory(
         vaultDiskSource: VaultDiskSource,
+        bitwardenServiceClient: BitwardenServiceClient,
     ): SdkRepositoryFactory = SdkRepositoryFactoryImpl(
         vaultDiskSource = vaultDiskSource,
+        bitwardenServiceClient = bitwardenServiceClient,
     )
 
     @Provides
@@ -422,4 +428,22 @@ object PlatformManagerModule {
             clock = clock,
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideCredentialExchangeRegistry(
+        application: Application,
+    ): CredentialExchangeRegistry = credentialExchangeRegistry(
+        application = application,
+    )
+
+    @Provides
+    @Singleton
+    fun provideCredentialExchangeRegistryManager(
+        credentialExchangeRegistry: CredentialExchangeRegistry,
+        settingsDiskSource: SettingsDiskSource,
+    ): CredentialExchangeRegistryManager = CredentialExchangeRegistryManagerImpl(
+        credentialExchangeRegistry = credentialExchangeRegistry,
+        settingsDiskSource = settingsDiskSource,
+    )
 }
