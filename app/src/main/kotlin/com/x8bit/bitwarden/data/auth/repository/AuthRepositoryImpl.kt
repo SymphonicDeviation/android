@@ -3,6 +3,7 @@ package com.x8bit.bitwarden.data.auth.repository
 import com.bitwarden.core.AuthRequestMethod
 import com.bitwarden.core.InitUserCryptoMethod
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
+import com.bitwarden.core.data.repository.error.MissingPropertyException
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.asFailure
 import com.bitwarden.core.data.util.asSuccess
@@ -100,8 +101,8 @@ import com.x8bit.bitwarden.data.auth.util.KdfParamsConstants.DEFAULT_PBKDF2_ITER
 import com.x8bit.bitwarden.data.auth.util.YubiKeyResult
 import com.x8bit.bitwarden.data.auth.util.toSdkParams
 import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
-import com.x8bit.bitwarden.data.platform.error.MissingPropertyException
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
+import com.x8bit.bitwarden.data.platform.manager.BiometricsEncryptionManager
 import com.x8bit.bitwarden.data.platform.manager.LogsManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.PushManager
@@ -157,6 +158,7 @@ class AuthRepositoryImpl(
     private val settingsRepository: SettingsRepository,
     private val vaultRepository: VaultRepository,
     private val authRequestManager: AuthRequestManager,
+    private val biometricsEncryptionManager: BiometricsEncryptionManager,
     private val keyConnectorManager: KeyConnectorManager,
     private val trustedDeviceManager: TrustedDeviceManager,
     private val userLogoutManager: UserLogoutManager,
@@ -168,6 +170,7 @@ class AuthRepositoryImpl(
     dispatcherManager: DispatcherManager,
 ) : AuthRepository,
     AuthRequestManager by authRequestManager,
+    BiometricsEncryptionManager by biometricsEncryptionManager,
     KdfManager by kdfManager,
     UserStateManager by userStateManager {
     /**
@@ -1356,10 +1359,10 @@ class AuthRepositoryImpl(
             )
             .fold(
                 onSuccess = {
-                    when (val json = it) {
+                    when (it) {
                         VerifyEmailTokenResponseJson.Valid -> EmailTokenResult.Success
                         is VerifyEmailTokenResponseJson.Invalid -> {
-                            EmailTokenResult.Error(message = json.message, error = null)
+                            EmailTokenResult.Error(message = it.message, error = null)
                         }
 
                         VerifyEmailTokenResponseJson.TokenExpired -> EmailTokenResult.Expired
@@ -1883,21 +1886,15 @@ class AuthRepositoryImpl(
         // Attempt to unlock the vault with password if possible.
         val masterPassword = password ?: return null
         val privateKey = loginResponse.privateKeyOrNull() ?: return null
-        val key = loginResponse.key ?: return null
 
-        val initUserCryptoMethod = loginResponse
+        val masterPasswordUnlock = loginResponse
             .userDecryptionOptions
             ?.masterPasswordUnlock
-            ?.let { masterPasswordUnlock ->
-                InitUserCryptoMethod.MasterPasswordUnlock(
-                    password = masterPassword,
-                    masterPasswordUnlock = masterPasswordUnlock.toSdkMasterPasswordUnlock(),
-                )
-            }
-            ?: InitUserCryptoMethod.Password(
-                password = masterPassword,
-                userKey = key,
-            )
+            ?: return null
+        val initUserCryptoMethod = InitUserCryptoMethod.MasterPasswordUnlock(
+            password = masterPassword,
+            masterPasswordUnlock = masterPasswordUnlock.toSdkMasterPasswordUnlock(),
+        )
 
         return unlockVault(
             accountProfile = profile,
