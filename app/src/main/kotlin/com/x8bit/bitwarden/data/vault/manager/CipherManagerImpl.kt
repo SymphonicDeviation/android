@@ -191,6 +191,10 @@ class CipherManagerImpl(
                     userId = userId,
                     cipher = it.toEncryptedNetworkCipherResponse(),
                 )
+                settingsDiskSource.storeIntroducingArchiveActionCardDismissed(
+                    userId = userId,
+                    isDismissed = true,
+                )
             }
             .fold(
                 onSuccess = { ArchiveCipherResult.Success },
@@ -774,7 +778,7 @@ class CipherManagerImpl(
         // Return if local cipher is more recent
         val localCipher = vaultDiskSource.getCipher(userId = userId, cipherId = cipherId)
         if (localCipher != null &&
-            localCipher.revisionDate.toEpochSecond() > revisionDate.toEpochSecond()
+            localCipher.revisionDate.epochSecond > revisionDate.epochSecond
         ) {
             return
         }

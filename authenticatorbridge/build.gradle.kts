@@ -1,3 +1,6 @@
+import com.android.build.api.dsl.LibraryExtension
+import com.android.build.gradle.tasks.BundleAar
+import org.gradle.kotlin.dsl.support.uppercaseFirstChar
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // For more info on versioning, see the README.
@@ -5,19 +8,22 @@ val version = "1.0.2"
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
 }
 
-android {
+configure<LibraryExtension> {
     namespace = "com.bitwarden.authenticatorbridge"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    setVersion(version)
+    compileSdk {
+        version = release(libs.versions.compileSdk.get().toInt())
+    }
 
     defaultConfig {
         // This min value is selected to accommodate known consumers
-        minSdk = libs.versions.minSdkBwa.get().toInt()
-
+        minSdk {
+            version = release(libs.versions.minSdkBwa.get().toInt())
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "VERSION", "\"$version\"")
@@ -40,21 +46,23 @@ android {
         buildConfig = true
         aidl = true
     }
-    // Add version name to the output .aar file:
-    libraryVariants.all {
-        val variant = this
-        outputs
-            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
-            .forEach { output ->
-                val outputFileName = "authenticatorbridge-$version-${variant.baseName}.aar"
-                output.outputFileName = outputFileName
+}
+
+androidComponents {
+    onVariants { libVariant ->
+        val bundleTaskName = "bundle${libVariant.name.uppercaseFirstChar()}Aar"
+        tasks
+            .withType<BundleAar>()
+            .named { it == bundleTaskName }
+            .configureEach {
+                archiveFileName.set("authenticatorbridge-$version-${libVariant.name}.aar")
             }
     }
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
+        jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvmTarget.get()))
     }
 }
 
@@ -74,10 +82,4 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockk.mockk)
     testImplementation(libs.square.turbine)
-}
-
-tasks {
-    withType<Test> {
-        useJUnitPlatform()
-    }
 }

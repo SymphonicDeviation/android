@@ -227,7 +227,9 @@ class VaultItemListingViewModel @Inject constructor(
         snackbarRelayManager
             .getSnackbarDataFlow(
                 SnackbarRelay.CIPHER_ARCHIVED,
+                SnackbarRelay.CIPHER_ARCHIVED_VIEW,
                 SnackbarRelay.CIPHER_UNARCHIVED,
+                SnackbarRelay.CIPHER_UNARCHIVED_VIEW,
                 SnackbarRelay.CIPHER_CREATED,
                 SnackbarRelay.CIPHER_DELETED,
                 SnackbarRelay.CIPHER_DELETED_SOFT,
@@ -2265,6 +2267,11 @@ class VaultItemListingViewModel @Inject constructor(
             }
 
             is Fido2RegisterCredentialResult.Success -> {
+                // Reset verification state to ensure the next credential operation requires
+                // fresh user verification. Without this reset, the stale isUserVerified = true
+                // from this registration would cause subsequent login attempts to skip
+                // biometric verification.
+                bitwardenCredentialManager.isUserVerified = false
                 // This must be a toast because we are finishing the activity and we want the
                 // user to have time to see the message.
                 toastManager.show(messageId = BitwardenString.item_updated)

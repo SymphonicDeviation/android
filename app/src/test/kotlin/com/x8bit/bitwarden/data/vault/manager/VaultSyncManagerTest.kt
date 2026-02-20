@@ -15,8 +15,8 @@ import com.bitwarden.network.model.createMockCipher
 import com.bitwarden.network.model.createMockCollection
 import com.bitwarden.network.model.createMockDomains
 import com.bitwarden.network.model.createMockFolder
-import com.bitwarden.network.model.createMockOrganization
 import com.bitwarden.network.model.createMockOrganizationKeys
+import com.bitwarden.network.model.createMockOrganizationNetwork
 import com.bitwarden.network.model.createMockPolicy
 import com.bitwarden.network.model.createMockProfile
 import com.bitwarden.network.model.createMockSend
@@ -82,7 +82,6 @@ import java.net.UnknownHostException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
 @Suppress("LargeClass")
@@ -742,7 +741,7 @@ class VaultSyncManagerTest {
             )
             fakeAuthDiskSource.assertOrganizations(
                 userId = userId,
-                organizations = listOf(createMockOrganization(number = 1)),
+                organizations = listOf(createMockOrganizationNetwork(number = 1)),
             )
             fakeAuthDiskSource.assertPolicies(
                 userId = userId,
@@ -1317,7 +1316,7 @@ private val MOCK_PROFILE = AccountJson.Profile(
     kdfParallelism = null,
     userDecryptionOptions = null,
     isTwoFactorEnabled = false,
-    creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+    creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
 )
 
 private val MOCK_ACCOUNT = AccountJson(

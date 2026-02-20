@@ -161,6 +161,7 @@ fun createCipherView(type: CipherType, isEmpty: Boolean): CipherView =
         revisionDate = Instant.ofEpochSecond(1_000L),
         archivedDate = null,
         sshKey = createSshKeyView(isEmpty),
+        attachmentDecryptionFailures = null,
     )
 
 fun createCommonContent(
@@ -275,7 +276,7 @@ fun createLoginContent(isEmpty: Boolean): VaultItemState.ViewState.Content.ItemT
                 ),
             )
         },
-        passwordRevisionDate = BitwardenString.password_last_updated
+        passwordRevisionDate = BitwardenString.password_updated
             .asText("Jan 1, 1970, 12:16\u202FAM")
             .takeUnless { isEmpty },
         isPremiumUser = true,

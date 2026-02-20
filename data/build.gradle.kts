@@ -1,20 +1,23 @@
+import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
 
-android {
+configure<LibraryExtension> {
     namespace = "com.bitwarden.data"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk {
+        version = release(libs.versions.compileSdk.get().toInt())
+    }
 
     defaultConfig {
-        minSdk = libs.versions.minSdkBwa.get().toInt()
-
+        minSdk {
+            version = release(libs.versions.minSdkBwa.get().toInt())
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -40,7 +43,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
+        jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvmTarget.get()))
     }
 }
 
@@ -54,6 +57,7 @@ dependencies {
     implementation(libs.google.hilt.android)
     ksp(libs.google.hilt.compiler)
     implementation(libs.kotlinx.serialization)
+    implementation(platform(libs.square.okhttp.bom))
     implementation(libs.square.okhttp)
     implementation(libs.timber)
 
@@ -72,13 +76,4 @@ dependencies {
     testFixturesImplementation(platform(libs.junit.bom))
     testFixturesImplementation(libs.junit.jupiter)
     testFixturesImplementation(libs.kotlinx.coroutines.test)
-}
-
-tasks {
-    withType<Test> {
-        useJUnitPlatform()
-        maxHeapSize = "2g"
-        maxParallelForks = Runtime.getRuntime().availableProcessors()
-        jvmArgs = jvmArgs.orEmpty() + "-XX:+UseParallelGC"
-    }
 }

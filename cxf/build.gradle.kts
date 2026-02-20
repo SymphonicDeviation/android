@@ -1,20 +1,25 @@
+import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.google.services)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
-android {
+configure<LibraryExtension> {
     namespace = "com.bitwarden.cxf"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk {
+        version = release(libs.versions.compileSdk.get().toInt())
+    }
 
     defaultConfig {
-        minSdk = libs.versions.minSdkBwa.get().toInt()
-
+        minSdk {
+            version = release(libs.versions.minSdkBwa.get().toInt())
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -36,7 +41,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
+        jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvmTarget.get()))
     }
 }
 
@@ -48,10 +53,13 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.providerevents)
     implementation(libs.androidx.credentials.providerevents.play.services)
+    implementation(libs.google.hilt.android)
+    ksp(libs.google.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization)
     implementation(libs.timber)
@@ -62,13 +70,4 @@ dependencies {
     testImplementation(libs.junit.vintage)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk.mockk)
-}
-
-tasks {
-    withType<Test> {
-        useJUnitPlatform()
-        maxHeapSize = "2g"
-        maxParallelForks = Runtime.getRuntime().availableProcessors()
-        jvmArgs = jvmArgs.orEmpty() + "-XX:+UseParallelGC"
-    }
 }

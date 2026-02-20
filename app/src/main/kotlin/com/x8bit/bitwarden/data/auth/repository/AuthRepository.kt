@@ -1,7 +1,6 @@
 package com.x8bit.bitwarden.data.auth.repository
 
 import com.bitwarden.network.model.GetTokenResponseJson
-import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.TwoFactorDataModel
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.ForcePasswordResetReason
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
@@ -17,6 +16,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.LeaveOrganizationResult
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.NewSsoUserResult
+import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordHintResult
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordStrengthResult
 import com.x8bit.bitwarden.data.auth.repository.model.PolicyInformation
@@ -34,6 +34,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
 import com.x8bit.bitwarden.data.auth.repository.model.ValidatePinResult
 import com.x8bit.bitwarden.data.auth.repository.model.VerifiedOrganizationDomainSsoDetailsResult
 import com.x8bit.bitwarden.data.auth.repository.model.VerifyOtpResult
+import com.x8bit.bitwarden.data.auth.repository.util.CookieCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.DuoCallbackTokenResult
 import com.x8bit.bitwarden.data.auth.repository.util.SsoCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.WebAuthResult
@@ -44,7 +45,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Provides an API for observing an modifying authentication state.
+ * Provides an API for observing and modifying authentication state.
  */
 @Suppress("TooManyFunctions")
 interface AuthRepository :
@@ -69,6 +70,12 @@ interface AuthRepository :
      * receive updates whenever [setSsoCallbackResult] is called.
      */
     val ssoCallbackResultFlow: Flow<SsoCallbackResult>
+
+    /**
+     * Flow of the current [CookieCallbackResult]. Subscribers should listen to the flow in order
+     * to receive updates whenever [setCookieCallbackResult] is called.
+     */
+    val cookieCallbackResultFlow: Flow<CookieCallbackResult>
 
     /**
      * Flow of the current [YubiKeyResult]. Subscribers should listen to the flow in order to
@@ -126,7 +133,7 @@ interface AuthRepository :
     /**
      * The organization for the active user.
      */
-    val organizations: List<SyncResponseJson.Profile.Organization>
+    val organizations: List<Organization>
 
     /**
      * Whether or not the welcome carousel should be displayed, based on the feature flag and
@@ -283,7 +290,7 @@ interface AuthRepository :
     ): PasswordHintResult
 
     /**
-     * Removes the users password from the account. This used used when migrating from master
+     * Removes the users password from the account. This is used when migrating from master
      * password login to key connector login.
      */
     suspend fun removePassword(masterPassword: String): RemovePasswordResult
@@ -343,6 +350,11 @@ interface AuthRepository :
     fun setSsoCallbackResult(result: SsoCallbackResult)
 
     /**
+     * Set the value of [cookieCallbackResultFlow].
+     */
+    fun setCookieCallbackResult(result: CookieCallbackResult)
+
+    /**
      * Get a [Boolean] indicating whether this is a known device.
      */
     suspend fun getIsKnownDevice(emailAddress: String): KnownDeviceResult
@@ -385,7 +397,7 @@ interface AuthRepository :
     ): SendVerificationEmailResult
 
     /**
-     * Validates the given [token] for the given [email]. Part of th new account registration flow.
+     * Validates the given [token] for the given [email]. Part of the new account registration flow.
      */
     suspend fun validateEmailToken(
         email: String,

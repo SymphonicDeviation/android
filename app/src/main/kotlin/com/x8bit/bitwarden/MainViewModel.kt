@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.cxf.model.ImportCredentialsRequestData
 import com.bitwarden.cxf.util.getProviderImportCredentialsRequest
+import com.bitwarden.data.repository.util.baseWebVaultUrlOrDefault
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.platform.manager.share.ShareManager
@@ -26,12 +27,10 @@ import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilitySele
 import com.x8bit.bitwarden.data.autofill.manager.AutofillSelectionManager
 import com.x8bit.bitwarden.data.autofill.util.getAutofillSaveItemOrNull
 import com.x8bit.bitwarden.data.autofill.util.getAutofillSelectionDataOrNull
-import com.x8bit.bitwarden.data.credentials.manager.BitwardenCredentialManager
-import com.x8bit.bitwarden.data.credentials.util.getCreateCredentialRequestOrNull
-import com.x8bit.bitwarden.data.credentials.util.getFido2AssertionRequestOrNull
-import com.x8bit.bitwarden.data.credentials.util.getGetCredentialsRequestOrNull
-import com.x8bit.bitwarden.data.credentials.util.getProviderGetPasswordRequestOrNull
+import com.x8bit.bitwarden.data.credentials.manager.CredentialProviderRequestManager
+import com.x8bit.bitwarden.data.credentials.manager.model.CredentialProviderRequest
 import com.x8bit.bitwarden.data.platform.manager.AppResumeManager
+import com.x8bit.bitwarden.data.platform.manager.CookieAcquisitionRequestManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.garbage.GarbageCollectionManager
 import com.x8bit.bitwarden.data.platform.manager.model.AppResumeScreenData
@@ -50,6 +49,7 @@ import com.x8bit.bitwarden.ui.platform.util.isPasswordGeneratorShortcut
 import com.x8bit.bitwarden.ui.vault.util.getTotpDataOrNull
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -77,10 +77,11 @@ private const val ANIMATION_DEBOUNCE_DELAY_MS = 500L
 class MainViewModel @Inject constructor(
     accessibilitySelectionManager: AccessibilitySelectionManager,
     autofillSelectionManager: AutofillSelectionManager,
+    cookieAcquisitionRequestManager: CookieAcquisitionRequestManager,
     private val addTotpItemFromAuthenticatorManager: AddTotpItemFromAuthenticatorManager,
     private val specialCircumstanceManager: SpecialCircumstanceManager,
     private val garbageCollectionManager: GarbageCollectionManager,
-    private val bitwardenCredentialManager: BitwardenCredentialManager,
+    private val credentialProviderRequestManager: CredentialProviderRequestManager,
     private val shareManager: ShareManager,
     private val settingsRepository: SettingsRepository,
     private val vaultRepository: VaultRepository,
@@ -164,6 +165,23 @@ class MainViewModel @Inject constructor(
             .onEach(::sendAction)
             .launchIn(viewModelScope)
 
+        combine(
+            authRepository.userStateFlow,
+            cookieAcquisitionRequestManager.cookieAcquisitionRequestFlow,
+        ) { userState, request ->
+            userState != null &&
+                userState.activeAccount.isVaultUnlocked &&
+                request != null &&
+                request.hostname ==
+                userState.activeAccount.environment.environmentUrlData
+                    .baseWebVaultUrlOrDefault
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .map { MainAction.Internal.CookieAcquisitionReady }
+            .onEach(::sendAction)
+            .launchIn(viewModelScope)
+
         // On app launch, mark all active users as having previously logged in.
         // This covers any users who are active prior to this value being recorded.
         viewModelScope.launch {
@@ -209,6 +227,7 @@ class MainViewModel @Inject constructor(
             is MainAction.Internal.ScreenCaptureUpdate -> handleScreenCaptureUpdate(action)
             is MainAction.Internal.ThemeUpdate -> handleAppThemeUpdated(action)
             is MainAction.Internal.DynamicColorsUpdate -> handleDynamicColorsUpdate(action)
+            is MainAction.Internal.CookieAcquisitionReady -> handleCookieAcquisitionReady()
         }
     }
 
@@ -273,6 +292,10 @@ class MainViewModel @Inject constructor(
         mutableStateFlow.update { it.copy(isDynamicColorsEnabled = action.isDynamicColorsEnabled) }
     }
 
+    private fun handleCookieAcquisitionReady() {
+        sendEvent(MainEvent.NavigateToCookieAcquisition)
+    }
+
     private fun handleFirstIntentReceived(action: MainAction.ReceiveFirstIntent) {
         handleIntent(
             intent = action.intent,
@@ -314,11 +337,9 @@ class MainViewModel @Inject constructor(
         val hasVaultShortcut = intent.isMyVaultShortcut
         val hasAccountSecurityShortcut = intent.isAccountSecurityShortcut
         val completeRegistrationData = intent.getCompleteRegistrationDataIntentOrNull()
-        val createCredentialRequest = intent.getCreateCredentialRequestOrNull()
-        val getCredentialsRequest = intent.getGetCredentialsRequestOrNull()
-        val fido2AssertCredentialRequest = intent.getFido2AssertionRequestOrNull()
-        val providerGetPasswordRequest = intent.getProviderGetPasswordRequestOrNull()
         val importCredentialsRequest = intent.getProviderImportCredentialsRequest()
+        val credentialProviderRequest =
+            credentialProviderRequestManager.getPendingCredentialRequest()
         when {
             passwordlessRequestData != null -> {
                 authRepository.activeUserId?.let {
@@ -376,59 +397,6 @@ class MainViewModel @Inject constructor(
                     )
             }
 
-            createCredentialRequest != null -> {
-                // Set the user's verification status when a new FIDO 2 request is received to force
-                // explicit verification if the user's vault is unlocked when the request is
-                // received.
-                bitwardenCredentialManager.isUserVerified =
-                    createCredentialRequest.isUserPreVerified
-
-                specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.ProviderCreateCredential(
-                        createCredentialRequest = createCredentialRequest,
-                    )
-
-                // Switch accounts if the selected user is not the active user.
-                if (authRepository.activeUserId != null &&
-                    authRepository.activeUserId != createCredentialRequest.userId
-                ) {
-                    authRepository.switchAccount(createCredentialRequest.userId)
-                }
-            }
-
-            fido2AssertCredentialRequest != null -> {
-                // Set the user's verification status when a new FIDO 2 request is received to force
-                // explicit verification if the user's vault is unlocked when the request is
-                // received.
-                bitwardenCredentialManager.isUserVerified =
-                    fido2AssertCredentialRequest.isUserPreVerified
-
-                specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.Fido2Assertion(
-                        fido2AssertionRequest = fido2AssertCredentialRequest,
-                    )
-            }
-
-            providerGetPasswordRequest != null -> {
-                // Set the user's verification status when a new GetPassword request is
-                // received to force explicit verification if the user's vault is
-                // unlocked when the request is received.
-                bitwardenCredentialManager.isUserVerified =
-                    providerGetPasswordRequest.isUserPreVerified
-
-                specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.ProviderGetPasswordRequest(
-                        passwordGetRequest = providerGetPasswordRequest,
-                    )
-            }
-
-            getCredentialsRequest != null -> {
-                specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.ProviderGetCredentials(
-                        getCredentialsRequest = getCredentialsRequest,
-                    )
-            }
-
             hasGeneratorShortcut -> {
                 specialCircumstanceManager.specialCircumstance =
                     SpecialCircumstance.GeneratorShortcut
@@ -448,9 +416,51 @@ class MainViewModel @Inject constructor(
                     SpecialCircumstance.CredentialExchangeExport(
                         data = ImportCredentialsRequestData(
                             uri = importCredentialsRequest.uri,
-                            requestJson = importCredentialsRequest.request.requestJson,
+                            credentialTypes = importCredentialsRequest.request.credentialTypes,
+                            knownExtensions = importCredentialsRequest.request.knownExtensions,
                         ),
                     )
+            }
+
+            credentialProviderRequest != null -> {
+                handleCredentialRequest(credentialProviderRequest)
+            }
+        }
+    }
+
+    /**
+     * Handles a credential request relayed from [CredentialProviderActivity] via
+     * [CredentialProviderRequestManager].
+     *
+     * This method converts the [CredentialProviderRequest] into the appropriate
+     * [SpecialCircumstance] for routing by [RootNavViewModel]. The credential data is trusted
+     * because it was set by our own [CredentialProviderActivity] through the internal manager,
+     * not parsed from intent extras.
+     */
+    private fun handleCredentialRequest(request: CredentialProviderRequest) {
+        specialCircumstanceManager.specialCircumstance = when (request) {
+            is CredentialProviderRequest.CreateCredential -> {
+                SpecialCircumstance.ProviderCreateCredential(
+                    createCredentialRequest = request.request,
+                )
+            }
+
+            is CredentialProviderRequest.Fido2Assertion -> {
+                SpecialCircumstance.Fido2Assertion(
+                    fido2AssertionRequest = request.request,
+                )
+            }
+
+            is CredentialProviderRequest.GetPassword -> {
+                SpecialCircumstance.ProviderGetPasswordRequest(
+                    passwordGetRequest = request.request,
+                )
+            }
+
+            is CredentialProviderRequest.GetCredentials -> {
+                SpecialCircumstance.ProviderGetCredentials(
+                    getCredentialsRequest = request.request,
+                )
             }
         }
     }
@@ -604,6 +614,12 @@ sealed class MainAction {
         data class DynamicColorsUpdate(
             val isDynamicColorsEnabled: Boolean,
         ) : Internal()
+
+        /**
+         * Indicates that the cookie acquisition conditions are met and navigation
+         * should proceed.
+         */
+        data object CookieAcquisitionReady : Internal()
     }
 }
 
@@ -632,6 +648,11 @@ sealed class MainEvent {
      * Navigate to the debug menu.
      */
     data object NavigateToDebugMenu : MainEvent()
+
+    /**
+     * Navigate to the cookie acquisition screen.
+     */
+    data object NavigateToCookieAcquisition : MainEvent()
 
     /**
      * Indicates that the app language has been updated.

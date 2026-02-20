@@ -81,7 +81,6 @@ import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
 @Suppress("LargeClass")
@@ -744,6 +743,10 @@ class CipherManagerTest {
                 cipher = createMockSdkCipher(number = 1, clock = clock),
             )
             val cipherView = createMockCipherView(number = 1)
+            fakeSettingsDiskSource.storeIntroducingArchiveActionCardDismissed(
+                userId = userId,
+                isDismissed = null,
+            )
             coEvery {
                 vaultSdkSource.encryptCipher(userId = userId, cipherView = cipherView)
             } returns encryptionContext.asSuccess()
@@ -770,6 +773,10 @@ class CipherManagerTest {
                 cipherView = cipherView,
             )
 
+            fakeSettingsDiskSource.assertIntroducingArchiveActionCardDismissed(
+                userId = userId,
+                expected = true,
+            )
             assertEquals(ArchiveCipherResult.Success, result)
         }
 
@@ -2678,7 +2685,7 @@ class CipherManagerTest {
             val cipherId = "mockId-$number"
             val originalCipher = createMockCipher(
                 number = number,
-                revisionDate = ZonedDateTime.now(clock).minus(5, ChronoUnit.MINUTES),
+                revisionDate = clock.instant().minus(5, ChronoUnit.MINUTES),
             )
 
             fakeAuthDiskSource.userState = MOCK_USER_STATE
@@ -2690,7 +2697,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = false,
                     collectionIds = null,
                     organizationId = null,
@@ -2716,7 +2723,7 @@ class CipherManagerTest {
             val collection = createMockCollection(number = number)
             val originalCipher = createMockCipher(
                 number = number,
-                revisionDate = ZonedDateTime.now(clock).minus(5, ChronoUnit.MINUTES),
+                revisionDate = clock.instant().minus(5, ChronoUnit.MINUTES),
             )
             val updatedCipher = mockk<SyncResponseJson.Cipher>()
 
@@ -2738,7 +2745,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = false,
                     collectionIds = listOf("mockId-1"),
                     organizationId = "mock-id",
@@ -2761,7 +2768,7 @@ class CipherManagerTest {
             val cipherId = "mockId-$number"
             val originalCipher = createMockCipher(
                 number = number,
-                revisionDate = ZonedDateTime.now(clock).minus(5, ChronoUnit.MINUTES),
+                revisionDate = clock.instant().minus(5, ChronoUnit.MINUTES),
             )
             val updatedCipher = mockk<SyncResponseJson.Cipher>()
             val collection = createMockCollection(number = number)
@@ -2781,7 +2788,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = true,
                     collectionIds = listOf("mockId-1"),
                     organizationId = "mock-id",
@@ -2808,7 +2815,7 @@ class CipherManagerTest {
             SyncCipherUpsertData(
                 userId = userId,
                 cipherId = cipherId,
-                revisionDate = ZonedDateTime.now(clock),
+                revisionDate = clock.instant(),
                 isUpdate = true,
                 collectionIds = null,
                 organizationId = null,
@@ -2831,7 +2838,7 @@ class CipherManagerTest {
         val cipherId = "mockId-$number"
         val originalCipher = createMockCipher(
             number = number,
-            revisionDate = ZonedDateTime.now(clock),
+            revisionDate = clock.instant(),
         )
 
         fakeAuthDiskSource.userState = MOCK_USER_STATE
@@ -2843,7 +2850,7 @@ class CipherManagerTest {
             SyncCipherUpsertData(
                 userId = userId,
                 cipherId = cipherId,
-                revisionDate = ZonedDateTime.now(clock).minus(5, ChronoUnit.MINUTES),
+                revisionDate = clock.instant().minus(5, ChronoUnit.MINUTES),
                 isUpdate = true,
                 collectionIds = null,
                 organizationId = null,
@@ -2881,7 +2888,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = true,
                     collectionIds = null,
                     organizationId = null,
@@ -2913,7 +2920,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = false,
                     collectionIds = null,
                     organizationId = null,
@@ -2953,7 +2960,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = false,
                     collectionIds = null,
                     organizationId = null,
@@ -2975,7 +2982,7 @@ class CipherManagerTest {
             val userId = MOCK_USER_STATE.activeUserId
             val cipherId = "mockId-$number"
             val originalCipher = mockk<SyncResponseJson.Cipher> {
-                every { revisionDate } returns ZonedDateTime.now(clock).minus(5, ChronoUnit.MINUTES)
+                every { revisionDate } returns clock.instant().minus(5, ChronoUnit.MINUTES)
             }
             val updatedCipher = mockk<SyncResponseJson.Cipher>()
 
@@ -2992,7 +2999,7 @@ class CipherManagerTest {
                 SyncCipherUpsertData(
                     userId = userId,
                     cipherId = cipherId,
-                    revisionDate = ZonedDateTime.now(clock),
+                    revisionDate = clock.instant(),
                     isUpdate = true,
                     collectionIds = null,
                     organizationId = null,
@@ -3012,7 +3019,7 @@ class CipherManagerTest {
         val userId = "nonActiveUserId"
         val cipherId = "mockId-$number"
         val originalCipher = mockk<SyncResponseJson.Cipher> {
-            every { revisionDate } returns ZonedDateTime.now(clock).minus(5, ChronoUnit.MINUTES)
+            every { revisionDate } returns clock.instant().minus(5, ChronoUnit.MINUTES)
         }
         val lastSyncTime = clock.instant()
 
@@ -3026,7 +3033,7 @@ class CipherManagerTest {
             SyncCipherUpsertData(
                 userId = userId,
                 cipherId = cipherId,
-                revisionDate = ZonedDateTime.now(clock),
+                revisionDate = clock.instant(),
                 isUpdate = true,
                 collectionIds = null,
                 organizationId = null,
@@ -3073,7 +3080,7 @@ private val MOCK_PROFILE = AccountJson.Profile(
     kdfParallelism = null,
     userDecryptionOptions = null,
     isTwoFactorEnabled = false,
-    creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+    creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
 )
 
 private val MOCK_ACCOUNT = AccountJson(

@@ -5,6 +5,7 @@ import com.bitwarden.core.InitUserCryptoMethod
 import com.bitwarden.core.RegisterTdeKeyResponse
 import com.bitwarden.core.WrappedAccountCryptographicState
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
+import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.core.data.repository.error.MissingPropertyException
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.asFailure
@@ -13,6 +14,7 @@ import com.bitwarden.core.data.util.flatMap
 import com.bitwarden.crypto.HashPurpose
 import com.bitwarden.crypto.Kdf
 import com.bitwarden.data.datasource.disk.ConfigDiskSource
+import com.bitwarden.data.repository.util.appLinksScheme
 import com.bitwarden.data.repository.util.toEnvironmentUrls
 import com.bitwarden.data.repository.util.toEnvironmentUrlsOrDefault
 import com.bitwarden.network.model.CreateAccountKeysResponseJson
@@ -47,6 +49,7 @@ import com.bitwarden.network.service.HaveIBeenPwnedService
 import com.bitwarden.network.service.IdentityService
 import com.bitwarden.network.service.OrganizationService
 import com.bitwarden.network.util.isSslHandShakeError
+import com.bitwarden.ui.platform.resource.BitwardenString
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
@@ -72,6 +75,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.LeaveOrganizationResult
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.NewSsoUserResult
+import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordHintResult
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordStrengthResult
 import com.x8bit.bitwarden.data.auth.repository.model.PolicyInformation
@@ -91,11 +95,13 @@ import com.x8bit.bitwarden.data.auth.repository.model.ValidatePinResult
 import com.x8bit.bitwarden.data.auth.repository.model.VerifiedOrganizationDomainSsoDetailsResult
 import com.x8bit.bitwarden.data.auth.repository.model.VerifyOtpResult
 import com.x8bit.bitwarden.data.auth.repository.model.toLoginErrorResult
+import com.x8bit.bitwarden.data.auth.repository.util.CookieCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.DuoCallbackTokenResult
 import com.x8bit.bitwarden.data.auth.repository.util.SsoCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.WebAuthResult
 import com.x8bit.bitwarden.data.auth.repository.util.activeUserIdChangesFlow
 import com.x8bit.bitwarden.data.auth.repository.util.policyInformation
+import com.x8bit.bitwarden.data.auth.repository.util.toOrganizations
 import com.x8bit.bitwarden.data.auth.repository.util.toRemovedPasswordUserStateJson
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.auth.repository.util.toUserState
@@ -170,6 +176,7 @@ class AuthRepositoryImpl(
     private val policyManager: PolicyManager,
     private val userStateManager: UserStateManager,
     private val kdfManager: KdfManager,
+    private val toastManager: ToastManager,
     logsManager: LogsManager,
     pushManager: PushManager,
     dispatcherManager: DispatcherManager,
@@ -263,6 +270,10 @@ class AuthRepositoryImpl(
     override val ssoCallbackResultFlow: Flow<SsoCallbackResult> =
         mutableSsoCallbackResultFlow.asSharedFlow()
 
+    private val mutableCookieCallbackResultFlow = bufferedMutableSharedFlow<CookieCallbackResult>()
+    override val cookieCallbackResultFlow: Flow<CookieCallbackResult> =
+        mutableCookieCallbackResultFlow.asSharedFlow()
+
     override var rememberedEmailAddress: String? by authDiskSource::rememberedEmailAddress
 
     override var rememberedOrgIdentifier: String? by authDiskSource::rememberedOrgIdentifier
@@ -288,8 +299,11 @@ class AuthRepositoryImpl(
             ?.profile
             ?.forcePasswordResetReason
 
-    override val organizations: List<SyncResponseJson.Profile.Organization>
-        get() = activeUserId?.let { authDiskSource.getOrganizations(it) }.orEmpty()
+    override val organizations: List<Organization>
+        get() = activeUserId
+            ?.let { authDiskSource.getOrganizations(it) }
+            .orEmpty()
+            .toOrganizations()
 
     override val showWelcomeCarousel: Boolean
         get() = !settingsRepository.hasUserLoggedInOrCreatedAccount
@@ -724,18 +738,27 @@ class AuthRepositoryImpl(
                 when (refreshTokenResponse) {
                     is RefreshTokenResponseJson.Error -> {
                         if (refreshTokenResponse.isInvalidGrant) {
-                            logout(userId = userId, reason = LogoutReason.InvalidGrant)
+                            userLogoutManager.softLogout(
+                                userId = userId,
+                                reason = LogoutReason.InvalidGrant,
+                            )
                         }
                         IllegalStateException(refreshTokenResponse.error).asFailure()
                     }
 
                     is RefreshTokenResponseJson.Forbidden -> {
-                        logout(userId = userId, reason = LogoutReason.RefreshForbidden)
+                        userLogoutManager.softLogout(
+                            userId = userId,
+                            reason = LogoutReason.RefreshForbidden,
+                        )
                         refreshTokenResponse.error.asFailure()
                     }
 
                     is RefreshTokenResponseJson.Unauthorized -> {
-                        logout(userId = userId, reason = LogoutReason.RefreshUnauthorized)
+                        userLogoutManager.softLogout(
+                            userId = userId,
+                            reason = LogoutReason.RefreshUnauthorized,
+                        )
                         refreshTokenResponse.error.asFailure()
                     }
 
@@ -975,8 +998,8 @@ class AuthRepositoryImpl(
         val keyConnectorUrl = organizations
             .find {
                 it.shouldUseKeyConnector &&
-                    it.type != OrganizationType.OWNER &&
-                    it.type != OrganizationType.ADMIN
+                    it.role != OrganizationType.OWNER &&
+                    it.role != OrganizationType.ADMIN
             }
             ?.keyConnectorUrl
             ?: return RemovePasswordResult.Error(
@@ -1038,9 +1061,10 @@ class AuthRepositoryImpl(
                     onSuccess = { it },
                 )
         }
+        val userId = activeAccount.profile.userId
         return vaultSdkSource
             .updatePassword(
-                userId = activeAccount.profile.userId,
+                userId = userId,
                 newPassword = newPassword,
             )
             .flatMap { updatePasswordResponse ->
@@ -1066,14 +1090,15 @@ class AuthRepositoryImpl(
                         )
                         .onSuccess { passwordHash ->
                             authDiskSource.storeMasterPasswordHash(
-                                userId = activeAccount.profile.userId,
+                                userId = userId,
                                 passwordHash = passwordHash,
                             )
                         }
 
+                    toastManager.show(BitwardenString.updated_master_password)
                     // Log out the user after successful password reset.
                     // This clears all user state including forcePasswordResetReason.
-                    logout(reason = LogoutReason.PasswordReset)
+                    logout(reason = LogoutReason.PasswordReset, userId = userId)
 
                     // Return the success.
                     ResetPasswordResult.Success
@@ -1236,6 +1261,10 @@ class AuthRepositoryImpl(
 
     override fun setSsoCallbackResult(result: SsoCallbackResult) {
         mutableSsoCallbackResultFlow.tryEmit(result)
+    }
+
+    override fun setCookieCallbackResult(result: CookieCallbackResult) {
+        mutableCookieCallbackResultFlow.tryEmit(result)
     }
 
     override suspend fun getIsKnownDevice(emailAddress: String): KnownDeviceResult =
@@ -1563,6 +1592,7 @@ class AuthRepositoryImpl(
     ): LoginResult = identityService
         .getToken(
             uniqueAppId = authDiskSource.uniqueAppId,
+            deeplinkScheme = environmentRepository.environment.environmentUrlData.appLinksScheme,
             email = email,
             authModel = authModel,
             twoFactorData = twoFactorData ?: getRememberedTwoFactorData(email),

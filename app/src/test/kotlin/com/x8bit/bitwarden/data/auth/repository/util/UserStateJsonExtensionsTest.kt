@@ -17,12 +17,12 @@ import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.ForcePasswordResetReason
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
-import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.UserAccountTokens
 import com.x8bit.bitwarden.data.auth.repository.model.UserKeyConnectorState
 import com.x8bit.bitwarden.data.auth.repository.model.UserOrganizations
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.VaultUnlockType
+import com.x8bit.bitwarden.data.auth.repository.model.createMockOrganization
 import com.x8bit.bitwarden.data.auth.util.KdfParamsConstants.DEFAULT_PBKDF2_ITERATIONS
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
@@ -30,7 +30,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.time.ZonedDateTime
+import java.time.Instant
 
 @Suppress("LargeClass")
 class UserStateJsonExtensionsTest {
@@ -67,7 +67,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 4,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -122,7 +122,7 @@ class UserStateJsonExtensionsTest {
                 masterPasswordUnlock = null,
             ),
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -193,7 +193,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 4,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -209,7 +209,7 @@ class UserStateJsonExtensionsTest {
                             avatarColorHex = "avatarColor",
                             stamp = "securityStamp",
                             isTwoFactorEnabled = false,
-                            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+                            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
                         ),
                     ),
                 ),
@@ -229,8 +229,7 @@ class UserStateJsonExtensionsTest {
                             every { isPremium } returns true
                             every { isPremiumFromOrganization } returns true
                             every { isTwoFactorEnabled } returns false
-                            every { creationDate } returns ZonedDateTime
-                                .parse("2024-09-13T01:00:00.00Z")
+                            every { creationDate } returns Instant.parse("2024-09-13T01:00:00.00Z")
                             every { userDecryption } returns null
                         }
                     },
@@ -258,7 +257,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 4,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -323,7 +322,7 @@ class UserStateJsonExtensionsTest {
                 masterPasswordUnlock = null,
             ),
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -373,14 +372,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = true,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -441,14 +437,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -488,14 +481,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = true,
@@ -552,14 +542,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -600,14 +587,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -672,14 +656,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -720,14 +701,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -792,14 +770,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -840,14 +815,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -912,14 +884,12 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
                                     role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -959,16 +929,15 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
                                 // Key part of the result #1, this is true or the role is owner or
                                 // admin
                                 shouldManageResetPassword = true,
-                                shouldUseKeyConnector = false,
                                 role = OrganizationType.USER,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -1036,14 +1005,13 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
                                     shouldManageResetPassword = true,
-                                    shouldUseKeyConnector = false,
                                     role = OrganizationType.USER,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -1247,16 +1215,12 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                // Key part of the result #1, this is true or the role is owner or
-                                // admin
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
                                 role = OrganizationType.USER,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -1323,14 +1287,12 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
                                     role = OrganizationType.USER,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -1371,14 +1333,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = false,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -1445,14 +1404,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -1493,14 +1449,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = true,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -1561,14 +1514,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -1617,14 +1567,11 @@ class UserStateJsonExtensionsTest {
                         isVaultUnlocked = true,
                         needsPasswordReset = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "organizationId",
                                 name = "organizationName",
-                                shouldManageResetPassword = false,
-                                shouldUseKeyConnector = false,
-                                role = OrganizationType.ADMIN,
                                 keyConnectorUrl = null,
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         isBiometricsEnabled = false,
@@ -1685,14 +1632,11 @@ class UserStateJsonExtensionsTest {
                         UserOrganizations(
                             userId = "activeUserId",
                             organizations = listOf(
-                                Organization(
+                                createMockOrganization(
+                                    number = 1,
                                     id = "organizationId",
                                     name = "organizationName",
-                                    shouldManageResetPassword = false,
-                                    shouldUseKeyConnector = false,
-                                    role = OrganizationType.ADMIN,
                                     keyConnectorUrl = null,
-                                    userIsClaimedByOrganization = false,
                                 ),
                             ),
                         ),
@@ -1743,7 +1687,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 4,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -1763,7 +1707,7 @@ class UserStateJsonExtensionsTest {
                 every { isPremium } returns false
                 every { isPremiumFromOrganization } returns false
                 every { isTwoFactorEnabled } returns true
-                every { creationDate } returns ZonedDateTime.parse("2024-09-13T01:00:00.00Z")
+                every { creationDate } returns Instant.parse("2024-09-13T01:00:00.00Z")
             }
             every { userDecryption } returns UserDecryptionJson(
                 masterPasswordUnlock = MOCK_MASTER_PASSWORD_UNLOCK_DATA,
@@ -1780,7 +1724,7 @@ class UserStateJsonExtensionsTest {
                             stamp = "securityStamp",
                             hasPremium = false,
                             isTwoFactorEnabled = true,
-                            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+                            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
                             userDecryptionOptions = UserDecryptionOptionsJson(
                                 hasMasterPassword = true,
                                 trustedDeviceUserDecryptionOptions = null,
@@ -1826,7 +1770,7 @@ class UserStateJsonExtensionsTest {
                 masterPasswordUnlock = null,
             ),
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -1846,7 +1790,7 @@ class UserStateJsonExtensionsTest {
                 every { isPremium } returns true
                 every { isPremiumFromOrganization } returns false
                 every { isTwoFactorEnabled } returns true
-                every { creationDate } returns ZonedDateTime.parse("2024-09-13T01:00:00.00Z")
+                every { creationDate } returns Instant.parse("2024-09-13T01:00:00.00Z")
             }
             every { userDecryption } returns UserDecryptionJson(
                 masterPasswordUnlock = MOCK_MASTER_PASSWORD_UNLOCK_DATA,
@@ -1863,7 +1807,7 @@ class UserStateJsonExtensionsTest {
                             stamp = "newSecurityStamp",
                             hasPremium = true,
                             isTwoFactorEnabled = true,
-                            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+                            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
                             userDecryptionOptions = UserDecryptionOptionsJson(
                                 hasMasterPassword = true,
                                 trustedDeviceUserDecryptionOptions = trustedDeviceOptions,
@@ -1903,7 +1847,7 @@ class UserStateJsonExtensionsTest {
                 masterPasswordUnlock = MOCK_MASTER_PASSWORD_UNLOCK_DATA,
             ),
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -1923,7 +1867,7 @@ class UserStateJsonExtensionsTest {
                 every { isPremium } returns false
                 every { isPremiumFromOrganization } returns true
                 every { isTwoFactorEnabled } returns false
-                every { creationDate } returns ZonedDateTime.parse("2024-09-13T01:00:00.00Z")
+                every { creationDate } returns Instant.parse("2024-09-13T01:00:00.00Z")
             }
             every { userDecryption } returns null
         }
@@ -1938,7 +1882,7 @@ class UserStateJsonExtensionsTest {
                             stamp = "updatedSecurityStamp",
                             hasPremium = true,
                             isTwoFactorEnabled = false,
-                            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+                            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
                             userDecryptionOptions = UserDecryptionOptionsJson(
                                 hasMasterPassword = true,
                                 trustedDeviceUserDecryptionOptions = null,
@@ -1971,7 +1915,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 4,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -2028,7 +1972,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 8,
             userDecryptionOptions = userDecryptionOptions,
             isTwoFactorEnabled = true,
-            creationDate = ZonedDateTime.parse("2024-01-01T00:00:00.00Z"),
+            creationDate = Instant.parse("2024-01-01T00:00:00.00Z"),
         )
         val originalAccount = AccountJson(
             profile = originalProfile,
@@ -2080,7 +2024,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 4,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
         )
         val inactiveProfile = AccountJson.Profile(
             userId = "inactiveUserId",
@@ -2098,7 +2042,7 @@ class UserStateJsonExtensionsTest {
             kdfParallelism = 2,
             userDecryptionOptions = null,
             isTwoFactorEnabled = false,
-            creationDate = ZonedDateTime.parse("2024-08-13T01:00:00.00Z"),
+            creationDate = Instant.parse("2024-08-13T01:00:00.00Z"),
         )
         val activeAccount = AccountJson(
             profile = activeProfile,

@@ -7,7 +7,7 @@ import com.bitwarden.data.datasource.disk.model.EnvironmentUrlDataJson
 import com.bitwarden.network.model.GetTokenResponseJson
 import com.bitwarden.network.model.KdfTypeJson
 import com.bitwarden.network.model.PolicyTypeJson
-import com.bitwarden.network.model.createMockOrganization
+import com.bitwarden.network.model.createMockOrganizationNetwork
 import com.bitwarden.network.model.createMockPolicy
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
-import java.time.ZonedDateTime
+import java.time.Instant
 
 class UserStateManagerTest {
 
@@ -301,7 +301,7 @@ private val FIRST_TIME_STATE = FirstTimeState(
     showImportLoginsCard = true,
 )
 
-private val ORGANIZATIONS = listOf(createMockOrganization(number = 0))
+private val ORGANIZATIONS = listOf(createMockOrganizationNetwork(number = 0))
 private val USER_ORGANIZATIONS = listOf(
     UserOrganizations(
         userId = USER_ID_1,
@@ -338,7 +338,7 @@ private val PROFILE_1 = AccountJson.Profile(
     kdfParallelism = 4,
     userDecryptionOptions = null,
     isTwoFactorEnabled = false,
-    creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+    creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
 )
 private val ACCOUNT_1 = AccountJson(
     profile = PROFILE_1,
@@ -363,7 +363,7 @@ private val ACCOUNT_2 = AccountJson(
         kdfParallelism = null,
         userDecryptionOptions = null,
         isTwoFactorEnabled = true,
-        creationDate = ZonedDateTime.parse("2024-09-13T01:00:00.00Z"),
+        creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
     ),
     settings = AccountJson.Settings(
         environmentUrlData = EnvironmentUrlDataJson.DEFAULT_EU,

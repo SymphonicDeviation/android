@@ -448,6 +448,13 @@ Skaneerimine toimub automaatselt.</string>
     <string name="deletion_date">Kustutamise kuupäev</string>
     <string name="deletion_time">Kustutamise aeg</string>
     <string name="deletion_date_info">Send kustutatakse määratud kuupäeval ja kellaajal jäädavalt.</string>
+    <string name="who_can_view">Who can view</string>
+    <string name="anyone_with_the_link">Anyone with the link</string>
+    <string name="anyone_with_link_can_view_send">Anyone with this link can view this Send</string>
+    <string name="specific_people">Specific people</string>
+    <string name="specific_people_verification_info">After sharing this Send link, individuals will need to verify their email with a code to view this Send</string>
+    <string name="anyone_with_password">Anyone with a password set by you</string>
+    <string name="add_email">Add email</string>
     <string name="pending_delete">Kustutamise ootel</string>
     <string name="expired">Aegunud</string>
     <string name="expires_at">Expires at %s</string>
@@ -936,6 +943,7 @@ Soovid selle konto peale lülituda?</string>
     <string name="use_brave_autofill_integration">Use Brave autofill integration</string>
     <string name="use_chrome_autofill_integration">Use Chrome autofill integration</string>
     <string name="use_chrome_beta_autofill_integration">Use Chrome Beta autofill integration</string>
+    <string name="use_vivaldi_autofill_integration">Use Vivaldi autofill integration</string>
     <string name="improves_login_filling_for_supported_websites_on_selected_browsers">Improves login filling for supported websites on selected browsers. Once enabled, you’ll be directed to browser settings to enable third-party autofill.</string>
     <string name="show_more">Show more</string>
     <string name="no_folder">No folder</string>
@@ -1198,4 +1206,5 @@ Soovid selle konto peale lülituda?</string>
     <string name="to_regain_access_to_your_archive_restart_your_premium_subscription">To regain access to your archive, restart your Premium subscription. If you edit details for an archived item before restarting, it’ll be moved back into your vault.</string>
     <string name="restart_premium">Restart Premium</string>
     <string name="items_transferred">Items transferred</string>
+    <string name="updated_master_password">Uuendas ülemparooli</string>
 </resources>

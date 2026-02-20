@@ -15,8 +15,8 @@ import com.bitwarden.ui.platform.manager.share.model.ShareData
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.AuthState
-import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
+import com.x8bit.bitwarden.data.auth.repository.model.createMockOrganization
 import com.x8bit.bitwarden.data.autofill.model.AutofillSaveItem
 import com.x8bit.bitwarden.data.autofill.model.AutofillSelectionData
 import com.x8bit.bitwarden.data.credentials.model.CreateCredentialRequest
@@ -405,14 +405,13 @@ class RootNavViewModelTest : BaseViewModelTest() {
                         needsPasswordReset = false,
                         isBiometricsEnabled = false,
                         organizations = listOf(
-                            Organization(
+                            createMockOrganization(
+                                number = 1,
                                 id = "orgId",
                                 name = "orgName",
-                                shouldManageResetPassword = false,
                                 shouldUseKeyConnector = true,
                                 role = OrganizationType.USER,
                                 keyConnectorUrl = "bitwarden.com",
-                                userIsClaimedByOrganization = false,
                             ),
                         ),
                         needsMasterPassword = false,
@@ -1556,7 +1555,8 @@ class RootNavViewModelTest : BaseViewModelTest() {
             SpecialCircumstance.CredentialExchangeExport(
                 data = ImportCredentialsRequestData(
                     uri = mockk(),
-                    requestJson = "mockRequestJson",
+                    credentialTypes = setOf("mockCredentialType-1"),
+                    knownExtensions = setOf(),
                 ),
             )
         mutableUserStateFlow.tryEmit(MOCK_VAULT_UNLOCKED_USER_MULTIPLE_ACCOUNTS_STATE)
@@ -1574,7 +1574,8 @@ class RootNavViewModelTest : BaseViewModelTest() {
             SpecialCircumstance.CredentialExchangeExport(
                 data = ImportCredentialsRequestData(
                     uri = mockk(),
-                    requestJson = "mockRequestJson",
+                    credentialTypes = setOf("mockCredentialType-1"),
+                    knownExtensions = setOf(),
                 ),
             )
         mutableUserStateFlow.tryEmit(MOCK_VAULT_UNLOCKED_USER_STATE)
@@ -1587,7 +1588,6 @@ class RootNavViewModelTest : BaseViewModelTest() {
         )
     }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `when vaultMigrationDataStateFlow emits true the nav state should be MigrateToMyItems`() {
         mutableVaultMigrationDataStateFlow.value = MOCK_VAULT_MIGRATION_DATA
@@ -1595,10 +1595,7 @@ class RootNavViewModelTest : BaseViewModelTest() {
         val viewModel = createViewModel()
 
         assertEquals(
-            RootNavState.MigrateToMyItems(
-                organizationId = "mockOrganizationId-1",
-                organizationName = "organizationName",
-            ),
+            RootNavState.MigrateToMyItems,
             viewModel.stateFlow.value,
         )
     }
@@ -1677,28 +1674,22 @@ class RootNavViewModelTest : BaseViewModelTest() {
         )
     }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `when migration required with ShareNewSend shortcut should show migration screen`() {
-        specialCircumstanceManager.specialCircumstance =
-            SpecialCircumstance.ShareNewSend(
-                data = mockk<ShareData.TextSend>(),
-                shouldFinishWhenComplete = true,
-            )
+        specialCircumstanceManager.specialCircumstance = SpecialCircumstance.ShareNewSend(
+            data = mockk<ShareData.TextSend>(),
+            shouldFinishWhenComplete = true,
+        )
         mutableVaultMigrationDataStateFlow.value = MOCK_VAULT_MIGRATION_DATA
         mutableUserStateFlow.tryEmit(MOCK_VAULT_UNLOCKED_USER_STATE)
         val viewModel = createViewModel()
 
         assertEquals(
-            RootNavState.MigrateToMyItems(
-                organizationId = "mockOrganizationId-1",
-                organizationName = "organizationName",
-            ),
+            RootNavState.MigrateToMyItems,
             viewModel.stateFlow.value,
         )
     }
 
-    @Suppress("MaxLineLength")
     @Test
     fun `when migration required with VaultShortcut should show migration screen`() {
         specialCircumstanceManager.specialCircumstance = SpecialCircumstance.VaultShortcut
@@ -1707,10 +1698,7 @@ class RootNavViewModelTest : BaseViewModelTest() {
         val viewModel = createViewModel()
 
         assertEquals(
-            RootNavState.MigrateToMyItems(
-                organizationId = "mockOrganizationId-1",
-                organizationName = "organizationName",
-            ),
+            RootNavState.MigrateToMyItems,
             viewModel.stateFlow.value,
         )
     }

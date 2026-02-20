@@ -12,9 +12,11 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.browser.auth.AuthTabIntent
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.os.LocaleListCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -33,6 +35,8 @@ import com.x8bit.bitwarden.data.platform.manager.util.ObserveScreenDataEffect
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.ui.platform.components.util.rememberBitwardenNavController
 import com.x8bit.bitwarden.ui.platform.composition.LocalManagerProvider
+import com.x8bit.bitwarden.ui.platform.feature.cookieacquisition.cookieAcquisitionDestination
+import com.x8bit.bitwarden.ui.platform.feature.cookieacquisition.navigateToCookieAcquisition
 import com.x8bit.bitwarden.ui.platform.feature.debugmenu.debugMenuDestination
 import com.x8bit.bitwarden.ui.platform.feature.debugmenu.manager.DebugMenuLaunchManager
 import com.x8bit.bitwarden.ui.platform.feature.debugmenu.navigateToDebugMenuScreen
@@ -120,13 +124,20 @@ class MainActivity : AppCompatActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = RootNavigationRoute,
+                        modifier = Modifier
+                            .background(color = BitwardenTheme.colorScheme.background.primary),
                     ) {
-                        // Both root navigation and debug menu exist at this top level.
-                        // The debug menu can appear on top of the rest of the app without
-                        // interacting with the state-based navigation used by RootNavScreen.
+                        // Root navigation, debug menu, and cookie acquisition exist at
+                        // this top level. They can appear on top of the rest of the app
+                        // without interacting with the state-based navigation used by
+                        // RootNavScreen.
                         rootNavDestination { shouldShowSplashScreen = false }
                         debugMenuDestination(
                             onNavigateBack = { navController.popBackStack() },
+                            onSplashScreenRemoved = { shouldShowSplashScreen = false },
+                        )
+                        cookieAcquisitionDestination(
+                            onDismiss = { navController.popBackStack() },
                             onSplashScreenRemoved = { shouldShowSplashScreen = false },
                         )
                     }
@@ -202,6 +213,8 @@ class MainActivity : AppCompatActivity() {
                 is MainEvent.CompleteAutofill -> handleCompleteAutofill(event)
                 MainEvent.Recreate -> handleRecreate()
                 MainEvent.NavigateToDebugMenu -> navController.navigateToDebugMenuScreen()
+                MainEvent.NavigateToCookieAcquisition -> navController.navigateToCookieAcquisition()
+
                 is MainEvent.UpdateAppLocale -> {
                     AppCompatDelegate.setApplicationLocales(
                         LocaleListCompat.forLanguageTags(event.localeName),

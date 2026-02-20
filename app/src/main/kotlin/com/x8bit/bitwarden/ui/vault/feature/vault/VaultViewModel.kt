@@ -201,6 +201,7 @@ class VaultViewModel @Inject constructor(
                 },
             snackbarRelayManager.getSnackbarDataFlow(
                 SnackbarRelay.CIPHER_ARCHIVED,
+                SnackbarRelay.CIPHER_ARCHIVED_VIEW,
                 SnackbarRelay.CIPHER_CREATED,
                 SnackbarRelay.CIPHER_DELETED,
                 SnackbarRelay.CIPHER_DELETED_SOFT,
@@ -320,6 +321,7 @@ class VaultViewModel @Inject constructor(
 
             VaultAction.UpgradeToPremiumClick -> handleUpgradeToPremiumClick()
             is VaultAction.DismissActionCardClick -> handleDismissActionCardClick(action)
+            is VaultAction.ActionCardClick -> handleActionCardClick(action)
         }
     }
 
@@ -373,6 +375,15 @@ class VaultViewModel @Inject constructor(
         when (action.actionCard) {
             VaultState.ActionCardState.IntroducingArchive -> {
                 settingsRepository.dismissIntroducingArchiveActionCard()
+            }
+        }
+    }
+
+    private fun handleActionCardClick(action: VaultAction.ActionCardClick) {
+        when (action.actionCard) {
+            VaultState.ActionCardState.IntroducingArchive -> {
+                settingsRepository.dismissIntroducingArchiveActionCard()
+                sendEvent(VaultEvent.NavigateToItemListing(VaultItemListingType.Archive))
             }
         }
     }
@@ -572,7 +583,18 @@ class VaultViewModel @Inject constructor(
     }
 
     private fun handleArchiveClick() {
-        sendEvent(VaultEvent.NavigateToItemListing(VaultItemListingType.Archive))
+        val archivedItemsCount = (state.viewState as? VaultState.ViewState.Content)
+            ?.archivedItemsCount
+            ?: 0
+        if (state.isPremium || archivedItemsCount > 0) {
+            // We still navigate even if the user does not have premium, since they have previously
+            // archived ciphers to view.
+            sendEvent(VaultEvent.NavigateToItemListing(VaultItemListingType.Archive))
+        } else {
+            mutableStateFlow.update {
+                it.copy(dialog = VaultState.DialogState.ArchiveRequiresPremium)
+            }
+        }
     }
 
     private fun handleTrashClick() {
@@ -2186,6 +2208,13 @@ sealed class VaultAction {
      * User clicked the dismiss button on an action card.
      */
     data class DismissActionCardClick(
+        val actionCard: VaultState.ActionCardState,
+    ) : VaultAction()
+
+    /**
+     * User clicked the primary button on an action card.
+     */
+    data class ActionCardClick(
         val actionCard: VaultState.ActionCardState,
     ) : VaultAction()
 
