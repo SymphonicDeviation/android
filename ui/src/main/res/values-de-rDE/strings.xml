@@ -303,7 +303,7 @@ Das Scannen erfolgt automatisch.</string>
     <string name="organization">Organisation</string>
     <string name="try_again">Versuche es erneut</string>
     <string name="created">Erstellt: %1$s</string>
-    <string name="password_last_updated">Passwort zuletzt aktualisiert: %1$s</string>
+    <string name="password_updated">Passwort aktualisiert: %1$s</string>
     <string name="last_edited">Zuletzt bearbeitet: %1$s</string>
     <string name="invalid_email">Ungültige E-Mail-Adresse.</string>
     <string name="cards">Karten</string>
@@ -450,9 +450,9 @@ Das Scannen erfolgt automatisch.</string>
     <string name="deletion_date_info">Das Send wird am angegebenen Datum zur angegebenen Uhrzeit dauerhaft gelöscht.</string>
     <string name="who_can_view">Wer kann das sehen</string>
     <string name="anyone_with_the_link">Alle mit dem Link</string>
-    <string name="anyone_with_link_can_view_send">Anyone with this link can view this Send</string>
-    <string name="specific_people">Specific people</string>
-    <string name="specific_people_verification_info">After sharing this Send link, individuals will need to verify their email with a code to view this Send</string>
+    <string name="anyone_with_link_can_view_send">Alle mit diesem Link können dieses Send anzeigen</string>
+    <string name="specific_people">Bestimmte Personen</string>
+    <string name="specific_people_verification_info">Nach dem Teilen dieses Send-Links müssen Personen ihre E-Mail-Adresse mit einem Code verifizieren, um dieses Send anzuzeigen</string>
     <string name="anyone_with_password">Alle mit einem von dir festgelegtem Passwort</string>
     <string name="add_email">E-Mail hinzufügen</string>
     <string name="pending_delete">Ausstehende Löschung</string>
@@ -496,6 +496,7 @@ Das Scannen erfolgt automatisch.</string>
     <string name="hide_email">Meine E-Mail-Adresse vor den Empfängern verstecken</string>
     <string name="send_options_policy_in_effect">Eine oder mehrere Organisationsrichtlinien beeinflussen deine Send Einstellungen.</string>
     <string name="send_file_premium_required">Kostenlose Konten sind auf das Teilen von Texten beschränkt. Eine Premium-Mitgliedschaft ist erforderlich, um Dateien mit Send zu verwenden.</string>
+    <string name="sharing_with_specific_people_is_a_premium_feature">Das Teilen mit bestimmten Personen ist eine Premium-Funktion. Dein aktueller Tarif umfasst keinen Zugriff auf diese Funktion.</string>
     <string name="password_prompt">Master-Passwort erneut abfragen</string>
     <string name="password_confirmation">Master-Passwort bestätigen</string>
     <string name="password_confirmation_desc">Diese Aktion ist geschützt. Um fortzufahren, gib bitte dein Master-Passwort erneut ein, um deine Identität zu verifizieren.</string>
@@ -858,6 +859,10 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="copy_public_key">Öffentlichen Schlüssel kopieren</string>
     <string name="copy_fingerprint">Fingerabdruck kopieren</string>
     <string name="enable_notifications">Benachrichtigungen aktivieren</string>
+    <plurals name="notifications_content_description">
+        <item quantity="one">%d Benachrichtigung</item>
+        <item quantity="other">%d Benachrichtigungen</item>
+    </plurals>
     <string name="log_in_quickly_and_easily_across_devices">Schnelle und einfache Anmeldung über verschiedene Geräte hinweg</string>
     <string name="bitwarden_can_notify_you_each_time_you_receive_a_new_login_request_from_another_device">Bitwarden kann dich jedes Mal benachrichtigen, wenn du eine neue Anmeldeanfrage von einem anderen Gerät erhältst.</string>
     <string name="skip_for_now">Vorerst überspringen</string>
@@ -1145,7 +1150,6 @@ Möchtest du zu diesem Konto wechseln?</string>
     </plurals>
     <string name="enable_browser_autofill_to_keep_filling_passwords">Aktiviere Browser-Auto-Ausfüllen, um weiterhin Passwörter auszufüllen</string>
     <string name="your_browser_recently_updated_how_autofill_works_singular">Dein Browser wurde kürzlich aktualisiert, was die Auto-Ausfüllen-Funktion von Bitwarden deaktiviert hat. Um deine Passwörter weiterhin mit Bitwarden auszufüllen, aktiviere Browser Auto-Ausfüllen in den Auto-Ausfüllen-Einstellungen.</string>
-    <string name="your_browser_recently_updated_how_autofill_works_plural">Deine Browser wurden kürzlich aktualisiert, was die Auto-Ausfüllen-Funktion von Bitwarden deaktiviert hat. Um deine Passwörter weiterhin mit Bitwarden auszufüllen, aktiviere Browser Auto-Ausfüllen in den Auto-Ausfüllen-Einstellungen.</string>
     <string name="not_now">Nicht jetzt</string>
     <string name="import_from_bitwarden">Aus Bitwarden importieren</string>
     <string name="select_account">Konto auswählen</string>
@@ -1206,4 +1210,13 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="restart_premium">Premium neu starten</string>
     <string name="items_transferred">Einträge wurden übertragen</string>
     <string name="updated_master_password">Master-Passwort aktualisiert</string>
+    <string name="invalid_email_addresses">Ungültige E-Mail-Adressen</string>
+    <string name="one_or_more_email_addresses_are_incorrect">Eine oder mehrere E-Mail-Adressen sind falsch. Bitte überprüfe sie und versuche es erneut.</string>
+    <string name="no_email_addresses_entered">Keine E-Mail-Adressen eingegeben</string>
+    <string name="enter_at_least_one_valid_email_address_to_share_this_send">Gib mindestens eine gültige E-Mail-Adresse ein, um dieses Send mit anderen zu teilen.</string>
+    <string name="sync_with_browser">Mit Browser synchronisieren</string>
+    <string name="sync_with_browser_description">Um dich mit %1$s zu verbinden, synchronisiere deinen Standardbrowser mit der mobilen Bitwarden-App. Wenn sich der Browser öffnet, melde dich bei Bedarf an. \nSobald die Synchronisierung abgeschlossen ist, wirst du zu dieser App zurückgeleitet.</string>
+    <string name="launch_browser">Browser starten</string>
+    <string name="continue_without_syncing">Ohne Synchronisierung fortfahren</string>
+    <string name="external_link">Externer Link</string>
 </resources>
