@@ -854,7 +854,7 @@ class VaultAddEditViewModel @Inject constructor(
             return
         }
 
-        // There's no need to ask the user whether or not they want to use their master password
+        // There's no need to ask the user whether they want to use their master password
         // on login, and shouldRequireMasterPasswordOnRestart is hardcoded to false, because the
         // user can only reach this part of the flow if they have no master password.
         settingsRepository.storeUnlockPin(
@@ -1821,7 +1821,8 @@ class VaultAddEditViewModel @Inject constructor(
             is ArchiveCipherResult.Error -> {
                 showDialog(
                     dialogState = VaultAddEditState.DialogState.Generic(
-                        message = BitwardenString.unable_to_archive_selected_item.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.unable_to_archive_selected_item.asText(),
                         error = result.error,
                     ),
                 )
@@ -1845,7 +1846,8 @@ class VaultAddEditViewModel @Inject constructor(
             is UnarchiveCipherResult.Error -> {
                 showDialog(
                     dialogState = VaultAddEditState.DialogState.Generic(
-                        message = BitwardenString.unable_to_unarchive_selected_item.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.unable_to_unarchive_selected_item.asText(),
                         error = result.error,
                     ),
                 )
@@ -1873,7 +1875,8 @@ class VaultAddEditViewModel @Inject constructor(
             is DeleteCipherResult.Error -> {
                 showDialog(
                     dialogState = VaultAddEditState.DialogState.Generic(
-                        message = BitwardenString.generic_error_message.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.generic_error_message.asText(),
                         error = result.error,
                     ),
                 )
@@ -2452,7 +2455,7 @@ data class VaultAddEditState(
         }
 
     /**
-     * Whether or not the cipher is in a collection.
+     * Whether the cipher is in a collection.
      */
     val isCipherInCollection: Boolean
         get() = (viewState as? ViewState.Content)
@@ -2940,7 +2943,7 @@ data class VaultAddEditState(
     sealed class DialogState : Parcelable {
 
         /**
-         * Displays a dialog to the user indicating that archiving requires a premium account.
+         * Displays a dialog to the user indicating that archiving requires a Premium account.
          */
         data object ArchiveRequiresPremium : DialogState()
 
@@ -3072,7 +3075,7 @@ sealed class VaultAddEditEvent {
     ) : VaultAddEditEvent()
 
     /**
-     * Navigates to the upgrade-to-premium url.
+     * Navigates to the upgrade-to-Premium url.
      */
     data class NavigateToPremium(
         val uri: String,
@@ -3197,7 +3200,7 @@ sealed class VaultAddEditAction {
         data object UnarchiveClick : Common()
 
         /**
-         * The user has clicked the upgrade to premium dialog.
+         * The user has clicked the upgrade to Premium dialog.
          */
         data object UpgradeToPremiumClick : Common()
 

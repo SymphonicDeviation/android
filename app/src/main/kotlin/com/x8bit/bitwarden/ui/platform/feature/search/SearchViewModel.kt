@@ -676,7 +676,8 @@ class SearchViewModel @Inject constructor(
                     it.copy(
                         dialogState = SearchState.DialogState.Error(
                             title = BitwardenString.an_error_has_occurred.asText(),
-                            message = BitwardenString.unable_to_archive_selected_item.asText(),
+                            message = result.errorMessage?.asText()
+                                ?: BitwardenString.unable_to_archive_selected_item.asText(),
                             throwable = result.error,
                         ),
                     )
@@ -697,7 +698,8 @@ class SearchViewModel @Inject constructor(
                     it.copy(
                         dialogState = SearchState.DialogState.Error(
                             title = BitwardenString.an_error_has_occurred.asText(),
-                            message = BitwardenString.unable_to_unarchive_selected_item.asText(),
+                            message = result.errorMessage?.asText()
+                                ?: BitwardenString.unable_to_unarchive_selected_item.asText(),
                             throwable = result.error,
                         ),
                     )
@@ -1086,13 +1088,13 @@ data class SearchState(
 ) : Parcelable {
 
     /**
-     * Whether or not this represents an autofill selection flow.
+     * Whether this represents an autofill selection flow.
      */
     val isAutofill: Boolean
         get() = autofillSelectionData != null
 
     /**
-     * Whether or not this represents a listing screen for totp.
+     * Whether this represents a listing screen for totp.
      */
     val isTotp: Boolean get() = totpData != null
 
@@ -1101,7 +1103,7 @@ data class SearchState(
      */
     sealed class ViewState : Parcelable {
         /**
-         * Determines whether or not the the Vault Filter may be shown (when applicable).
+         * Determines whether the Vault Filter may be shown (when applicable).
          */
         abstract val hasVaultFilter: Boolean
 
@@ -1167,7 +1169,7 @@ data class SearchState(
         ) : DialogState()
 
         /**
-         * Displays a dialog to the user indicating that archiving requires a premium account.
+         * Displays a dialog to the user indicating that archiving requires a Premium account.
          */
         @Parcelize
         data object ArchiveRequiresPremium : DialogState()
@@ -1441,7 +1443,7 @@ sealed class SearchAction {
     ) : SearchAction()
 
     /**
-     * User clicked the upgrade to premium button.
+     * User clicked the upgrade to Premium button.
      */
     data object UpgradeToPremiumClick : SearchAction()
 
@@ -1503,7 +1505,7 @@ sealed class SearchAction {
          */
         data class SnackbarDataReceived(
             val data: BitwardenSnackbarData,
-        ) : Internal(), BackgroundEvent
+        ) : Internal()
 
         /**
          * Indicates a result for updating a cipher during the autofill-and-save process.

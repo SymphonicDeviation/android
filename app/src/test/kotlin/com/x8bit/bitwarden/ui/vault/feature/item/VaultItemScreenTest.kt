@@ -69,6 +69,7 @@ class VaultItemScreenTest : BitwardenComposeTest() {
     private var onNavigateToMoveToOrganizationItemId: String? = null
     private var onNavigateToAttachmentsId: String? = null
     private var onNavigateToPasswordHistoryId: String? = null
+    private var onNavigateToPreviewAttachmentId: String? = null
 
     private val intentManager = mockk<IntentManager>(relaxed = true)
 
@@ -93,6 +94,9 @@ class VaultItemScreenTest : BitwardenComposeTest() {
                 },
                 onNavigateToAttachments = { onNavigateToAttachmentsId = it },
                 onNavigateToPasswordHistory = { onNavigateToPasswordHistoryId = it },
+                onNavigateToPreviewAttachment = { id, _, _ ->
+                    onNavigateToPreviewAttachmentId = id
+                },
             )
         }
     }
@@ -136,6 +140,19 @@ class VaultItemScreenTest : BitwardenComposeTest() {
         val id = "id1234"
         mutableEventFlow.tryEmit(VaultItemEvent.NavigateToPasswordHistory(itemId = id))
         assertEquals(id, onNavigateToPasswordHistoryId)
+    }
+
+    @Test
+    fun `NavigateToPreviewAttachment event should invoke onNavigateToPreviewAttachment`() {
+        val cipherId = "cipherId1234"
+        mutableEventFlow.tryEmit(
+            VaultItemEvent.NavigateToPreviewAttachment(
+                cipherId = cipherId,
+                attachmentId = "attachmentId4321",
+                fileName = "fileName",
+            ),
+        )
+        assertEquals(cipherId, onNavigateToPreviewAttachmentId)
     }
 
     @Test
@@ -246,14 +263,14 @@ class VaultItemScreenTest : BitwardenComposeTest() {
 
     @Suppress("MaxLineLength")
     @Test
-    fun `ArchiveRequiresPremium dialog on upgrade to premium click should emit UpgradeToPremiumClick`() {
+    fun `ArchiveRequiresPremium dialog on upgrade to Premium click should emit UpgradeToPremiumClick`() {
         composeTestRule.assertNoDialogExists()
         mutableStateFlow.update {
             it.copy(dialog = VaultItemState.DialogState.ArchiveRequiresPremium)
         }
 
         composeTestRule
-            .onNodeWithText(text = "Upgrade to premium")
+            .onNodeWithText(text = "Upgrade to Premium")
             .assert(hasAnyAncestor(isDialog()))
             .performClick()
 
@@ -742,7 +759,7 @@ class VaultItemScreenTest : BitwardenComposeTest() {
     }
 
     @Test
-    fun `attachment download click for non-premium users should show an error dialog`() {
+    fun `attachment download click for non-Premium users should show an error dialog`() {
         mutableStateFlow.update { currentState ->
             currentState.copy(
                 viewState = EMPTY_LOGIN_VIEW_STATE.copy(
@@ -767,17 +784,21 @@ class VaultItemScreenTest : BitwardenComposeTest() {
 
         composeTestRule
             .onAllNodesWithText(
-                "A premium membership is required to use this feature.",
+                text = "Attachments are a Premium feature. " +
+                    "Your current plan does not include access to this feature.",
             )
             .filterToOne(hasAnyAncestor(isDialog()))
             .assertIsDisplayed()
 
         composeTestRule
-            .onAllNodesWithText(text = "Okay")
+            .onAllNodesWithText(text = "Upgrade to Premium")
             .filterToOne(hasAnyAncestor(isDialog()))
             .performClick()
 
         composeTestRule.assertNoDialogExists()
+        verify(exactly = 1) {
+            viewModel.trySendAction(VaultItemAction.Common.UpgradeToPremiumClick)
+        }
     }
 
     @Suppress("MaxLineLength")
@@ -2367,7 +2388,7 @@ class VaultItemScreenTest : BitwardenComposeTest() {
         composeTestRule
             .onNodeWithTextAfterScroll(uriData.uri)
             .onChildren()
-            .filterToOne(hasContentDescription("Launch"))
+            .filterToOne(hasContentDescription("Launch, External link"))
             .assertIsDisplayed()
 
         mutableStateFlow.update { currentState ->
@@ -2379,7 +2400,7 @@ class VaultItemScreenTest : BitwardenComposeTest() {
         composeTestRule
             .onNodeWithTextAfterScroll(uriData.uri)
             .onSiblings()
-            .filterToOne(hasContentDescription("Launch"))
+            .filterToOne(hasContentDescription("Launch, External link"))
             .assertDoesNotExist()
     }
 
@@ -2437,7 +2458,7 @@ class VaultItemScreenTest : BitwardenComposeTest() {
         composeTestRule
             .onNodeWithTextAfterScroll(uriData.uri)
             .onChildren()
-            .filterToOne(hasContentDescription("Launch"))
+            .filterToOne(hasContentDescription("Launch, External link"))
             .performClick()
 
         verify {

@@ -454,7 +454,7 @@ class CipherViewExtensionsTest {
     }
 
     @Test
-    fun `toViewState with archived cipher and no premium account should set archiveCalloutText`() {
+    fun `toViewState with archived cipher and no Premium account should set archiveCalloutText`() {
         val cipherView = DEFAULT_SECURE_NOTES_CIPHER_VIEW.copy(
             deletedDate = FIXED_CLOCK.instant(),
             archivedDate = FIXED_CLOCK.instant(),
@@ -717,6 +717,7 @@ class CipherViewExtensionsTest {
             onboardingStatus = OnboardingStatus.COMPLETE,
             firstTimeState = FirstTimeState(showImportLoginsCard = true),
             isExportable = true,
+            creationDate = null,
         )
 }
 

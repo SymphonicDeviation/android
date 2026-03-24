@@ -200,13 +200,13 @@ class VaultDiskSourceImpl(
         )
     }
 
-    override fun getCollections(
+    override fun getCollectionsFlow(
         userId: String,
     ): Flow<List<SyncResponseJson.Collection>> =
         merge(
             forceCollectionsFlow,
             collectionsDao
-                .getAllCollections(userId = userId)
+                .getAllCollectionsFlow(userId = userId)
                 .map { entities ->
                     entities.map { entity ->
                         SyncResponseJson.Collection(
@@ -224,9 +224,9 @@ class VaultDiskSourceImpl(
                 },
         )
 
-    override fun getDomains(userId: String): Flow<SyncResponseJson.Domains?> =
+    override fun getDomainsFlow(userId: String): Flow<SyncResponseJson.Domains?> =
         domainsDao
-            .getDomains(userId)
+            .getDomainsFlow(userId)
             .map { entity ->
                 withContext(dispatcherManager.default) {
                     entity?.domainsJson?.let { domains ->
@@ -241,6 +241,14 @@ class VaultDiskSourceImpl(
         foldersDao.deleteFolder(userId = userId, folderId = folderId)
     }
 
+    override suspend fun deleteSelectedFolders(userId: String, folderIds: List<String>) {
+        foldersDao.deleteSelectedFolders(userId = userId, folderIds = folderIds)
+    }
+
+    override suspend fun deleteAllFolders(userId: String) {
+        foldersDao.deleteAllFolders(userId = userId)
+    }
+
     override suspend fun saveFolder(userId: String, folder: SyncResponseJson.Folder) {
         foldersDao.insertFolder(
             folder = FolderEntity(
@@ -252,13 +260,51 @@ class VaultDiskSourceImpl(
         )
     }
 
-    override fun getFolders(
+    override suspend fun saveFolders(userId: String, folders: List<SyncResponseJson.Folder>) {
+        foldersDao.insertFolders(
+            folders = folders.map { folder ->
+                FolderEntity(
+                    id = folder.id,
+                    userId = userId,
+                    name = folder.name,
+                    revisionDate = folder.revisionDate,
+                )
+            },
+        )
+    }
+
+    override suspend fun getFolder(
+        userId: String,
+        folderId: String,
+    ): SyncResponseJson.Folder? =
+        foldersDao
+            .getFolder(userId = userId, folderId = folderId)
+            ?.let { folder ->
+                SyncResponseJson.Folder(
+                    id = folder.id,
+                    name = folder.name,
+                    revisionDate = folder.revisionDate,
+                )
+            }
+
+    override suspend fun getFolders(userId: String): List<SyncResponseJson.Folder> =
+        foldersDao
+            .getAllFolders(userId = userId)
+            .map { folder ->
+                SyncResponseJson.Folder(
+                    id = folder.id,
+                    name = folder.name,
+                    revisionDate = folder.revisionDate,
+                )
+            }
+
+    override fun getFoldersFlow(
         userId: String,
     ): Flow<List<SyncResponseJson.Folder>> =
         merge(
             forceFolderFlow,
             foldersDao
-                .getAllFolders(userId = userId)
+                .getAllFoldersFlow(userId = userId)
                 .map { entities ->
                     entities.map { entity ->
                         SyncResponseJson.Folder(
@@ -287,13 +333,13 @@ class VaultDiskSourceImpl(
         sendsDao.deleteSend(userId, sendId)
     }
 
-    override fun getSends(
+    override fun getSendsFlow(
         userId: String,
     ): Flow<List<SyncResponseJson.Send>> =
         merge(
             forceSendFlow,
             sendsDao
-                .getAllSends(userId = userId)
+                .getAllSendsFlow(userId = userId)
                 .map { entities ->
                     withContext(context = dispatcherManager.default) {
                         entities
@@ -403,9 +449,9 @@ class VaultDiskSourceImpl(
     override suspend fun resyncVaultData(userId: String) {
         coroutineScope {
             val deferredCiphers = async { getCiphersFlow(userId = userId).first() }
-            val deferredCollections = async { getCollections(userId = userId).first() }
-            val deferredFolders = async { getFolders(userId = userId).first() }
-            val deferredSends = async { getSends(userId = userId).first() }
+            val deferredCollections = async { getCollectionsFlow(userId = userId).first() }
+            val deferredFolders = async { getFoldersFlow(userId = userId).first() }
+            val deferredSends = async { getSendsFlow(userId = userId).first() }
 
             forceCiphersFlow.tryEmit(deferredCiphers.await())
             forceCollectionsFlow.tryEmit(deferredCollections.await())

@@ -209,12 +209,12 @@ class VaultDiskSourceTest {
     }
 
     @Test
-    fun `getCollections should emit all CollectionsDao updates`() = runTest {
+    fun `getCollectionsFlow should emit all CollectionsDao updates`() = runTest {
         val collectionEntities = listOf(COLLECTION_ENTITY)
         val collection = listOf(COLLECTION_1)
 
         vaultDiskSource
-            .getCollections(USER_ID)
+            .getCollectionsFlow(USER_ID)
             .test {
                 assertEquals(emptyList<SyncResponseJson.Collection>(), awaitItem())
                 collectionsDao.insertCollections(collectionEntities)
@@ -223,9 +223,9 @@ class VaultDiskSourceTest {
     }
 
     @Test
-    fun `getDomains should emit DomainsDao updates`() = runTest {
+    fun `getDomainsFlow should emit DomainsDao updates`() = runTest {
         vaultDiskSource
-            .getDomains(USER_ID)
+            .getDomainsFlow(USER_ID)
             .test {
                 expectNoEvents()
                 domainsDao.insertDomains(DOMAINS_ENTITY)
@@ -246,6 +246,30 @@ class VaultDiskSourceTest {
     }
 
     @Test
+    fun `deleteSelectedFolders should call deleteSelectedFolders`() = runTest {
+        assertFalse(foldersDao.deleteSelectedFoldersCalled)
+        foldersDao.storedFolders.add(FOLDER_ENTITY)
+        assertEquals(1, foldersDao.storedFolders.size)
+
+        vaultDiskSource.deleteSelectedFolders(USER_ID, listOf(FOLDER_1.id))
+
+        assertTrue(foldersDao.deleteSelectedFoldersCalled)
+        assertEquals(emptyList<FolderEntity>(), foldersDao.storedFolders)
+    }
+
+    @Test
+    fun `deleteAllFolders should call deleteAllFolders`() = runTest {
+        assertFalse(foldersDao.deleteFoldersCalled)
+        foldersDao.storedFolders.add(FOLDER_ENTITY)
+        assertEquals(1, foldersDao.storedFolders.size)
+
+        vaultDiskSource.deleteAllFolders(USER_ID)
+
+        assertTrue(foldersDao.deleteFoldersCalled)
+        assertEquals(emptyList<FolderEntity>(), foldersDao.storedFolders)
+    }
+
+    @Test
     fun `saveFolder should call insertFolder`() = runTest {
         assertFalse(foldersDao.insertFolderCalled)
         assertEquals(0, foldersDao.storedFolders.size)
@@ -257,12 +281,37 @@ class VaultDiskSourceTest {
     }
 
     @Test
-    fun `getFolders should emit all FoldersDao updates`() = runTest {
+    fun `saveFolders should call insertFolders`() = runTest {
+        assertFalse(foldersDao.insertFoldersCalled)
+        assertEquals(0, foldersDao.storedFolders.size)
+
+        vaultDiskSource.saveFolders(USER_ID, listOf(FOLDER_1))
+
+        assertTrue(foldersDao.insertFoldersCalled)
+        assertEquals(1, foldersDao.storedFolders.size)
+        val storedFolderEntity = foldersDao.storedFolders.first()
+        assertEquals(FOLDER_ENTITY, storedFolderEntity)
+    }
+
+    @Test
+    fun `getFolders should return all FoldersDao folders`() = runTest {
+        val folderEntities = listOf(FOLDER_ENTITY)
+        val folders = listOf(FOLDER_1)
+
+        val result1 = vaultDiskSource.getFolders(USER_ID)
+        assertEquals(emptyList<SyncResponseJson.Folder>(), result1)
+        foldersDao.insertFolders(folderEntities)
+        val result2 = vaultDiskSource.getFolders(USER_ID)
+        assertEquals(folders, result2)
+    }
+
+    @Test
+    fun `getFoldersFlow should emit all FoldersDao updates`() = runTest {
         val folderEntities = listOf(FOLDER_ENTITY)
         val folders = listOf(FOLDER_1)
 
         vaultDiskSource
-            .getFolders(USER_ID)
+            .getFoldersFlow(USER_ID)
             .test {
                 assertEquals(emptyList<SyncResponseJson.Folder>(), awaitItem())
                 foldersDao.insertFolders(folderEntities)
@@ -300,12 +349,12 @@ class VaultDiskSourceTest {
     }
 
     @Test
-    fun `getSends should emit all SendsDao updates`() = runTest {
+    fun `getSendsFlow should emit all SendsDao updates`() = runTest {
         val sendEntities = listOf(SEND_ENTITY)
         val sends = listOf(SEND_1)
 
         vaultDiskSource
-            .getSends(USER_ID)
+            .getSendsFlow(USER_ID)
             .test {
                 assertEquals(emptyList<SyncResponseJson.Send>(), awaitItem())
                 sendsDao.insertSends(sendEntities)

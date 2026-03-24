@@ -275,6 +275,10 @@ class VaultItemViewModel @Inject constructor(
                 handleAttachmentDownloadClick(action)
             }
 
+            is VaultItemAction.Common.AttachmentPreviewClick -> {
+                handleAttachmentPreviewClick(action)
+            }
+
             is VaultItemAction.Common.AttachmentFileLocationReceive -> {
                 handleAttachmentFileLocationReceive(action)
             }
@@ -405,6 +409,18 @@ class VaultItemViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun handleAttachmentPreviewClick(
+        action: VaultItemAction.Common.AttachmentPreviewClick,
+    ) {
+        sendEvent(
+            event = VaultItemEvent.NavigateToPreviewAttachment(
+                cipherId = state.vaultItemId,
+                attachmentId = action.attachment.id,
+                fileName = action.attachment.title,
+            ),
+        )
     }
 
     private fun handleAttachmentFileLocationReceive(
@@ -1183,7 +1199,8 @@ class VaultItemViewModel @Inject constructor(
             is DeleteCipherResult.Error -> {
                 updateDialogState(
                     VaultItemState.DialogState.Generic(
-                        message = BitwardenString.generic_error_message.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.generic_error_message.asText(),
                         error = result.error,
                     ),
                 )
@@ -1211,7 +1228,8 @@ class VaultItemViewModel @Inject constructor(
             is RestoreCipherResult.Error -> {
                 updateDialogState(
                     VaultItemState.DialogState.Generic(
-                        message = BitwardenString.generic_error_message.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.generic_error_message.asText(),
                         error = result.error,
                     ),
                 )
@@ -1235,7 +1253,8 @@ class VaultItemViewModel @Inject constructor(
             is DownloadAttachmentResult.Failure -> {
                 updateDialogState(
                     VaultItemState.DialogState.Generic(
-                        message = BitwardenString.unable_to_download_file.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.unable_to_download_file.asText(),
                         error = result.error,
                     ),
                 )
@@ -1243,11 +1262,7 @@ class VaultItemViewModel @Inject constructor(
 
             is DownloadAttachmentResult.Success -> {
                 temporaryAttachmentData = result.file
-                sendEvent(
-                    VaultItemEvent.NavigateToSelectAttachmentSaveLocation(
-                        fileName = action.fileName,
-                    ),
-                )
+                sendEvent(VaultItemEvent.NavigateToSelectAttachmentSaveLocation(action.fileName))
             }
         }
     }
@@ -1291,7 +1306,8 @@ class VaultItemViewModel @Inject constructor(
             is ArchiveCipherResult.Error -> {
                 updateDialogState(
                     dialog = VaultItemState.DialogState.Generic(
-                        message = BitwardenString.unable_to_archive_selected_item.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.unable_to_archive_selected_item.asText(),
                         error = result.error,
                     ),
                 )
@@ -1315,7 +1331,8 @@ class VaultItemViewModel @Inject constructor(
             is UnarchiveCipherResult.Error -> {
                 updateDialogState(
                     dialog = VaultItemState.DialogState.Generic(
-                        message = BitwardenString.unable_to_unarchive_selected_item.asText(),
+                        message = result.errorMessage?.asText()
+                            ?: BitwardenString.unable_to_unarchive_selected_item.asText(),
                         error = result.error,
                     ),
                 )
@@ -1439,7 +1456,7 @@ data class VaultItemState(
         }
 
     /**
-     * Whether or not the cipher has been deleted.
+     * Whether the cipher has been deleted.
      */
     val isCipherDeleted: Boolean
         get() = viewState.asContentOrNull()
@@ -1453,13 +1470,13 @@ data class VaultItemState(
             ?.canEdit == true
 
     /**
-     * Whether or not the fab is visible.
+     * Whether the fab is visible.
      */
     val isFabVisible: Boolean
         get() = viewState is ViewState.Content && !isCipherDeleted && isCipherEditable
 
     /**
-     * Whether or not the cipher is in a collection.
+     * Whether the cipher is in a collection.
      */
     val isCipherInCollection: Boolean
         get() = viewState.asContentOrNull()
@@ -1470,7 +1487,7 @@ data class VaultItemState(
             ?: false
 
     /**
-     * Whether or not the cipher can be deleted.
+     * Whether the cipher can be deleted.
      */
     val canDelete: Boolean
         get() = viewState.asContentOrNull()
@@ -1478,7 +1495,7 @@ data class VaultItemState(
             ?.canDelete == true
 
     /**
-     * Whether or not the cipher can be deleted.
+     * Whether the cipher can be deleted.
      */
     val canRestore: Boolean
         get() = viewState.asContentOrNull()
@@ -1681,14 +1698,14 @@ data class VaultItemState(
                  * @property passwordRevisionDate An optional string indicating the last time the
                  * password was changed.
                  * @property totpCodeItemData The optional data related the TOTP code.
-                 * @property isPremiumUser Indicates if the user has subscribed to a premium
+                 * @property isPremiumUser Indicates if the user has subscribed to a Premium
                  * account.
                  * @property canViewTotpCode Indicates if the user can view an associated TOTP code.
                  * @property fido2CredentialCreationDateText Optional creation date and time of the
                  * FIDO2 credential associated with the login item.
                  *
                  * **NOTE** [canViewTotpCode] currently supports a deprecated edge case where an
-                 * organization supports TOTP but not through the current premium model.
+                 * organization supports TOTP but not through the current Premium model.
                  * This additional field is added to allow for [isPremiumUser] to be an independent
                  * value.
                  * @see [CipherView.organizationUseTotp]
@@ -1719,7 +1736,7 @@ data class VaultItemState(
                      * A wrapper for the password data.
                      *
                      * @property password The password itself.
-                     * @property isVisible Whether or not it is currently visible.
+                     * @property isVisible Whether it is currently visible.
                      * @property canViewPassword Indicates whether the current user can view and
                      * copy passwords associated with the login item.
                      */
@@ -1824,7 +1841,7 @@ data class VaultItemState(
                      * A wrapper for the number data.
                      *
                      * @property number The card number itself.
-                     * @property isVisible Whether or not it is currently visible.
+                     * @property isVisible Whether it is currently visible.
                      */
                     @Parcelize
                     data class NumberData(
@@ -1836,7 +1853,7 @@ data class VaultItemState(
                      * A wrapper for the code data.
                      *
                      * @property code The security code itself.
-                     * @property isVisible Whether or not it is currently visible.
+                     * @property isVisible Whether it is currently visible.
                      */
                     @Parcelize
                     data class CodeData(
@@ -1874,7 +1891,7 @@ data class VaultItemState(
     sealed class DialogState : Parcelable {
 
         /**
-         * Displays a dialog to the user indicating that archiving requires a premium account.
+         * Displays a dialog to the user indicating that archiving requires a Premium account.
          */
         @Parcelize
         data object ArchiveRequiresPremium : DialogState()
@@ -1981,6 +1998,15 @@ sealed class VaultItemEvent {
     ) : VaultItemEvent()
 
     /**
+     * Navigates to preview the attachment.
+     */
+    data class NavigateToPreviewAttachment(
+        val cipherId: String,
+        val attachmentId: String,
+        val fileName: String,
+    ) : VaultItemEvent()
+
+    /**
      * Displays the given [data] in a snackbar.
      */
     data class ShowSnackbar(
@@ -2024,7 +2050,7 @@ sealed class VaultItemAction {
         data object UnarchiveClick : Common()
 
         /**
-         * The user has clicked the upgrade to premium button.
+         * The user has clicked the upgrade to Premium button.
          */
         data object UpgradeToPremiumClick : Common()
 
@@ -2115,6 +2141,13 @@ sealed class VaultItemAction {
          * The user has clicked the download button.
          */
         data class AttachmentDownloadClick(
+            val attachment: VaultItemState.ViewState.Content.Common.AttachmentItem,
+        ) : Common()
+
+        /**
+         * The user has clicked the preview button.
+         */
+        data class AttachmentPreviewClick(
             val attachment: VaultItemState.ViewState.Content.Common.AttachmentItem,
         ) : Common()
 
