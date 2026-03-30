@@ -13,6 +13,8 @@ import com.x8bit.bitwarden.ui.auth.feature.accountsetup.navigateToSetupUnlockScr
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupAutoFillDestination
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupBrowserAutofillDestination
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupUnlockDestination
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.navigateToPlanModal
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.planModalDestination
 import com.x8bit.bitwarden.ui.platform.feature.search.SearchRoute
 import com.x8bit.bitwarden.ui.platform.feature.search.navigateToSearch
 import com.x8bit.bitwarden.ui.platform.feature.search.searchDestination
@@ -139,6 +141,7 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateToAboutPrivilegedApps = {
                 navController.navigateToAboutPrivilegedAppsScreen()
             },
+            onNavigateToPlan = { navController.navigateToPlanModal() },
         )
         flightRecorderDestination(
             isPreAuth = false,
@@ -257,6 +260,13 @@ fun NavGraphBuilder.vaultUnlockedGraph(
         )
         attachmentDestination(
             onNavigateBack = { navController.popBackStack() },
+            onNavigateToPreviewAttachment = { cipherId, attachmentId, fileName ->
+                navController.navigateToPreviewAttachment(
+                    cipherId = cipherId,
+                    attachmentId = attachmentId,
+                    fileName = fileName,
+                )
+            },
         )
         setupUnlockDestination(
             onNavigateBack = {
@@ -274,6 +284,9 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateBack = { navController.popBackStack() },
         )
         previewAttachmentDestination(
+            onNavigateBack = { navController.popBackStack() },
+        )
+        planModalDestination(
             onNavigateBack = { navController.popBackStack() },
         )
     }
