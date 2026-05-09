@@ -294,6 +294,15 @@ class SendScreenTest : BitwardenComposeTest() {
 
     @Test
     fun `on search click should send SearchClick`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = SendState.ViewState.Content(
+                    textTypeCount = 0,
+                    fileTypeCount = 0,
+                    sendItems = emptyList(),
+                ),
+            )
+        }
         composeTestRule
             .onNodeWithContentDescription("Search Sends")
             .performClick()
@@ -933,6 +942,59 @@ class SendScreenTest : BitwardenComposeTest() {
 
         verify(exactly = 1) {
             viewModel.trySendAction(SendAction.AddSendSelected(sendType = SendItemType.TEXT))
+        }
+    }
+
+    @Test
+    fun `UpgradedToPremium action card should display when eligible`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = DEFAULT_CONTENT_VIEW_STATE,
+                isUpgradedToPremiumCardEligible = true,
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText(text = "Upgraded to Premium")
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(text = "Learn more")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `UpgradedToPremium action card CTA click should send UpgradedToPremiumCardClick`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = DEFAULT_CONTENT_VIEW_STATE,
+                isUpgradedToPremiumCardEligible = true,
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText(text = "Learn more")
+            .performClick()
+
+        verify(exactly = 1) {
+            viewModel.trySendAction(SendAction.UpgradedToPremiumCardClick)
+        }
+    }
+
+    @Test
+    fun `UpgradedToPremium action card dismiss click should send UpgradedToPremiumCardDismiss`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = DEFAULT_CONTENT_VIEW_STATE,
+                isUpgradedToPremiumCardEligible = true,
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(label = "Close")
+            .performClick()
+
+        verify(exactly = 1) {
+            viewModel.trySendAction(SendAction.UpgradedToPremiumCardDismiss)
         }
     }
 }

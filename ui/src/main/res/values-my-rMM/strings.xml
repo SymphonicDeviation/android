@@ -170,7 +170,7 @@
     <string name="autofill_noun">Autofill</string>
     <string name="autofill_verb">Autofill</string>
     <string name="autofill_or_view">Do you want to autofill or view this item?</string>
-    <string name="search">Search</string>
+    <string name="search_x" comment="%1$s is a placeholder for the type of item being searched for (e.g. Logins).">Search %1$s</string>
     <string name="learn_org">Learn about organizations</string>
     <string name="authenticator_app_title">Authenticator app</string>
     <string name="enter_verification_code_app">Enter the 6 digit verification code from your authenticator app.</string>
@@ -188,7 +188,7 @@
     <string name="attachments">Attachments</string>
     <string name="unable_to_download_file">Unable to download file.</string>
     <string name="downloading">Downloading…</string>
-    <string name="attachment_large_warning">This attachment is %1$s in size. Are you sure you want to download it onto your device?</string>
+    <string name="attachment_large_warning">This file is <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Would you like to download it?</string>
     <string name="authenticator_key">Authenticator key</string>
     <string name="verification_code_totp">Verification code (TOTP)</string>
     <string name="authenticator_key_added">Authenticator key added.</string>
@@ -205,6 +205,7 @@ Scanning will happen automatically.</string>
     <string name="choose_file">Choose file</string>
     <string name="file">File</string>
     <string name="no_file_chosen">No file chosen</string>
+    <string name="file_name">File name</string>
     <string name="no_attachments">There are no attachments.</string>
     <string name="file_source">File Source</string>
     <string name="max_file_size">Maximum file size is 100 MB.</string>
@@ -226,6 +227,8 @@ Scanning will happen automatically.</string>
     <string name="copy_security_code">Copy security code</string>
     <string name="number">Number</string>
     <string name="security_code">Security code</string>
+    <string name="scan_card">Scan card</string>
+    <string name="scan_card_instruction">Position your card within the frame to scan it.</string>
     <string name="type_card">Card</string>
     <string name="type_identity">Identity</string>
     <string name="type_login">Login</string>
@@ -291,7 +294,6 @@ Scanning will happen automatically.</string>
     <string name="field_type_text">Text</string>
     <string name="select_type_field">What type of custom field do you want to add?</string>
     <string name="remove">Remove</string>
-    <string name="new_uri">New URI</string>
     <string name="add_website">Add website</string>
     <string name="base_domain">Base domain</string>
     <string name="default_text">Default (%1$s)</string>
@@ -660,7 +662,9 @@ Do you want to switch to this account?</string>
     <string name="you_will_be_notified_once_approved">You will be notified once approved.</string>
     <string name="trouble_logging_in">Trouble logging in?</string>
     <string name="block_auto_fill">Block autofill</string>
+    <string name="no_uris_blocked">No URIs blocked</string>
     <string name="auto_fill_will_not_be_offered_for_these_ur_is">Autofill will not be offered for these URIs.</string>
+    <string name="edit_blocked_uri">Edit blocked URI</string>
     <string name="new_blocked_uri">New blocked URI</string>
     <string name="invalid_format_use_https_http_or_android_app">Invalid format. Use https://, http://, or androidapp://</string>
     <string name="enter_uri">Enter URI</string>
@@ -1066,6 +1070,7 @@ Do you want to switch to this account?</string>
     <string name="security">Security</string>
     <string name="too_many_failed_biometric_attempts">Too many failed biometrics attempts.</string>
     <string name="version">Version</string>
+    <string name="version_x" comment="%1$s is the version string (e.g. 2025.1.0 (1234)).">Version: %1$s</string>
     <string name="learn_more_about_how_to_use_bitwarden_authenticator_on_the_help_center">Learn more about how to use Bitwarden Authenticator on the Help Center.</string>
     <string name="key">Key</string>
     <string name="create_verification_code">Create Verification code</string>
@@ -1198,6 +1203,7 @@ Do you want to switch to this account?</string>
     <string name="archive_unavailable">Archive unavailable</string>
     <string name="archiving_items_is_a_premium_feature">Archiving items is a Premium feature. Your current plan does not include access to this feature.</string>
     <string name="upgrade_to_premium">Upgrade to Premium</string>
+    <string name="plan">Plan</string>
     <string name="unlock_advanced_security_features">Unlock advanced security features</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">A Premium plan gives you more tools to stay secure and in control.</string>
     <string name="this_item_is_archived">This item is archived.</string>
@@ -1221,10 +1227,15 @@ Do you want to switch to this account?</string>
     <string name="external_link">External link</string>
     <string name="external_link_format" comment="Used for accessibility to indicate that tapping this item will leave the app">%1$s, External link</string>
     <string name="preview_not_available_for_files">Preview unavailable for %1$s files. You can still download it to view on your device.</string>
+    <string name="this_file_is_too_large_to_preview">This file is too large to preview. You can still download it to view on your device.</string>
     <string name="bitwarden_could_not_decrypt_this_file_so_the_preview_cannot_be_displayed">Bitwarden could not decrypt this file, so the preview cannot be displayed.</string>
     <string name="preview_unavailable_for_this_file">Preview unavailable for this file. You can still download it to view on your device.</string>
     <string name="preview_unavailable">Preview unavailable</string>
+    <string name="download_attachment">Download Attachment</string>
     <string name="upgraded_to_premium">Upgraded to premium</string>
+    <string name="confirming_your_upgrade">Confirming your upgrade…</string>
+    <string name="upgrade_pending">Upgrade pending</string>
+    <string name="upgrade_pending_message">Your upgrade is being processed. You’ll remain on the free plan until it’s complete. Sync now to check, or continue and it will update automatically.</string>
     <string name="unlock_premium_features">Unlock more advanced features with a Premium plan.</string>
     <string name="per_month">/ month</string>
     <string name="built_in_authenticator">Built-in authenticator</string>
@@ -1239,4 +1250,40 @@ Do you want to switch to this account?</string>
     <string name="payment_not_received_yet">Payment not received yet</string>
     <string name="return_to_stripe_to_finish">Return to Stripe in your browser to finish your upgrade.</string>
     <string name="go_back">Go back</string>
+    <string name="allow_camera_access">Allow camera access</string>
+    <string name="to_scan_your_card_we_need_access_to_your_camera">To scan your card, we’ll need access to your camera. You can change this anytime in your device settings.</string>
+    <string name="show_next_code">Show next code</string>
+    <string name="see_upcoming_codes_in_the_list">See upcoming codes in the list</string>
+    <string name="next_code_x">Next code, %1$s</string>
+    <string name="archive_item">Archive item</string>
+    <string name="once_archived_this_item_will_be_excluded">Once archived, this item will be excluded from search results and autofill suggestions.</string>
+    <string name="pricing_unavailable">Pricing unavailable</string>
+    <string name="current_plan">Current plan</string>
+    <string name="premium_plan_name">Premium</string>
+    <string name="billing_amount">Billing amount</string>
+    <string name="storage_cost">Storage cost</string>
+    <string name="discount">Discount</string>
+    <string name="estimated_tax">Estimated tax</string>
+    <string name="billing_rate_per_year">%1$s / year</string>
+    <string name="billing_rate_per_month">%1$s / month</string>
+    <string name="manage_plan">Manage plan</string>
+    <string name="cancel_premium">Cancel Premium</string>
+    <string name="cancel_now">Cancel now</string>
+    <string name="cancel_premium_confirmation">You’ll continue to have Premium access until %1$s.</string>
+    <string name="subscription_status_active">Active</string>
+    <string name="subscription_status_canceled">Canceled</string>
+    <string name="subscription_status_overdue_payment">Overdue payment</string>
+    <string name="subscription_status_past_due">Past due</string>
+    <string name="subscription_status_paused">Paused</string>
+    <string name="premium_next_charge_summary">Your next charge is for %1$s USD due on %2$s.</string>
+    <string name="subscription_canceled_description">Your subscription was canceled on %1$s. Resubscribe to continue using premium features.</string>
+    <string name="subscription_overdue_description">We couldn’t process your payment. Update your payment before your subscription ends on %1$s.</string>
+    <string name="subscription_past_due_description">You have a grace period of %1$d days from your subscription expiration date. Please resolve the past due amount by %2$s.</string>
+    <string name="subscription_paused_description">Your subscription is paused. Resume to continue using premium features.</string>
+    <string name="loading_subscription">Loading subscription…</string>
+    <string name="loading_portal">Loading portal…</string>
+    <string name="portal_error">Something went wrong</string>
+    <string name="trouble_loading_portal">We had trouble loading the management portal, so try again.</string>
+    <string name="subscription_error">Subscription error</string>
+    <string name="trouble_loading_subscription">We couldn’t load your subscription details. Please try again.</string>
 </resources>

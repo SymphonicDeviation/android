@@ -42,6 +42,8 @@ import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
+import com.x8bit.bitwarden.ui.vault.feature.attachments.preview.PreviewAttachmentRoute
+import com.x8bit.bitwarden.ui.vault.feature.item.handlers.VaultBankAccountItemTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.item.handlers.VaultCardItemTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.item.handlers.VaultCommonItemTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.item.handlers.VaultIdentityItemTypeHandlers
@@ -63,11 +65,8 @@ fun VaultItemScreen(
     onNavigateToMoveToOrganization: (vaultItemId: String, showOnlyCollections: Boolean) -> Unit,
     onNavigateToAttachments: (vaultItemId: String) -> Unit,
     onNavigateToPasswordHistory: (vaultItemId: String) -> Unit,
-    onNavigateToPreviewAttachment: (
-        cipherId: String,
-        attachmentId: String,
-        fileName: String,
-    ) -> Unit,
+    onNavigateToPreviewAttachment: (route: PreviewAttachmentRoute) -> Unit,
+    onNavigateToPlan: () -> Unit,
 ) {
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     val fileChooserLauncher = intentManager.getActivityResultLauncher { activityResult ->
@@ -103,6 +102,8 @@ fun VaultItemScreen(
 
             is VaultItemEvent.NavigateToUri -> intentManager.launchUri(event.uri.toUri())
 
+            VaultItemEvent.NavigateToPlanModal -> onNavigateToPlan()
+
             is VaultItemEvent.NavigateToAttachments -> onNavigateToAttachments(event.itemId)
 
             is VaultItemEvent.NavigateToMoveToOrganization -> {
@@ -122,7 +123,15 @@ fun VaultItemScreen(
             }
 
             is VaultItemEvent.NavigateToPreviewAttachment -> {
-                onNavigateToPreviewAttachment(event.cipherId, event.attachmentId, event.fileName)
+                onNavigateToPreviewAttachment(
+                    PreviewAttachmentRoute(
+                        cipherId = event.cipherId,
+                        attachmentId = event.attachmentId,
+                        fileName = event.fileName,
+                        displaySize = event.displaySize,
+                        isLargeFile = event.isLargeFile,
+                    ),
+                )
             }
         }
     }
@@ -276,6 +285,9 @@ fun VaultItemScreen(
             vaultIdentityItemTypeHandlers = remember(viewModel) {
                 VaultIdentityItemTypeHandlers.create(viewModel = viewModel)
             },
+            vaultBankAccountItemTypeHandlers = remember(viewModel) {
+                VaultBankAccountItemTypeHandlers.create(viewModel = viewModel)
+            },
         )
     }
 }
@@ -360,6 +372,7 @@ private fun VaultItemContent(
     vaultCardItemTypeHandlers: VaultCardItemTypeHandlers,
     vaultSshKeyItemTypeHandlers: VaultSshKeyItemTypeHandlers,
     vaultIdentityItemTypeHandlers: VaultIdentityItemTypeHandlers,
+    vaultBankAccountItemTypeHandlers: VaultBankAccountItemTypeHandlers,
     modifier: Modifier = Modifier,
 ) {
     when (viewState) {
@@ -418,6 +431,30 @@ private fun VaultItemContent(
                         sshKeyItemState = viewState.type,
                         vaultCommonItemTypeHandlers = vaultCommonItemTypeHandlers,
                         vaultSshKeyItemTypeHandlers = vaultSshKeyItemTypeHandlers,
+                        modifier = modifier,
+                    )
+                }
+
+                is VaultItemState.ViewState.Content.ItemType.BankAccount -> {
+                    VaultItemBankAccountContent(
+                        commonState = viewState.common,
+                        bankAccountState = viewState.type,
+                        vaultCommonItemTypeHandlers = vaultCommonItemTypeHandlers,
+                        vaultBankAccountItemTypeHandlers = vaultBankAccountItemTypeHandlers,
+                        modifier = modifier,
+                    )
+                }
+
+                is VaultItemState.ViewState.Content.ItemType.DriversLicense,
+                is VaultItemState.ViewState.Content.ItemType.Passport,
+                    -> {
+                    // TODO(PM-32810): Render dedicated content for the remaining new item types
+                    //  once the UI ships in their respective Story slices. Until then these
+                    //  branches are gated behind the pm-32009-new-item-types feature flag and
+                    //  cannot be received.
+                    VaultItemSecureNoteContent(
+                        commonState = viewState.common,
+                        vaultCommonItemTypeHandlers = vaultCommonItemTypeHandlers,
                         modifier = modifier,
                     )
                 }

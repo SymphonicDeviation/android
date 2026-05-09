@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.core.net.toUri
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.ui.platform.manager.IntentManager
 import com.bitwarden.ui.util.asText
@@ -52,7 +54,7 @@ class AttachmentsScreenTest : BitwardenComposeTest() {
             AttachmentsScreen(
                 viewModel = viewModel,
                 onNavigateBack = { onNavigateBackCalled = true },
-                onNavigateToPreview = { _, _, _ -> onNavigateToPreviewCalled = true },
+                onNavigateToPreview = { onNavigateToPreviewCalled = true },
             )
         }
     }
@@ -64,12 +66,23 @@ class AttachmentsScreenTest : BitwardenComposeTest() {
     }
 
     @Test
+    fun `NavigateToUri should call launchUri`() {
+        val uriString = "https://www.bitwarden.com"
+        mutableEventFlow.tryEmit(AttachmentsEvent.NavigateToUri(uri = uriString))
+        verify(exactly = 1) {
+            intentManager.launchUri(uriString.toUri())
+        }
+    }
+
+    @Test
     fun `NavigateToPreview should call onNavigateToPreview`() {
         mutableEventFlow.tryEmit(
             AttachmentsEvent.NavigateToPreview(
                 cipherId = "cipherId",
                 attachmentId = "attachmentId",
                 fileName = "file.png",
+                displaySize = "10 MB",
+                isLargeFile = true,
             ),
         )
         assertTrue(onNavigateToPreviewCalled)
@@ -100,6 +113,29 @@ class AttachmentsScreenTest : BitwardenComposeTest() {
         composeTestRule.onNodeWithTextAfterScroll("Choose file").performClick()
         verify(exactly = 1) {
             viewModel.trySendAction(AttachmentsAction.ChooseFileClick)
+        }
+    }
+
+    @Test
+    fun `on edit file name should send FileNameChange`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = DEFAULT_CONTENT_WITHOUT_ATTACHMENTS.copy(
+                    newAttachment = AttachmentsState.NewAttachment(
+                        extension = "png",
+                        displayName = "cool_file",
+                        uri = mockk(),
+                        sizeBytes = 100L,
+                    ),
+                ),
+            )
+        }
+        composeTestRule
+            .onNodeWithText("cool_file")
+            .performTextInput("5")
+
+        verify(exactly = 1) {
+            viewModel.trySendAction(AttachmentsAction.FileNameChange(fileName = "cool_file5"))
         }
     }
 
@@ -217,6 +253,31 @@ class AttachmentsScreenTest : BitwardenComposeTest() {
     }
 
     @Test
+    fun `requires Premium dialog should be displayed according to state`() {
+        val requiresPremiumMessage = "Attachments unavailable"
+        composeTestRule.onNode(isDialog()).assertDoesNotExist()
+        composeTestRule.onNodeWithText(requiresPremiumMessage).assertDoesNotExist()
+
+        mutableStateFlow.update {
+            it.copy(dialogState = AttachmentsState.DialogState.RequiresPremium)
+        }
+
+        composeTestRule
+            .onNodeWithText(requiresPremiumMessage)
+            .assert(hasAnyAncestor(isDialog()))
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Upgrade to Premium")
+            .assert(hasAnyAncestor(isDialog()))
+            .performClick()
+
+        verify(exactly = 1) {
+            viewModel.trySendAction(AttachmentsAction.UpgradeToPremiumClick)
+        }
+    }
+
+    @Test
     fun `error dialog should be displayed according to state`() {
         val errorMessage = "Fail"
         composeTestRule.onNode(isDialog()).assertDoesNotExist()
@@ -260,6 +321,7 @@ private val DEFAULT_STATE: AttachmentsState = AttachmentsState(
     viewState = AttachmentsState.ViewState.Loading,
     dialogState = null,
     isPremiumUser = false,
+    isAttachmentUpdatesEnabled = true,
 )
 
 private val DEFAULT_CONTENT_WITHOUT_ATTACHMENTS: AttachmentsState.ViewState.Content =
@@ -277,6 +339,7 @@ private val DEFAULT_CONTENT_WITH_ATTACHMENTS: AttachmentsState.ViewState.Content
                 id = "cipherId-1234",
                 title = "cool_file.png",
                 displaySize = "10 MB",
+                isLargeFile = true,
             ),
         ),
         newAttachment = null,

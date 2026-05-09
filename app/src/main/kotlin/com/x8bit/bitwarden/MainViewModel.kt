@@ -27,6 +27,7 @@ import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilitySele
 import com.x8bit.bitwarden.data.autofill.manager.AutofillSelectionManager
 import com.x8bit.bitwarden.data.autofill.util.getAutofillSaveItemOrNull
 import com.x8bit.bitwarden.data.autofill.util.getAutofillSelectionDataOrNull
+import com.x8bit.bitwarden.data.billing.util.getPremiumCheckoutCallbackResult
 import com.x8bit.bitwarden.data.credentials.manager.CredentialProviderRequestManager
 import com.x8bit.bitwarden.data.credentials.manager.model.CredentialProviderRequest
 import com.x8bit.bitwarden.data.platform.manager.AppResumeManager
@@ -97,6 +98,7 @@ class MainViewModel @Inject constructor(
         theme = settingsRepository.appTheme,
         isScreenCaptureAllowed = settingsRepository.isScreenCaptureAllowed,
         isDynamicColorsEnabled = settingsRepository.isDynamicColorsEnabled,
+        hasResizeBeenRequested = false,
     ),
 ) {
     private var specialCircumstance: SpecialCircumstance?
@@ -198,7 +200,7 @@ class MainViewModel @Inject constructor(
             is MainAction.SsoResult -> handleSsoResult(action)
             is MainAction.WebAuthnResult -> handleWebAuthnResult(action)
             is MainAction.CookieAcquisitionResult -> handleCookieAcquisitionResult(action)
-            is MainAction.PremiumCheckoutResult -> handlePremiumCheckoutResult()
+            is MainAction.PremiumCheckoutResult -> handlePremiumCheckoutResult(action)
             is MainAction.Internal -> handleInternalAction(action)
         }
     }
@@ -221,6 +223,7 @@ class MainViewModel @Inject constructor(
             is MainAction.Internal.ThemeUpdate -> handleAppThemeUpdated(action)
             is MainAction.Internal.DynamicColorsUpdate -> handleDynamicColorsUpdate(action)
             is MainAction.Internal.CookieAcquisitionReady -> handleCookieAcquisitionReady()
+            is MainAction.Internal.ResizeHasBeenRequested -> handleResizeHasBeenRequested()
         }
     }
 
@@ -248,9 +251,10 @@ class MainViewModel @Inject constructor(
         )
     }
 
-    private fun handlePremiumCheckoutResult() {
-        specialCircumstanceManager.specialCircumstance =
-            SpecialCircumstance.PremiumCheckoutResult
+    private fun handlePremiumCheckoutResult(action: MainAction.PremiumCheckoutResult) {
+        specialCircumstanceManager.specialCircumstance = SpecialCircumstance.PremiumCheckout(
+            callbackResult = action.authResult.getPremiumCheckoutCallbackResult(),
+        )
     }
 
     private fun handleAppResumeDataUpdated(action: MainAction.ResumeScreenDataReceived) {
@@ -298,6 +302,10 @@ class MainViewModel @Inject constructor(
 
     private fun handleCookieAcquisitionReady() {
         sendEvent(MainEvent.NavigateToCookieAcquisition)
+    }
+
+    private fun handleResizeHasBeenRequested() {
+        mutableStateFlow.update { it.copy(hasResizeBeenRequested = true) }
     }
 
     private fun handleFirstIntentReceived(action: MainAction.ReceiveFirstIntent) {
@@ -404,7 +412,9 @@ class MainViewModel @Inject constructor(
 
             hasPremiumCheckoutCallback -> {
                 specialCircumstanceManager.specialCircumstance =
-                    SpecialCircumstance.PremiumCheckoutResult
+                    SpecialCircumstance.PremiumCheckout(
+                        callbackResult = intent.data.getPremiumCheckoutCallbackResult(),
+                    )
             }
 
             hasGeneratorShortcut -> {
@@ -527,6 +537,7 @@ data class MainState(
     val theme: AppTheme,
     val isScreenCaptureAllowed: Boolean,
     val isDynamicColorsEnabled: Boolean,
+    val hasResizeBeenRequested: Boolean,
 ) : Parcelable {
     /**
      * Contains all feature flags that are available to the UI.
@@ -644,6 +655,11 @@ sealed class MainAction {
          * should proceed.
          */
         data object CookieAcquisitionReady : Internal()
+
+        /**
+         * Indicates that resize has been requested on the Activity
+         */
+        data object ResizeHasBeenRequested : Internal()
     }
 }
 

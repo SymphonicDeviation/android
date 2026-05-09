@@ -34,7 +34,7 @@ import java.time.Instant
 
 class VaultDiskSourceTest {
 
-    private val json = CoreModule.providesJson()
+    private val json = CoreModule.providesJson(buildInfoManager = mockk(relaxed = true))
     private val dispatcherManager: FakeDispatcherManager = FakeDispatcherManager()
     private lateinit var ciphersDao: FakeCiphersDao
     private lateinit var collectionsDao: FakeCollectionsDao
@@ -588,6 +588,46 @@ private const val CIPHER_JSON = """
     "publicKey": "mockPublicKey-1",
     "privateKey": "mockPrivateKey-1",
     "keyFingerprint": "mockKeyFingerprint-1"
+  },
+  "bankAccount": {
+    "bankName": "mockBankName-1",
+    "nameOnAccount": "mockNameOnAccount-1",
+    "accountType": "mockAccountType-1",
+    "accountNumber": "mockAccountNumber-1",
+    "routingNumber": "mockRoutingNumber-1",
+    "branchNumber": "mockBranchNumber-1",
+    "pin": "mockPin-1",
+    "swiftCode": "mockSwiftCode-1",
+    "iban": "mockIban-1",
+    "bankContactPhone": "mockBankContactPhone-1"
+  },
+  "driversLicense": {
+    "firstName": "mockFirstName-1",
+    "middleName": "mockMiddleName-1",
+    "lastName": "mockLastName-1",
+    "licenseNumber": "mockLicenseNumber-1",
+    "issuingCountry": "mockIssuingCountry-1",
+    "issuingState": "mockIssuingState-1",
+    "issuingAuthority": "mockIssuingAuthority-1",
+    "expirationDate": "mockExpirationDate-1",
+    "dateOfBirth": "mockDateOfBirth-1",
+    "issueDate": "mockIssueDate-1",
+    "licenseClass": "mockLicenseClass-1",
+  },
+  "passport": {
+    "surname": "mockSurname-1",
+    "givenName": "mockGivenName-1",
+    "dateOfBirth": "mockDateOfBirth-1",
+    "birthPlace": "mockBirthPlace-1",
+    "sex": "mockSex-1",
+    "nationality": "mockNationality-1",
+    "passportNumber": "mockPassportNumber-1",
+    "passportType": "mockPassportType-1",
+    "nationalIdentificationNumber": "mockNationalIdentificationNumber-1",
+    "issuingCountry": "mockIssuingCountry-1",
+    "issuingAuthority": "mockIssuingAuthority-1",
+    "issueDate": "mockIssueDate-1",
+    "expirationDate": "mockExpirationDate-1",
   },
   "encryptedFor": "mockEncryptedFor-1"
 }

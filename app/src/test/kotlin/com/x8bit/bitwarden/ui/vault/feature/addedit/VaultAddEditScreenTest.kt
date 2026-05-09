@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -31,6 +32,7 @@ import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -66,6 +68,7 @@ import com.x8bit.bitwarden.ui.vault.feature.addedit.model.CustomFieldAction
 import com.x8bit.bitwarden.ui.vault.feature.addedit.model.CustomFieldType
 import com.x8bit.bitwarden.ui.vault.feature.addedit.model.UriItem
 import com.x8bit.bitwarden.ui.vault.model.VaultAddEditType
+import com.x8bit.bitwarden.ui.vault.model.VaultBankAccountType
 import com.x8bit.bitwarden.ui.vault.model.VaultCardBrand
 import com.x8bit.bitwarden.ui.vault.model.VaultCardExpirationMonth
 import com.x8bit.bitwarden.ui.vault.model.VaultCollection
@@ -94,7 +97,9 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     private var onNavigateToManualCodeEntryScreenCalled = false
     private var onNavigateToGeneratorModalType: GeneratorMode.Modal? = null
     private var onNavigateToAttachmentsId: String? = null
+    private var onNavigateToCardScanScreenCalled = false
     private var onNavigateToMoveToOrganizationId: String? = null
+    private var onNavigateToPlanCalled = false
 
     private val mutableEventFlow = bufferedMutableSharedFlow<VaultAddEditEvent>()
     private val mutableStateFlow = MutableStateFlow(DEFAULT_STATE_LOGIN)
@@ -136,6 +141,8 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
                 onNavigateToGeneratorModal = { onNavigateToGeneratorModalType = it },
                 onNavigateToAttachments = { onNavigateToAttachmentsId = it },
                 onNavigateToMoveToOrganization = { id, _ -> onNavigateToMoveToOrganizationId = id },
+                onNavigateToCardScanScreen = { onNavigateToCardScanScreenCalled = true },
+                onNavigateToPlan = { onNavigateToPlanCalled = true },
                 viewModel = viewModel,
             )
         }
@@ -189,6 +196,45 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     }
 
     @Test
+    fun `on NavigateToCardScan event should invoke onNavigateToCardScanScreen`() {
+        mutableEventFlow.tryEmit(VaultAddEditEvent.NavigateToCardScan)
+        assertTrue(onNavigateToCardScanScreenCalled)
+    }
+
+    @Test
+    fun `on FocusCardHolderName event should focus field`() {
+        mutableStateFlow.value = DEFAULT_STATE_CARD
+        composeTestRule.waitForIdle()
+        mutableEventFlow.tryEmit(VaultAddEditEvent.FocusCardHolderName)
+        composeTestRule.waitForIdle()
+        composeTestRule
+            .onNodeWithTag("CardholderNameEntry")
+            .performScrollTo()
+            .assertIsFocused()
+    }
+
+    @Test
+    fun `scan card button should be displayed when isCardScannerEnabled is true`() {
+        mutableStateFlow.value = DEFAULT_STATE_CARD.copy(
+            isCardScannerEnabled = true,
+        )
+        composeTestRule
+            .onNodeWithText("Scan card")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `scan card button should not be displayed when isCardScannerEnabled is false`() {
+        mutableStateFlow.value = DEFAULT_STATE_CARD.copy(
+            isCardScannerEnabled = false,
+        )
+        composeTestRule
+            .onNodeWithText("Scan card")
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun `on NavigateToManualCodeEntry event should invoke NavigateToManualCodeEntry`() {
         mutableEventFlow.tryEmit(VaultAddEditEvent.NavigateToManualCodeEntry)
         assertTrue(onNavigateToManualCodeEntryScreenCalled)
@@ -230,6 +276,12 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             ),
         )
         assertEquals(GeneratorMode.Modal.Username(website), onNavigateToGeneratorModalType)
+    }
+
+    @Test
+    fun `on NavigateToPlanModal event should invoke onNavigateToPlan`() {
+        mutableEventFlow.tryEmit(VaultAddEditEvent.NavigateToPlanModal)
+        assertTrue(onNavigateToPlanCalled)
     }
 
     @Test
@@ -2558,6 +2610,176 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     }
 
     @Test
+    fun `in ItemType_BankAccount changing bank name should trigger BankNameTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Bank name")
+            .performTextInput(text = "TestBank")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.BankNameTextChange(
+                    bankName = "TestBank",
+                ),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in ItemType_BankAccount changing the name on account text field should trigger NameOnAccountTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Name on account")
+            .performTextInput(text = "TestNameOnAccount")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.NameOnAccountTextChange(
+                    nameOnAccount = "TestNameOnAccount",
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `in ItemType_BankAccount selecting an account type should trigger AccountTypeSelect`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        // Opens the menu
+        composeTestRule
+            .onNodeWithContentDescriptionAfterScroll(label = "-- Select --. Account type")
+            .performClick()
+
+        // Choose the option from the menu
+        composeTestRule
+            .onAllNodesWithText(text = "Checking")
+            .onLast()
+            .performScrollTo()
+            .performClick()
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.AccountTypeSelect(
+                    accountType = VaultBankAccountType.CHECKING,
+                ),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in ItemType_BankAccount changing the account number text field should trigger AccountNumberTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Account number")
+            .performTextInput(text = "TestAccountNumber")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.AccountNumberTextChange(
+                    accountNumber = "TestAccountNumber",
+                ),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in ItemType_BankAccount changing the routing number text field should trigger RoutingNumberTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Routing number")
+            .performTextInput(text = "TestRoutingNumber")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.RoutingNumberTextChange(
+                    routingNumber = "TestRoutingNumber",
+                ),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in ItemType_BankAccount changing the branch number text field should trigger BranchNumberTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Branch number")
+            .performTextInput(text = "TestBranchNumber")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.BranchNumberTextChange(
+                    branchNumber = "TestBranchNumber",
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `in ItemType_BankAccount changing the PIN text field should trigger PinTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "PIN")
+            .performTextInput(text = "1234")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.PinTextChange(pin = "1234"),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in ItemType_BankAccount changing the SWIFT code text field should trigger SwiftCodeTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "SWIFT code")
+            .performTextInput(text = "TestSwiftCode")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.SwiftCodeTextChange(
+                    swiftCode = "TestSwiftCode",
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `in ItemType_BankAccount changing the IBAN text field should trigger IbanTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "IBAN")
+            .performTextInput(text = "TestIban")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.IbanTextChange(iban = "TestIban"),
+            )
+        }
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in ItemType_BankAccount changing the bank contact phone text field should trigger BankContactPhoneTextChange`() {
+        mutableStateFlow.value = DEFAULT_STATE_BANK_ACCOUNT
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Bank contact phone")
+            .performTextInput(text = "555-1234")
+
+        verify {
+            viewModel.trySendAction(
+                VaultAddEditAction.ItemType.BankAccountType.BankContactPhoneTextChange(
+                    phone = "555-1234",
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `clicking Add field button should allow creation of Linked type`() {
         mutableStateFlow.value = DEFAULT_STATE_LOGIN
 
@@ -3516,7 +3738,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
 
         composeTestRule
             .onAllNodesWithContentDescriptionAfterScroll("Edit")
-            .onFirst()
+            .onLast()
             .performClick()
 
         composeTestRule
@@ -3527,14 +3749,115 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             viewModel.trySendAction(
                 VaultAddEditAction.Common.CustomFieldActionSelect(
                     customFieldAction = CustomFieldAction.MOVE_UP,
-                    customField = VaultAddEditState.Custom.BooleanField(
-                        itemId = "Test ID 1",
-                        name = "TestBoolean",
-                        value = false,
+                    customField = VaultAddEditState.Custom.HiddenField(
+                        itemId = "Test ID 3",
+                        name = "TestHidden",
+                        value = "TestHiddenVal",
                     ),
                 ),
             )
         }
+    }
+
+    @Test
+    fun `clicking first custom field edit icon only shows move down action in dialog`() {
+        mutableStateFlow.value = DEFAULT_STATE_SECURE_NOTES_CUSTOM_FIELDS
+
+        // Expand the additional options UI before interacting with it
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Additional options")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithContentDescriptionAfterScroll("Edit")
+            .onFirst()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("Move Up")
+            .assertIsNotDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Move down")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `clicking middle custom field edit icon shows both move actions in dialog`() {
+        mutableStateFlow.value = DEFAULT_STATE_SECURE_NOTES_CUSTOM_FIELDS
+
+        // Expand the additional options UI before interacting with it
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Additional options")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithContentDescriptionAfterScroll("Edit")[1]
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("Move Up")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Move down")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `clicking last custom field edit icon only shows move up action in dialog`() {
+        mutableStateFlow.value = DEFAULT_STATE_SECURE_NOTES_CUSTOM_FIELDS
+
+        // Expand the additional options UI before interacting with it
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Additional options")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithContentDescriptionAfterScroll("Edit")
+            .onLast()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("Move Up")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Move down")
+            .assertIsNotDisplayed()
+    }
+
+    @Test
+    fun `clicking single custom field edit icon shows no move actions in dialog`() {
+        mutableStateFlow.value = DEFAULT_STATE_SECURE_NOTES_CUSTOM_FIELDS.copy(
+            viewState = VaultAddEditState.ViewState.Content(
+                common = VaultAddEditState.ViewState.Content.Common(
+                    customFieldData = listOf(
+                        VaultAddEditState.Custom.BooleanField("Test ID 1", "TestBoolean", false),
+                    ),
+                ),
+                type = VaultAddEditState.ViewState.Content.ItemType.SecureNotes,
+                isIndividualVaultDisabled = false,
+            ),
+        )
+
+        // Expand the additional options UI before interacting with it
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Additional options")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithContentDescriptionAfterScroll("Edit")
+            .onFirst()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("Move Up")
+            .assertIsNotDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Move down")
+            .assertIsNotDisplayed()
     }
 
     @Test
@@ -4499,7 +4822,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
         )
 
         private val DEFAULT_STATE_LOGIN = VaultAddEditState(
@@ -4515,7 +4838,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
         )
 
         private val DEFAULT_STATE_IDENTITY = VaultAddEditState(
@@ -4531,7 +4854,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
         )
 
         private val DEFAULT_STATE_CARD = VaultAddEditState(
@@ -4547,7 +4870,23 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
+        )
+
+        private val DEFAULT_STATE_BANK_ACCOUNT = VaultAddEditState(
+            vaultAddEditType = VaultAddEditType.AddItem,
+            cipherType = VaultItemCipherType.BANK_ACCOUNT,
+            viewState = VaultAddEditState.ViewState.Content(
+                common = VaultAddEditState.ViewState.Content.Common(),
+                type = VaultAddEditState.ViewState.Content.ItemType.BankAccount(),
+                isIndividualVaultDisabled = false,
+            ),
+            dialog = null,
+            bottomSheetState = null,
+            shouldShowCoachMarkTour = false,
+            defaultUriMatchType = UriMatchTypeModel.EXACT,
+            hasPremium = false,
+            isCardScannerEnabled = false,
         )
 
         private val DEFAULT_STATE_SECURE_NOTES_CUSTOM_FIELDS = VaultAddEditState(
@@ -4573,7 +4912,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
         )
 
         private val DEFAULT_STATE_SECURE_NOTES = VaultAddEditState(
@@ -4589,7 +4928,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
         )
 
         private val DEFAULT_STATE_SSH_KEYS = VaultAddEditState(
@@ -4605,7 +4944,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
-            isArchiveEnabled = true,
+            isCardScannerEnabled = false,
         )
 
         private val ALTERED_COLLECTIONS = listOf(

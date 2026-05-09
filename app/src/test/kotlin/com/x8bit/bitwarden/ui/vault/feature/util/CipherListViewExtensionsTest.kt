@@ -12,7 +12,6 @@ import com.x8bit.bitwarden.ui.vault.feature.itemlisting.model.ListingItemOverflo
 import com.x8bit.bitwarden.ui.vault.model.VaultTrailingIcon
 import com.x8bit.bitwarden.ui.vault.util.toSdkCipherType
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -40,7 +39,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = false,
             isPremiumUser = true,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -89,7 +87,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = false,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertTrue(
@@ -114,7 +111,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -157,7 +153,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -189,7 +184,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -231,7 +225,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = false,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -257,7 +250,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = false,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -291,7 +283,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -318,7 +309,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -356,7 +346,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = false,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -368,6 +357,139 @@ class CipherListViewExtensionsTest {
                 ),
             ),
             result,
+        )
+    }
+
+    @Test
+    fun `toOverflowActions should return all copy actions for a bank account cipher`() {
+        val cipher = createMockCipherListView(
+            number = 1,
+            type = CipherListViewType.BankAccount,
+            id = id,
+            copyableFields = listOf(
+                CopyableCipherFields.BANK_ACCOUNT_ACCOUNT_NUMBER,
+                CopyableCipherFields.BANK_ACCOUNT_ROUTING_NUMBER,
+            ),
+        )
+
+        val result = cipher.toOverflowActions(
+            hasMasterPassword = true,
+            isPremiumUser = false,
+        )
+
+        assertEquals(
+            listOf(
+                ListingItemOverflowAction.VaultAction.CopyAccountNumberClick(
+                    cipherId = id,
+                    requiresPasswordReprompt = true,
+                ),
+                ListingItemOverflowAction.VaultAction.CopyRoutingNumberClick(
+                    cipherId = id,
+                    requiresPasswordReprompt = true,
+                ),
+                ListingItemOverflowAction.VaultAction.ViewClick(
+                    cipherId = id,
+                    cipherType = CipherType.BANK_ACCOUNT,
+                    requiresPasswordReprompt = true,
+                ),
+                ListingItemOverflowAction.VaultAction.EditClick(
+                    cipherId = id,
+                    cipherType = CipherType.BANK_ACCOUNT,
+                    requiresPasswordReprompt = true,
+                ),
+                ListingItemOverflowAction.VaultAction.ArchiveClick(cipherId = id),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `toOverflowActions should return only available copy actions for a bank account cipher`() {
+        val cipher = createMockCipherListView(
+            number = 1,
+            type = CipherListViewType.BankAccount,
+            id = id,
+            copyableFields = listOf(
+                CopyableCipherFields.BANK_ACCOUNT_ACCOUNT_NUMBER,
+            ),
+        )
+
+        val result = cipher.toOverflowActions(
+            hasMasterPassword = false,
+            isPremiumUser = false,
+        )
+
+        assertEquals(
+            listOf(
+                ListingItemOverflowAction.VaultAction.CopyAccountNumberClick(
+                    cipherId = id,
+                    requiresPasswordReprompt = false,
+                ),
+                ListingItemOverflowAction.VaultAction.ViewClick(
+                    cipherId = id,
+                    cipherType = CipherType.BANK_ACCOUNT,
+                    requiresPasswordReprompt = false,
+                ),
+                ListingItemOverflowAction.VaultAction.EditClick(
+                    cipherId = id,
+                    cipherType = CipherType.BANK_ACCOUNT,
+                    requiresPasswordReprompt = false,
+                ),
+                ListingItemOverflowAction.VaultAction.ArchiveClick(cipherId = id),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `toOverflowActions should return minimum actions for a bank account cipher`() {
+        val cipher = createMockCipherListView(
+            number = 1,
+            id = id,
+            isDeleted = true,
+            isArchived = true,
+            type = CipherListViewType.BankAccount,
+        )
+
+        val result = cipher.toOverflowActions(
+            hasMasterPassword = false,
+            isPremiumUser = false,
+        )
+
+        assertEquals(
+            listOf(
+                ListingItemOverflowAction.VaultAction.ViewClick(
+                    cipherId = id,
+                    cipherType = CipherType.BANK_ACCOUNT,
+                    requiresPasswordReprompt = false,
+                ),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `toOverflowActions should not return bank-account copy actions for non-bank ciphers`() {
+        val cipher = createMockCipherListView(
+            number = 1,
+            id = id,
+            type = CipherListViewType.Login(createMockLoginListView(number = 1)),
+            copyableFields = listOf(
+                CopyableCipherFields.BANK_ACCOUNT_ACCOUNT_NUMBER,
+                CopyableCipherFields.BANK_ACCOUNT_ROUTING_NUMBER,
+            ),
+        )
+
+        val result = cipher.toOverflowActions(
+            hasMasterPassword = false,
+            isPremiumUser = false,
+        )
+
+        assertTrue(
+            result.none {
+                it is ListingItemOverflowAction.VaultAction.CopyAccountNumberClick ||
+                    it is ListingItemOverflowAction.VaultAction.CopyRoutingNumberClick
+            },
         )
     }
 
@@ -384,7 +506,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertTrue(
@@ -411,7 +532,6 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertTrue(
@@ -446,36 +566,9 @@ class CipherListViewExtensionsTest {
         val result = cipher.toOverflowActions(
             hasMasterPassword = true,
             isPremiumUser = false,
-            isArchiveEnabled = true,
         )
 
         assertTrue(result.contains(ListingItemOverflowAction.VaultAction.UnarchiveClick(id)))
-    }
-
-    @Test
-    fun `toOverflowActions should not return Archive action when Archive is disabled`() {
-        val loginListView = createMockLoginListView(
-            number = 1,
-            username = "",
-            uris = emptyList(),
-            totp = null,
-        )
-        val cipher = createMockCipherListView(
-            number = 1,
-            id = id,
-            isArchived = false,
-            isDeleted = false,
-            edit = true,
-            type = CipherListViewType.Login(loginListView),
-        )
-
-        val result = cipher.toOverflowActions(
-            hasMasterPassword = true,
-            isPremiumUser = false,
-            isArchiveEnabled = false,
-        )
-
-        assertFalse(result.contains(ListingItemOverflowAction.VaultAction.ArchiveClick(id)))
     }
 
     @Test

@@ -1,10 +1,13 @@
 package com.bitwarden.network.api
 
+import com.bitwarden.network.model.BitwardenSubscriptionResponseJson
 import com.bitwarden.network.model.CheckoutSessionRequestJson
 import com.bitwarden.network.model.CheckoutSessionResponseJson
 import com.bitwarden.network.model.NetworkResult
 import com.bitwarden.network.model.PortalUrlResponseJson
+import com.bitwarden.network.model.PremiumPlanResponseJson
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 /**
@@ -25,4 +28,16 @@ internal interface AuthenticatedBillingApi {
      */
     @POST("/account/billing/vnext/portal-session")
     suspend fun getPortalUrl(): NetworkResult<PortalUrlResponseJson>
+
+    /**
+     * Retrieves the premium plan pricing information.
+     */
+    @GET("/plans/premium")
+    suspend fun getPremiumPlan(): NetworkResult<PremiumPlanResponseJson>
+
+    /**
+     * Retrieves the user's premium subscription details.
+     */
+    @GET("/account/billing/vnext/subscription")
+    suspend fun getSubscription(): NetworkResult<BitwardenSubscriptionResponseJson>
 }

@@ -13,8 +13,12 @@ import com.x8bit.bitwarden.ui.auth.feature.accountsetup.navigateToSetupUnlockScr
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupAutoFillDestination
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupBrowserAutofillDestination
 import com.x8bit.bitwarden.ui.auth.feature.accountsetup.setupUnlockDestination
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.PlanMode
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.PlanRoute
 import com.x8bit.bitwarden.ui.platform.feature.premium.plan.navigateToPlanModal
 import com.x8bit.bitwarden.ui.platform.feature.premium.plan.planModalDestination
+import com.x8bit.bitwarden.ui.platform.feature.premium.upgraded.navigateToUpgradedToPremium
+import com.x8bit.bitwarden.ui.platform.feature.premium.upgraded.upgradedToPremiumDestination
 import com.x8bit.bitwarden.ui.platform.feature.search.SearchRoute
 import com.x8bit.bitwarden.ui.platform.feature.search.navigateToSearch
 import com.x8bit.bitwarden.ui.platform.feature.search.searchDestination
@@ -56,6 +60,8 @@ import com.x8bit.bitwarden.ui.vault.feature.attachments.attachmentDestination
 import com.x8bit.bitwarden.ui.vault.feature.attachments.navigateToAttachment
 import com.x8bit.bitwarden.ui.vault.feature.attachments.preview.navigateToPreviewAttachment
 import com.x8bit.bitwarden.ui.vault.feature.attachments.preview.previewAttachmentDestination
+import com.x8bit.bitwarden.ui.vault.feature.cardscanner.cardScanDestination
+import com.x8bit.bitwarden.ui.vault.feature.cardscanner.navigateToCardScanScreen
 import com.x8bit.bitwarden.ui.vault.feature.importlogins.importLoginsScreenDestination
 import com.x8bit.bitwarden.ui.vault.feature.importlogins.navigateToImportLoginsScreen
 import com.x8bit.bitwarden.ui.vault.feature.item.navigateToVaultItem
@@ -104,6 +110,7 @@ fun NavGraphBuilder.vaultUnlockedGraph(
                     parentFolderName = it,
                 )
             },
+            onNavigateToPlan = { navController.navigateToPlanModal() },
         )
         vaultUnlockedNavBarDestination(
             onNavigateToExportVault = { navController.navigateToExportVault() },
@@ -142,6 +149,9 @@ fun NavGraphBuilder.vaultUnlockedGraph(
                 navController.navigateToAboutPrivilegedAppsScreen()
             },
             onNavigateToPlan = { navController.navigateToPlanModal() },
+            onNavigateToUpgradedToPremium = {
+                navController.navigateToUpgradedToPremium(planMode = PlanMode.Standard)
+            },
         )
         flightRecorderDestination(
             isPreAuth = false,
@@ -172,6 +182,9 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateToQrCodeScanScreen = {
                 navController.navigateToQrCodeScanScreen()
             },
+            onNavigateToCardScanScreen = {
+                navController.navigateToCardScanScreen()
+            },
             onNavigateToManualCodeEntryScreen = {
                 navController.navigateToManualCodeEntryScreen()
             },
@@ -184,6 +197,7 @@ fun NavGraphBuilder.vaultUnlockedGraph(
                     showOnlyCollections = showOnlyCollections,
                 )
             },
+            onNavigateToPlan = { navController.navigateToPlanModal() },
         )
         vaultMoveToOrganizationDestination(
             onNavigateBack = { navController.popBackStack() },
@@ -203,13 +217,11 @@ fun NavGraphBuilder.vaultUnlockedGraph(
                     passwordHistoryMode = GeneratorPasswordHistoryMode.Item(itemId = it),
                 )
             },
-            onNavigateToPreviewAttachment = { cipherId, attachmentId, fileName ->
-                navController.navigateToPreviewAttachment(
-                    cipherId = cipherId,
-                    attachmentId = attachmentId,
-                    fileName = fileName,
-                )
-            },
+            onNavigateToPreviewAttachment = { navController.navigateToPreviewAttachment(it) },
+            onNavigateToPlan = { navController.navigateToPlanModal() },
+        )
+        cardScanDestination(
+            onNavigateBack = { navController.popBackStack() },
         )
         vaultQrCodeScanDestination(
             onNavigateToManualCodeEntryScreen = {
@@ -230,6 +242,7 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateBack = { navController.popBackStack() },
             onNavigateUpToSearchOrRoot = { navController.navigateUpToSearchOrVaultUnlockedRoot() },
             onNavigateToGeneratorModal = { navController.navigateToGeneratorModal(mode = it) },
+            onNavigateToPlan = { navController.navigateToPlanModal() },
         )
         viewSendDestination(
             onNavigateBack = { navController.popBackStack() },
@@ -257,16 +270,11 @@ fun NavGraphBuilder.vaultUnlockedGraph(
             onNavigateToViewSend = { navController.navigateToViewSend(it) },
             onNavigateToEditCipher = { navController.navigateToVaultAddEdit(it) },
             onNavigateToViewCipher = { navController.navigateToVaultItem(it) },
+            onNavigateToPlan = { navController.navigateToPlanModal() },
         )
         attachmentDestination(
             onNavigateBack = { navController.popBackStack() },
-            onNavigateToPreviewAttachment = { cipherId, attachmentId, fileName ->
-                navController.navigateToPreviewAttachment(
-                    cipherId = cipherId,
-                    attachmentId = attachmentId,
-                    fileName = fileName,
-                )
-            },
+            onNavigateToPreviewAttachment = { navController.navigateToPreviewAttachment(it) },
         )
         setupUnlockDestination(
             onNavigateBack = {
@@ -288,6 +296,17 @@ fun NavGraphBuilder.vaultUnlockedGraph(
         )
         planModalDestination(
             onNavigateBack = { navController.popBackStack() },
+            onNavigateToUpgradedToPremium = {
+                navController.navigateToUpgradedToPremium(planMode = PlanMode.Modal)
+            },
+        )
+        upgradedToPremiumDestination(
+            onDismiss = { planMode ->
+                when (planMode) {
+                    PlanMode.Modal -> navController.popBackStack<PlanRoute.Modal>(inclusive = true)
+                    PlanMode.Standard -> navController.popBackStack()
+                }
+            },
         )
     }
 }

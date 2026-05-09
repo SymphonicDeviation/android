@@ -4,7 +4,9 @@ import android.net.Uri
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.model.DataState
+import com.bitwarden.data.repository.util.baseWebVaultUrlOrDefault
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
 import com.bitwarden.ui.platform.model.FileData
@@ -15,6 +17,8 @@ import com.bitwarden.ui.util.concat
 import com.bitwarden.vault.CipherView
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
+import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.CreateAttachmentResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteAttachmentResult
@@ -44,7 +48,9 @@ private const val MAX_FILE_SIZE_BYTES: Long = 100 * 1024 * 1024
 @HiltViewModel
 class AttachmentsViewModel @Inject constructor(
     private val authRepo: AuthRepository,
+    private val environmentRepo: EnvironmentRepository,
     private val vaultRepo: VaultRepository,
+    featureFlagManager: FeatureFlagManager,
     savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<AttachmentsState, AttachmentsEvent, AttachmentsAction>(
     // We load the state from the savedStateHandle for testing purposes.
@@ -54,12 +60,12 @@ class AttachmentsViewModel @Inject constructor(
             AttachmentsState(
                 cipherId = savedStateHandle.toAttachmentsArgs().cipherId,
                 viewState = AttachmentsState.ViewState.Loading,
-                dialogState = AttachmentsState.DialogState.Error(
-                    title = null,
-                    message = BitwardenString.premium_required.asText(),
-                )
+                dialogState = AttachmentsState.DialogState.RequiresPremium
                     .takeUnless { isPremiumUser },
                 isPremiumUser = isPremiumUser,
+                isAttachmentUpdatesEnabled = featureFlagManager.getFeatureFlag(
+                    key = FlagKey.AttachmentUpdates,
+                ),
             )
         },
 ) {
@@ -75,6 +81,12 @@ class AttachmentsViewModel @Inject constructor(
             .map { AttachmentsAction.Internal.UserStateReceive(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
+
+        featureFlagManager
+            .getFeatureFlagFlow(key = FlagKey.AttachmentUpdates)
+            .map { AttachmentsAction.Internal.AttachmentUpdatesFlagReceive(it) }
+            .onEach(::sendAction)
+            .launchIn(viewModelScope)
     }
 
     override fun handleAction(action: AttachmentsAction) {
@@ -82,7 +94,9 @@ class AttachmentsViewModel @Inject constructor(
             AttachmentsAction.BackClick -> handleBackClick()
             AttachmentsAction.SaveClick -> handleSaveClick()
             AttachmentsAction.DismissDialogClick -> handleDismissDialogClick()
+            AttachmentsAction.UpgradeToPremiumClick -> handleUpgradeToPremiumClick()
             AttachmentsAction.ChooseFileClick -> handleChooseFileClick()
+            is AttachmentsAction.FileNameChange -> handleFileNameChange(action)
             is AttachmentsAction.FileChoose -> handleFileChoose(action)
             is AttachmentsAction.DeleteClick -> handleDeleteClick(action)
             is AttachmentsAction.ItemClick -> handleItemClick(action)
@@ -98,12 +112,7 @@ class AttachmentsViewModel @Inject constructor(
         onContent { content ->
             if (!state.isPremiumUser) {
                 mutableStateFlow.update {
-                    it.copy(
-                        dialogState = AttachmentsState.DialogState.Error(
-                            title = BitwardenString.an_error_has_occurred.asText(),
-                            message = BitwardenString.premium_required.asText(),
-                        ),
-                    )
+                    it.copy(dialogState = AttachmentsState.DialogState.RequiresPremium)
                 }
                 return@onContent
             }
@@ -145,7 +154,7 @@ class AttachmentsViewModel @Inject constructor(
                     cipherId = state.cipherId,
                     cipherView = requireNotNull(content.originalCipher),
                     fileSizeBytes = content.newAttachment.sizeBytes.toString(),
-                    fileName = content.newAttachment.displayName,
+                    fileName = content.newAttachment.completeFileName,
                     fileUri = content.newAttachment.uri,
                 )
                 sendAction(AttachmentsAction.Internal.CreateAttachmentResultReceive(result))
@@ -157,8 +166,35 @@ class AttachmentsViewModel @Inject constructor(
         mutableStateFlow.update { it.copy(dialogState = null) }
     }
 
+    private fun handleUpgradeToPremiumClick() {
+        mutableStateFlow.update { it.copy(dialogState = null) }
+        val baseUrl = environmentRepo
+            .environment
+            .environmentUrlData
+            .baseWebVaultUrlOrDefault
+        sendEvent(
+            AttachmentsEvent.NavigateToUri(
+                uri = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium",
+            ),
+        )
+    }
+
     private fun handleChooseFileClick() {
         sendEvent(AttachmentsEvent.ShowChooserSheet)
+    }
+
+    private fun handleFileNameChange(action: AttachmentsAction.FileNameChange) {
+        onContent { content ->
+            mutableStateFlow.update {
+                it.copy(
+                    viewState = content.copy(
+                        newAttachment = content.newAttachment?.copy(
+                            displayName = action.fileName,
+                        ),
+                    ),
+                )
+            }
+        }
     }
 
     private fun handleFileChoose(action: AttachmentsAction.FileChoose) {
@@ -166,7 +202,12 @@ class AttachmentsViewModel @Inject constructor(
             it.copy(
                 newAttachment = AttachmentsState.NewAttachment(
                     uri = action.fileData.uri,
-                    displayName = action.fileData.fileName,
+                    extension = action
+                        .fileData
+                        .fileName
+                        .substringAfterLast(delimiter = '.', missingDelimiterValue = "")
+                        .takeUnless { extension -> extension.isBlank() },
+                    displayName = action.fileData.fileName.substringBeforeLast(delimiter = '.'),
                     sizeBytes = action.fileData.sizeBytes,
                 ),
             )
@@ -195,11 +236,19 @@ class AttachmentsViewModel @Inject constructor(
     }
 
     private fun handleItemClick(action: AttachmentsAction.ItemClick) {
+        if (!state.isPremiumUser) {
+            mutableStateFlow.update {
+                it.copy(dialogState = AttachmentsState.DialogState.RequiresPremium)
+            }
+            return
+        }
         sendEvent(
             AttachmentsEvent.NavigateToPreview(
                 cipherId = state.cipherId,
                 attachmentId = action.attachment.id,
                 fileName = action.attachment.title,
+                displaySize = action.attachment.displaySize,
+                isLargeFile = action.attachment.isLargeFile,
             ),
         )
     }
@@ -213,6 +262,9 @@ class AttachmentsViewModel @Inject constructor(
 
             is AttachmentsAction.Internal.DeleteResultReceive -> handleDeleteResultReceive(action)
             is AttachmentsAction.Internal.UserStateReceive -> handleUserStateReceive(action)
+            is AttachmentsAction.Internal.AttachmentUpdatesFlagReceive -> {
+                handleAttachmentUpdatesFlagReceive(action)
+            }
         }
     }
 
@@ -337,6 +389,12 @@ class AttachmentsViewModel @Inject constructor(
         }
     }
 
+    private fun handleAttachmentUpdatesFlagReceive(
+        action: AttachmentsAction.Internal.AttachmentUpdatesFlagReceive,
+    ) {
+        mutableStateFlow.update { it.copy(isAttachmentUpdatesEnabled = action.isEnabled) }
+    }
+
     private inline fun onContent(
         crossinline block: (AttachmentsState.ViewState.Content) -> Unit,
     ) {
@@ -365,6 +423,7 @@ data class AttachmentsState(
     val viewState: ViewState,
     val dialogState: DialogState?,
     val isPremiumUser: Boolean,
+    val isAttachmentUpdatesEnabled: Boolean,
 ) : Parcelable {
     /**
      * Represents the specific view states for the [AttachmentsScreen].
@@ -401,9 +460,13 @@ data class AttachmentsState(
     @Parcelize
     data class NewAttachment(
         val uri: Uri,
+        val extension: String?,
         val displayName: String,
         val sizeBytes: Long,
-    ) : Parcelable
+    ) : Parcelable {
+        val completeFileName: String
+            get() = extension?.let { "$displayName.$it" } ?: displayName
+    }
 
     /**
      * Represents an individual attachment that is already saved to the cipher.
@@ -413,12 +476,19 @@ data class AttachmentsState(
         val id: String,
         val title: String,
         val displaySize: String,
+        val isLargeFile: Boolean,
     ) : Parcelable
 
     /**
      * Represents the current state of any dialogs on the screen.
      */
     sealed class DialogState : Parcelable {
+        /**
+         * Represents a dismissible dialog indicating that you must have premium.
+         */
+        @Parcelize
+        data object RequiresPremium : DialogState()
+
         /**
          * Represents a dismissible dialog with the given error [message].
          */
@@ -449,12 +519,19 @@ sealed class AttachmentsEvent {
     data object NavigateBack : AttachmentsEvent()
 
     /**
+     * Navigates to upgrade to the given Uri.
+     */
+    data class NavigateToUri(val uri: String) : AttachmentsEvent()
+
+    /**
      * Navigates to preview the attachment.
      */
     data class NavigateToPreview(
         val cipherId: String,
         val attachmentId: String,
         val fileName: String,
+        val displaySize: String,
+        val isLargeFile: Boolean,
     ) : AttachmentsEvent()
 
     /**
@@ -504,9 +581,19 @@ sealed class AttachmentsAction {
     data object DismissDialogClick : AttachmentsAction()
 
     /**
+     * User clicked to upgrade top Premium.
+     */
+    data object UpgradeToPremiumClick : AttachmentsAction()
+
+    /**
      * User clicked to select a new attachment file.
      */
     data object ChooseFileClick : AttachmentsAction()
+
+    /**
+     * User edited the new attachment file name.
+     */
+    data class FileNameChange(val fileName: String) : AttachmentsAction()
 
     /**
      * User has chosen the file attachment.
@@ -533,6 +620,13 @@ sealed class AttachmentsAction {
      * Internal ViewModel actions.
      */
     sealed class Internal : AttachmentsAction() {
+        /**
+         * Updates about the state of the attachment updates flag have been received.
+         */
+        data class AttachmentUpdatesFlagReceive(
+            val isEnabled: Boolean,
+        ) : Internal()
+
         /**
          * The cipher data has been received.
          */

@@ -4,7 +4,6 @@ import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.bitwarden.annotation.OmitFromCoverage
-import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.data.repository.util.baseIconUrl
 import com.bitwarden.data.repository.util.baseWebSendUrl
@@ -30,7 +29,7 @@ import com.x8bit.bitwarden.data.autofill.accessibility.manager.AccessibilitySele
 import com.x8bit.bitwarden.data.autofill.manager.AutofillSelectionManager
 import com.x8bit.bitwarden.data.autofill.model.AutofillSelectionData
 import com.x8bit.bitwarden.data.autofill.util.login
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.billing.manager.PremiumStateManager
 import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardManager
@@ -101,10 +100,10 @@ class SearchViewModel @Inject constructor(
     private val vaultRepo: VaultRepository,
     private val authRepo: AuthRepository,
     private val environmentRepo: EnvironmentRepository,
+    private val premiumStateManager: PremiumStateManager,
     settingsRepo: SettingsRepository,
     snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
     specialCircumstanceManager: SpecialCircumstanceManager,
-    featureFlagManager: FeatureFlagManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchAction>(
     // We load the state from the savedStateHandle for testing purposes.
     initialState = savedStateHandle[KEY_STATE]
@@ -140,7 +139,6 @@ class SearchViewModel @Inject constructor(
                 hasMasterPassword = userState.activeAccount.hasMasterPassword,
                 isPremium = userState.activeAccount.isPremium,
                 restrictItemTypesPolicyOrgIds = persistentListOf(),
-                isArchiveEnabled = featureFlagManager.getFeatureFlag(FlagKey.ArchiveItems),
             )
         },
 ) {
@@ -178,12 +176,6 @@ class SearchViewModel @Inject constructor(
                 SnackbarRelay.SEND_UPDATED,
             )
             .map { SearchAction.Internal.SnackbarDataReceived(it) }
-            .onEach(::sendAction)
-            .launchIn(viewModelScope)
-
-        featureFlagManager
-            .getFeatureFlagFlow(FlagKey.ArchiveItems)
-            .map { SearchAction.Internal.ArchiveItemsFlagUpdateReceive(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
     }
@@ -318,9 +310,16 @@ class SearchViewModel @Inject constructor(
 
     private fun handleUpgradeToPremiumClick() {
         mutableStateFlow.update { it.copy(dialogState = null) }
-        val baseUrl = environmentRepo.environment.environmentUrlData.baseWebVaultUrlOrDefault
-        val url = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium"
-        sendEvent(SearchEvent.NavigateToUrl(url = url))
+        if (premiumStateManager.isInAppUpgradeAvailable()) {
+            sendEvent(SearchEvent.NavigateToPlanModal)
+        } else {
+            val baseUrl = environmentRepo
+                .environment
+                .environmentUrlData
+                .baseWebVaultUrlOrDefault
+            val url = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium"
+            sendEvent(SearchEvent.NavigateToUrl(url = url))
+        }
     }
 
     private fun handleOverflowItemClick(action: SearchAction.OverflowOptionClick) {
@@ -349,6 +348,14 @@ class SearchViewModel @Inject constructor(
 
             is ListingItemOverflowAction.VaultAction.CopyNumberClick -> {
                 handleCopyNumberClick(overflowAction)
+            }
+
+            is ListingItemOverflowAction.VaultAction.CopyAccountNumberClick -> {
+                handleCopyAccountNumberClick(overflowAction)
+            }
+
+            is ListingItemOverflowAction.VaultAction.CopyRoutingNumberClick -> {
+                handleCopyRoutingNumberClick(overflowAction)
             }
 
             is ListingItemOverflowAction.VaultAction.CopyPasswordClick -> {
@@ -531,6 +538,40 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    private fun handleCopyAccountNumberClick(
+        action: ListingItemOverflowAction.VaultAction.CopyAccountNumberClick,
+    ) {
+        viewModelScope.launch {
+            decryptCipherViewOrNull(action.cipherId)
+                ?.bankAccount
+                ?.accountNumber
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    clipboardManager.setText(
+                        text = it,
+                        toastDescriptorOverride = BitwardenString.account_number.asText(),
+                    )
+                }
+        }
+    }
+
+    private fun handleCopyRoutingNumberClick(
+        action: ListingItemOverflowAction.VaultAction.CopyRoutingNumberClick,
+    ) {
+        viewModelScope.launch {
+            decryptCipherViewOrNull(action.cipherId)
+                ?.bankAccount
+                ?.routingNumber
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    clipboardManager.setText(
+                        text = it,
+                        toastDescriptorOverride = BitwardenString.routing_number.asText(),
+                    )
+                }
+        }
+    }
+
     private fun handleCopyPasswordClick(
         action: ListingItemOverflowAction.VaultAction.CopyPasswordClick,
     ) {
@@ -640,10 +681,6 @@ class SearchViewModel @Inject constructor(
                 handleDecryptCipherErrorReceive(action)
             }
 
-            is SearchAction.Internal.ArchiveItemsFlagUpdateReceive -> {
-                handleArchiveItemsFlagUpdateReceive(action)
-            }
-
             is SearchAction.Internal.ArchiveCipherReceive -> handleArchiveCipherReceive(action)
             is SearchAction.Internal.UnarchiveCipherReceive -> handleUnarchiveCipherReceive(action)
         }
@@ -661,12 +698,6 @@ class SearchViewModel @Inject constructor(
                 ),
             )
         }
-    }
-
-    private fun handleArchiveItemsFlagUpdateReceive(
-        action: SearchAction.Internal.ArchiveItemsFlagUpdateReceive,
-    ) {
-        mutableStateFlow.update { it.copy(isArchiveEnabled = action.isEnabled) }
     }
 
     private fun handleArchiveCipherReceive(action: SearchAction.Internal.ArchiveCipherReceive) {
@@ -1017,7 +1048,6 @@ class SearchViewModel @Inject constructor(
                                 isIconLoadingDisabled = state.isIconLoadingDisabled,
                                 isAutofill = state.isAutofill,
                                 isPremiumUser = state.isPremium,
-                                isArchiveEnabled = state.isArchiveEnabled,
                             )
                     }
 
@@ -1084,7 +1114,6 @@ data class SearchState(
     val hasMasterPassword: Boolean,
     val isPremium: Boolean,
     val restrictItemTypesPolicyOrgIds: ImmutableList<String>,
-    val isArchiveEnabled: Boolean,
 ) : Parcelable {
 
     /**
@@ -1274,9 +1303,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object Logins : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.logins.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.logins.asText())
         }
 
         /**
@@ -1284,9 +1311,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object Cards : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.cards.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.cards.asText())
         }
 
         /**
@@ -1294,9 +1319,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object Identities : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.identities.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.identities.asText())
         }
 
         /**
@@ -1304,9 +1327,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object SecureNotes : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.secure_notes.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.secure_notes.asText())
         }
 
         /**
@@ -1314,9 +1335,15 @@ sealed class SearchTypeData : Parcelable {
          */
         data object SshKeys : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.ssh_keys.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.ssh_keys.asText())
+        }
+
+        /**
+         * Indicates that we should be searching only bank account ciphers.
+         */
+        data object BankAccounts : Vault() {
+            override val title: Text
+                get() = BitwardenString.search_x.asText(BitwardenString.bank_accounts.asText())
         }
 
         /**
@@ -1327,9 +1354,7 @@ sealed class SearchTypeData : Parcelable {
             val collectionName: String = "",
         ) : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(collectionName.asText())
+                get() = BitwardenString.search_x.asText(collectionName.asText())
         }
 
         /**
@@ -1337,9 +1362,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object NoFolder : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.folder_none.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.folder_none.asText())
         }
 
         /**
@@ -1350,9 +1373,7 @@ sealed class SearchTypeData : Parcelable {
             val folderName: String = "",
         ) : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(folderName.asText())
+                get() = BitwardenString.search_x.asText(folderName.asText())
         }
 
         /**
@@ -1360,9 +1381,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object Trash : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.trash.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.trash.asText())
         }
 
         /**
@@ -1370,9 +1389,7 @@ sealed class SearchTypeData : Parcelable {
          */
         data object VerificationCodes : Vault() {
             override val title: Text
-                get() = BitwardenString.search.asText()
-                    .concat(" ".asText())
-                    .concat(BitwardenString.verification_codes.asText())
+                get() = BitwardenString.search_x.asText(BitwardenString.verification_codes.asText())
         }
     }
 }
@@ -1537,13 +1554,6 @@ sealed class SearchAction {
         data class DecryptCipherErrorReceive(
             val error: Throwable?,
         ) : Internal()
-
-        /**
-         * Indicates that the Archive Items flag has been updated.
-         */
-        data class ArchiveItemsFlagUpdateReceive(
-            val isEnabled: Boolean,
-        ) : Internal()
     }
 }
 
@@ -1594,6 +1604,11 @@ sealed class SearchEvent {
     data class NavigateToUrl(
         val url: String,
     ) : SearchEvent()
+
+    /**
+     * Navigates to the in-app plan modal for premium upgrade.
+     */
+    data object NavigateToPlanModal : SearchEvent()
 
     /**
      * Shares the [content] with share sheet.

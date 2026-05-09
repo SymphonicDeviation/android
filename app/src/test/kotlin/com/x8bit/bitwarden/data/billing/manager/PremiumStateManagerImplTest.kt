@@ -14,12 +14,15 @@ import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.billing.repository.BillingRepository
 import com.x8bit.bitwarden.data.platform.datasource.disk.util.FakeSettingsDiskSource
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.platform.manager.PushManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
+import com.x8bit.bitwarden.data.platform.manager.model.PremiumStatusChangedData
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockCipherListView
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -66,9 +69,18 @@ class PremiumStateManagerImplTest {
         every {
             getFeatureFlagFlow(FlagKey.MobilePremiumUpgrade)
         } returns mutableMobilePremiumUpgradeFlagFlow
+        every {
+            getFeatureFlag(FlagKey.MobilePremiumUpgrade)
+        } answers { mutableMobilePremiumUpgradeFlagFlow.value }
     }
 
     private val dispatcherManager = FakeDispatcherManager()
+
+    private val mutablePremiumStatusChangedFlow =
+        MutableSharedFlow<PremiumStatusChangedData>(replay = 0, extraBufferCapacity = 1)
+    private val pushManager: PushManager = mockk(relaxed = true) {
+        every { premiumStatusChangedFlow } returns mutablePremiumStatusChangedFlow
+    }
 
     private fun createManager(): PremiumStateManagerImpl = PremiumStateManagerImpl(
         authDiskSource = fakeAuthDiskSource,
@@ -77,6 +89,7 @@ class PremiumStateManagerImplTest {
         settingsDiskSource = fakeSettingsDiskSource,
         vaultRepository = vaultRepository,
         featureFlagManager = featureFlagManager,
+        pushManager = pushManager,
         clock = fixedClock,
         dispatcherManager = dispatcherManager,
     )
@@ -331,6 +344,34 @@ class PremiumStateManagerImplTest {
     }
 
     @Test
+    fun `isInAppUpgradeAvailable should return true when billing supported and flag enabled`() {
+        val manager = createManager()
+        assertTrue(manager.isInAppUpgradeAvailable())
+    }
+
+    @Test
+    fun `isInAppUpgradeAvailable should return false when billing not supported`() {
+        mutableIsInAppBillingSupportedFlow.value = false
+        val manager = createManager()
+        assertFalse(manager.isInAppUpgradeAvailable())
+    }
+
+    @Test
+    fun `isInAppUpgradeAvailable should return false when feature flag disabled`() {
+        mutableMobilePremiumUpgradeFlagFlow.value = false
+        val manager = createManager()
+        assertFalse(manager.isInAppUpgradeAvailable())
+    }
+
+    @Test
+    fun `isInAppUpgradeAvailable should return false when both conditions are false`() {
+        mutableIsInAppBillingSupportedFlow.value = false
+        mutableMobilePremiumUpgradeFlagFlow.value = false
+        val manager = createManager()
+        assertFalse(manager.isInAppUpgradeAvailable())
+    }
+
+    @Test
     fun `dismissPremiumUpgradeBanner should store dismissed state for active user`() {
         val manager = createManager()
         manager.dismissPremiumUpgradeBanner()
@@ -346,6 +387,152 @@ class PremiumStateManagerImplTest {
         val manager = createManager()
         manager.dismissPremiumUpgradeBanner()
         fakeSettingsDiskSource.assertPremiumUpgradeBannerDismissed(
+            userId = ACTIVE_USER_ID,
+            expected = null,
+        )
+    }
+
+    @Test
+    fun `isUpgradedToPremiumCardEligibleFlow emits false when nothing has been observed`() =
+        runTest {
+            val manager = createManager()
+            manager.isUpgradedToPremiumCardEligibleFlow.test {
+                assertFalse(awaitItem())
+            }
+        }
+
+    @Test
+    fun `premium-status push with isPremium=true marks the card pending and emits true`() =
+        runTest {
+            val manager = createManager()
+            manager.isUpgradedToPremiumCardEligibleFlow.test {
+                assertFalse(awaitItem())
+                mutablePremiumStatusChangedFlow.tryEmit(
+                    PremiumStatusChangedData(
+                        userId = ACTIVE_USER_ID,
+                        isPremium = true,
+                    ),
+                )
+                assertTrue(awaitItem())
+                fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
+                    userId = ACTIVE_USER_ID,
+                    expected = true,
+                )
+            }
+        }
+
+    @Test
+    fun `premium-status push with isPremium=false should not mark the card pending`() =
+        runTest {
+            val manager = createManager()
+            manager.isUpgradedToPremiumCardEligibleFlow.test {
+                assertFalse(awaitItem())
+                mutablePremiumStatusChangedFlow.tryEmit(
+                    PremiumStatusChangedData(
+                        userId = ACTIVE_USER_ID,
+                        isPremium = false,
+                    ),
+                )
+                expectNoEvents()
+                fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
+                    userId = ACTIVE_USER_ID,
+                    expected = null,
+                )
+            }
+        }
+
+    @Test
+    fun `userState transition from non-Premium to Premium for the same user marks card pending`() =
+        runTest {
+            // Start as Free.
+            mutableUserStateFlow.value = DEFAULT_USER_STATE.copy(
+                accounts = listOf(DEFAULT_ACTIVE_ACCOUNT.copy(isPremium = false)),
+            )
+            val manager = createManager()
+            manager.isUpgradedToPremiumCardEligibleFlow.test {
+                assertFalse(awaitItem())
+                // Transition to Premium for the same user.
+                mutableUserStateFlow.value = DEFAULT_USER_STATE.copy(
+                    accounts = listOf(DEFAULT_ACTIVE_ACCOUNT.copy(isPremium = true)),
+                )
+                assertTrue(awaitItem())
+                fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
+                    userId = ACTIVE_USER_ID,
+                    expected = true,
+                )
+            }
+        }
+
+    @Test
+    fun `Premium account that signs in for the first time should not mark the card pending`() =
+        runTest {
+            // Initial userState is null, then becomes a Premium account in one step.
+            mutableUserStateFlow.value = null
+            val manager = createManager()
+            manager.isUpgradedToPremiumCardEligibleFlow.test {
+                assertFalse(awaitItem())
+                mutableUserStateFlow.value = DEFAULT_USER_STATE.copy(
+                    accounts = listOf(DEFAULT_ACTIVE_ACCOUNT.copy(isPremium = true)),
+                )
+                expectNoEvents()
+                fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
+                    userId = ACTIVE_USER_ID,
+                    expected = null,
+                )
+            }
+        }
+
+    @Test
+    fun `card not re-armed once consumed for the user`() = runTest {
+        fakeSettingsDiskSource.storeUpgradedToPremiumCardConsumed(
+            userId = ACTIVE_USER_ID,
+            isConsumed = true,
+        )
+        val manager = createManager()
+        manager.isUpgradedToPremiumCardEligibleFlow.test {
+            assertFalse(awaitItem())
+            mutablePremiumStatusChangedFlow.tryEmit(
+                PremiumStatusChangedData(
+                    userId = ACTIVE_USER_ID,
+                    isPremium = true,
+                ),
+            )
+            expectNoEvents()
+            fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
+                userId = ACTIVE_USER_ID,
+                expected = null,
+            )
+        }
+    }
+
+    @Test
+    fun `dismissUpgradedToPremiumCard marks the card consumed and clears pending`() {
+        fakeSettingsDiskSource.storeUpgradedToPremiumCardPending(
+            userId = ACTIVE_USER_ID,
+            isPending = true,
+        )
+        val manager = createManager()
+        manager.dismissUpgradedToPremiumCard()
+        fakeSettingsDiskSource.assertUpgradedToPremiumCardConsumed(
+            userId = ACTIVE_USER_ID,
+            expected = true,
+        )
+        fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
+            userId = ACTIVE_USER_ID,
+            expected = false,
+        )
+    }
+
+    @Test
+    fun `dismissUpgradedToPremiumCard with no active user is a no-op`() {
+        fakeAuthDiskSource.userState = null
+        val manager = createManager()
+        manager.dismissUpgradedToPremiumCard()
+        fakeSettingsDiskSource.assertUpgradedToPremiumCardConsumed(
+            userId = ACTIVE_USER_ID,
+            expected = null,
+        )
+        fakeSettingsDiskSource.assertUpgradedToPremiumCardPending(
             userId = ACTIVE_USER_ID,
             expected = null,
         )

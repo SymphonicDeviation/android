@@ -4,7 +4,6 @@ import android.net.Uri
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.core.data.repository.util.combineDataStates
 import com.bitwarden.core.data.repository.util.mapNullable
@@ -27,12 +26,13 @@ import com.bitwarden.vault.CipherView
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.billing.manager.PremiumStateManager
 import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardManager
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.model.OrganizationEvent
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
+import com.x8bit.bitwarden.data.platform.util.isActive
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.ArchiveCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.DeleteCipherResult
@@ -46,6 +46,7 @@ import com.x8bit.bitwarden.ui.vault.feature.item.model.VaultItemStateData
 import com.x8bit.bitwarden.ui.vault.feature.item.util.toViewState
 import com.x8bit.bitwarden.ui.vault.feature.util.canAssignToCollections
 import com.x8bit.bitwarden.ui.vault.feature.util.hasDeletePermissionInAtLeastOneCollection
+import com.x8bit.bitwarden.ui.vault.model.VaultBankAccountType
 import com.x8bit.bitwarden.ui.vault.model.VaultCardBrand
 import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import com.x8bit.bitwarden.ui.vault.model.VaultLinkedFieldType
@@ -81,7 +82,7 @@ class VaultItemViewModel @Inject constructor(
     private val environmentRepository: EnvironmentRepository,
     private val settingsRepository: SettingsRepository,
     private val snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
-    featureFlagManager: FeatureFlagManager,
+    private val premiumStateManager: PremiumStateManager,
 ) : BaseViewModel<VaultItemState, VaultItemEvent, VaultItemAction>(
     // We load the state from the savedStateHandle for testing purposes.
     initialState = savedStateHandle[KEY_STATE] ?: run {
@@ -94,7 +95,6 @@ class VaultItemViewModel @Inject constructor(
             baseIconUrl = environmentRepository.environment.environmentUrlData.baseIconUrl,
             isIconLoadingDisabled = settingsRepository.isIconLoadingDisabled,
             hasPremium = authRepository.userStateFlow.value?.activeAccount?.isPremium == true,
-            isArchiveEnabled = featureFlagManager.getFeatureFlag(FlagKey.ArchiveItems),
         )
     },
 ) {
@@ -231,12 +231,6 @@ class VaultItemViewModel @Inject constructor(
             .map { VaultItemAction.Internal.SnackbarDataReceived(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
-
-        featureFlagManager
-            .getFeatureFlagFlow(FlagKey.ArchiveItems)
-            .map { VaultItemAction.Internal.ArchiveItemsFlagUpdateReceive(it) }
-            .onEach(::sendAction)
-            .launchIn(viewModelScope)
     }
 
     override fun handleAction(action: VaultItemAction) {
@@ -245,6 +239,7 @@ class VaultItemViewModel @Inject constructor(
             is VaultItemAction.ItemType.Card -> handleCardTypeActions(action)
             is VaultItemAction.ItemType.SshKey -> handleSshKeyTypeActions(action)
             is VaultItemAction.ItemType.Identity -> handleIdentityTypeActions(action)
+            is VaultItemAction.ItemType.BankAccount -> handleBankAccountTypeActions(action)
             is VaultItemAction.Common -> handleCommonActions(action)
             is VaultItemAction.Internal -> handleInternalAction(action)
         }
@@ -365,13 +360,17 @@ class VaultItemViewModel @Inject constructor(
                 currentState.copy(
                     viewState = content.copy(
                         common = content.common.copy(
-                            customFields = content.common.customFields.map { customField ->
-                                if (customField == action.field) {
-                                    action.field.copy(isVisible = action.isVisible)
-                                } else {
-                                    customField
+                            customFields = content
+                                .common
+                                .customFields
+                                .map { customField ->
+                                    if (customField == action.field) {
+                                        action.field.copy(isVisible = action.isVisible)
+                                    } else {
+                                        customField
+                                    }
                                 }
-                            },
+                                .toImmutableList(),
                         ),
                     ),
                 )
@@ -419,6 +418,8 @@ class VaultItemViewModel @Inject constructor(
                 cipherId = state.vaultItemId,
                 attachmentId = action.attachment.id,
                 fileName = action.attachment.title,
+                displaySize = action.attachment.displaySize,
+                isLargeFile = action.attachment.isLargeFile,
             ),
         )
     }
@@ -737,9 +738,16 @@ class VaultItemViewModel @Inject constructor(
 
     private fun handleUpgradeToPremiumClick() {
         updateDialogState(dialog = null)
-        val baseUrl = environmentRepository.environment.environmentUrlData.baseWebVaultUrlOrDefault
-        val uri = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium"
-        sendEvent(VaultItemEvent.NavigateToUri(uri = uri))
+        if (premiumStateManager.isInAppUpgradeAvailable()) {
+            sendEvent(VaultItemEvent.NavigateToPlanModal)
+        } else {
+            val baseUrl = environmentRepository
+                .environment
+                .environmentUrlData
+                .baseWebVaultUrlOrDefault
+            val uri = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium"
+            sendEvent(VaultItemEvent.NavigateToUri(uri = uri))
+        }
     }
 
     private fun handlePasswordVisibilityClicked(
@@ -812,8 +820,9 @@ class VaultItemViewModel @Inject constructor(
 
     private fun handleCopyNumberClick() {
         onCardContent { _, card ->
+            val cardNumber = requireNotNull(card.number).number
             clipboardManager.setText(
-                text = requireNotNull(card.number).number,
+                text = cardNumber.filter { it.isDigit() },
                 toastDescriptorOverride = BitwardenString.number.asText(),
             )
         }
@@ -1034,6 +1043,134 @@ class VaultItemViewModel @Inject constructor(
 
     //endregion Identity Type Handlers
 
+    //region Bank Account Type Handlers
+
+    private fun handleBankAccountTypeActions(action: VaultItemAction.ItemType.BankAccount) {
+        when (action) {
+            VaultItemAction.ItemType.BankAccount.CopyNameOnAccountClick -> {
+                handleCopyBankNameOnAccountClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopyAccountNumberClick -> {
+                handleCopyBankAccountNumberClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopyRoutingNumberClick -> {
+                handleCopyBankRoutingNumberClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopyBranchNumberClick -> {
+                handleCopyBankBranchNumberClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopyPinClick -> {
+                handleCopyBankPinClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopySwiftCodeClick -> {
+                handleCopyBankSwiftCodeClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopyIbanClick -> {
+                handleCopyBankIbanClick()
+            }
+
+            VaultItemAction.ItemType.BankAccount.CopyBankContactPhoneClick -> {
+                handleCopyBankContactPhoneClick()
+            }
+        }
+    }
+
+    private fun handleCopyBankNameOnAccountClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.nameOnAccount?.let { nameOnAccount ->
+                clipboardManager.setText(
+                    text = nameOnAccount,
+                    toastDescriptorOverride = BitwardenString.name_on_account.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankAccountNumberClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.accountNumber?.let { accountNumber ->
+                clipboardManager.setText(
+                    text = accountNumber,
+                    toastDescriptorOverride = BitwardenString.account_number.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankRoutingNumberClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.routingNumber?.let { routingNumber ->
+                clipboardManager.setText(
+                    text = routingNumber,
+                    toastDescriptorOverride = BitwardenString.routing_number.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankBranchNumberClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.branchNumber?.let { branchNumber ->
+                clipboardManager.setText(
+                    text = branchNumber,
+                    toastDescriptorOverride = BitwardenString.branch_number.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankPinClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.pin?.let { pin ->
+                clipboardManager.setText(
+                    text = pin,
+                    toastDescriptorOverride = BitwardenString.pin.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankSwiftCodeClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.swiftCode?.let { swiftCode ->
+                clipboardManager.setText(
+                    text = swiftCode,
+                    toastDescriptorOverride = BitwardenString.swift_code.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankIbanClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.iban?.let { iban ->
+                clipboardManager.setText(
+                    text = iban,
+                    toastDescriptorOverride = BitwardenString.iban.asText(),
+                )
+            }
+        }
+    }
+
+    private fun handleCopyBankContactPhoneClick() {
+        onBankAccountContent { _, bankAccount ->
+            bankAccount.bankContactPhone?.let { bankContactPhone ->
+                clipboardManager.setText(
+                    text = bankContactPhone,
+                    toastDescriptorOverride = BitwardenString.bank_contact_phone.asText(),
+                )
+            }
+        }
+    }
+
+    //endregion Bank Account Type Handlers
+
     //region Internal Type Handlers
 
     private fun handleInternalAction(action: VaultItemAction.Internal) {
@@ -1054,10 +1191,6 @@ class VaultItemViewModel @Inject constructor(
 
             is VaultItemAction.Internal.IsIconLoadingDisabledUpdateReceive -> {
                 handleIsIconLoadingDisabledUpdateReceive(action)
-            }
-
-            is VaultItemAction.Internal.ArchiveItemsFlagUpdateReceive -> {
-                handleArchiveItemsFlagUpdateReceive(action)
             }
 
             is VaultItemAction.Internal.ArchiveCipherReceive -> handleArchiveCipherReceive(action)
@@ -1295,12 +1428,6 @@ class VaultItemViewModel @Inject constructor(
         mutableStateFlow.update { it.copy(isIconLoadingDisabled = action.isDisabled) }
     }
 
-    private fun handleArchiveItemsFlagUpdateReceive(
-        action: VaultItemAction.Internal.ArchiveItemsFlagUpdateReceive,
-    ) {
-        mutableStateFlow.update { it.copy(isArchiveEnabled = action.isEnabled) }
-    }
-
     private fun handleArchiveCipherReceive(action: VaultItemAction.Internal.ArchiveCipherReceive) {
         when (val result = action.result) {
             is ArchiveCipherResult.Error -> {
@@ -1426,6 +1553,21 @@ class VaultItemViewModel @Inject constructor(
                     }
             }
     }
+
+    private inline fun onBankAccountContent(
+        crossinline block: (
+            VaultItemState.ViewState.Content,
+            VaultItemState.ViewState.Content.ItemType.BankAccount,
+        ) -> Unit,
+    ) {
+        state.viewState.asContentOrNull()
+            ?.let { content ->
+                (content.type as? VaultItemState.ViewState.Content.ItemType.BankAccount)
+                    ?.let { bankAccountContent ->
+                        block(content, bankAccountContent)
+                    }
+            }
+    }
 }
 
 /**
@@ -1439,7 +1581,6 @@ data class VaultItemState(
     val dialog: DialogState?,
     val baseIconUrl: String,
     val isIconLoadingDisabled: Boolean,
-    val isArchiveEnabled: Boolean,
     val hasPremium: Boolean,
 ) : Parcelable {
 
@@ -1453,6 +1594,9 @@ data class VaultItemState(
             VaultItemCipherType.IDENTITY -> BitwardenString.view_identity.asText()
             VaultItemCipherType.SECURE_NOTE -> BitwardenString.view_note.asText()
             VaultItemCipherType.SSH_KEY -> BitwardenString.view_ssh_key.asText()
+            VaultItemCipherType.BANK_ACCOUNT -> BitwardenString.view_bank_account.asText()
+            VaultItemCipherType.DRIVERS_LICENSE -> BitwardenString.view_drivers_license.asText()
+            VaultItemCipherType.PASSPORT -> BitwardenString.view_passport.asText()
         }
 
     /**
@@ -1473,7 +1617,9 @@ data class VaultItemState(
      * Whether the fab is visible.
      */
     val isFabVisible: Boolean
-        get() = viewState is ViewState.Content && !isCipherDeleted && isCipherEditable
+        get() = viewState is ViewState.Content &&
+            !isCipherDeleted &&
+            isCipherEditable
 
     /**
      * Whether the cipher is in a collection.
@@ -1506,21 +1652,19 @@ data class VaultItemState(
      * Helper to determine if the UI should display the archive button.
      */
     val displayArchiveButton: Boolean
-        get() = isArchiveEnabled &&
-            viewState.asContentOrNull()
-                ?.common
-                ?.currentCipher
-                ?.let { it.archivedDate == null && it.deletedDate == null } == true
+        get() = viewState.asContentOrNull()
+            ?.common
+            ?.currentCipher
+            ?.isActive == true
 
     /**
      * Helper to determine if the UI should display the unarchive button.
      */
     val displayUnarchiveButton: Boolean
-        get() = isArchiveEnabled &&
-            viewState.asContentOrNull()
-                ?.common
-                ?.currentCipher
-                ?.let { it.archivedDate != null && it.deletedDate == null } == true
+        get() = viewState.asContentOrNull()
+            ?.common
+            ?.currentCipher
+            ?.let { it.archivedDate != null && it.deletedDate == null } == true
 
     val canAssignToCollections: Boolean
         get() = viewState.asContentOrNull()
@@ -1598,11 +1742,11 @@ data class VaultItemState(
                 val created: Text,
                 val lastUpdated: Text,
                 val notes: String?,
-                val customFields: List<Custom>,
+                val customFields: ImmutableList<Custom>,
                 val requiresCloneConfirmation: Boolean,
                 @IgnoredOnParcel
                 val currentCipher: CipherView? = null,
-                val attachments: List<AttachmentItem>?,
+                val attachments: ImmutableList<AttachmentItem>,
                 val canDelete: Boolean,
                 val canRestore: Boolean,
                 val canAssignToCollections: Boolean,
@@ -1792,7 +1936,7 @@ data class VaultItemState(
                     /**
                      * An ordered list of Card specific elements.
                      */
-                    val propertyList: List<String>
+                    val propertyList: ImmutableList<String>
                         get() = persistentListOfNotNull(
                             identityName,
                             username,
@@ -1828,7 +1972,7 @@ data class VaultItemState(
                     /**
                      * An ordered list of Card specific elements.
                      */
-                    val propertyList: List<Any>
+                    val propertyList: ImmutableList<Any>
                         get() = persistentListOfNotNull(
                             cardholderName,
                             number,
@@ -1874,6 +2018,70 @@ data class VaultItemState(
                     val privateKey: String,
                     val fingerprint: String,
                     val showPrivateKey: Boolean,
+                ) : ItemType()
+
+                /**
+                 * Represents the `BankAccount` item type.
+                 */
+                data class BankAccount(
+                    val bankName: String?,
+                    val nameOnAccount: String?,
+                    val accountType: VaultBankAccountType?,
+                    val accountNumber: String?,
+                    val routingNumber: String?,
+                    val branchNumber: String?,
+                    val pin: String?,
+                    val swiftCode: String?,
+                    val iban: String?,
+                    val bankContactPhone: String?,
+                ) : ItemType() {
+
+                    /**
+                     * An ordered list of Bank Account specific elements.
+                     */
+                    val propertyList: ImmutableList<Any>
+                        get() = persistentListOfNotNull(
+                            bankName,
+                            nameOnAccount,
+                            accountType,
+                            accountNumber,
+                            routingNumber,
+                            branchNumber,
+                            pin,
+                            swiftCode,
+                            iban,
+                            bankContactPhone,
+                        )
+                }
+
+                /**
+                 * Represents the `DriversLicense` item type.
+                 */
+                data class DriversLicense(
+                    val firstName: String?,
+                    val middleName: String?,
+                    val lastName: String?,
+                    val licenseNumber: String?,
+                    val issuingCountry: String?,
+                    val issuingState: String?,
+                    val expirationDate: String?,
+                    val licenseClass: String?,
+                ) : ItemType()
+
+                /**
+                 * Represents the `Passport` item type.
+                 */
+                data class Passport(
+                    val surname: String?,
+                    val givenName: String?,
+                    val dateOfBirth: String?,
+                    val nationality: String?,
+                    val passportNumber: String?,
+                    val passportType: String?,
+                    val issuingCountry: String?,
+                    val issuingAuthority: String?,
+                    val issueDate: String?,
+                    val expirationDate: String?,
                 ) : ItemType()
             }
         }
@@ -1970,6 +2178,11 @@ sealed class VaultItemEvent {
     ) : VaultItemEvent()
 
     /**
+     * Navigates to the in-app plan modal for premium upgrade.
+     */
+    data object NavigateToPlanModal : VaultItemEvent()
+
+    /**
      * Navigates to the attachments screen.
      */
     data class NavigateToAttachments(
@@ -2004,6 +2217,8 @@ sealed class VaultItemEvent {
         val cipherId: String,
         val attachmentId: String,
         val fileName: String,
+        val displaySize: String,
+        val isLargeFile: Boolean,
     ) : VaultItemEvent()
 
     /**
@@ -2335,6 +2550,52 @@ sealed class VaultItemAction {
              */
             data object CopyAddressClick : Identity()
         }
+
+        /**
+         * Represents actions specific to the Bank Account type.
+         */
+        sealed class BankAccount : ItemType() {
+
+            /**
+             * The user has clicked the copy button for the name on account.
+             */
+            data object CopyNameOnAccountClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the account number.
+             */
+            data object CopyAccountNumberClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the routing number.
+             */
+            data object CopyRoutingNumberClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the branch number.
+             */
+            data object CopyBranchNumberClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the PIN.
+             */
+            data object CopyPinClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the SWIFT code.
+             */
+            data object CopySwiftCodeClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the IBAN.
+             */
+            data object CopyIbanClick : BankAccount()
+
+            /**
+             * The user has clicked the copy button for the bank contact phone.
+             */
+            data object CopyBankContactPhoneClick : BankAccount()
+        }
     }
 
     /**
@@ -2361,13 +2622,6 @@ sealed class VaultItemAction {
          */
         data class SnackbarDataReceived(
             val data: BitwardenSnackbarData,
-        ) : Internal()
-
-        /**
-         * Indicates that the Archive Items flag has been updated.
-         */
-        data class ArchiveItemsFlagUpdateReceive(
-            val isEnabled: Boolean,
         ) : Internal()
 
         /**

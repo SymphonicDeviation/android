@@ -1,7 +1,10 @@
 package com.x8bit.bitwarden.data.auth.repository.util
 
+import com.bitwarden.core.MasterPasswordUnlockData
+import com.bitwarden.crypto.Kdf
 import com.bitwarden.data.datasource.disk.model.EnvironmentUrlDataJson
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.network.model.KdfJson
 import com.bitwarden.network.model.KdfTypeJson
 import com.bitwarden.network.model.KeyConnectorUserDecryptionOptionsJson
 import com.bitwarden.network.model.MasterPasswordUnlockDataJson
@@ -17,6 +20,7 @@ import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountTokensJson
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.ForcePasswordResetReason
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.OnboardingStatus
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.UserStateJson
+import com.x8bit.bitwarden.data.auth.datasource.sdk.util.toKdfRequestModel
 import com.x8bit.bitwarden.data.auth.repository.model.UserAccountTokens
 import com.x8bit.bitwarden.data.auth.repository.model.UserKeyConnectorState
 import com.x8bit.bitwarden.data.auth.repository.model.UserOrganizations
@@ -28,12 +32,26 @@ import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
 @Suppress("LargeClass")
 class UserStateJsonExtensionsTest {
+
+    @BeforeEach
+    fun setup() {
+        mockkStatic(Kdf::toKdfRequestModel)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        unmockkStatic(Kdf::toKdfRequestModel)
+    }
 
     @Suppress("MaxLineLength")
     @Test
@@ -287,7 +305,73 @@ class UserStateJsonExtensionsTest {
                     "activeUserId" to originalAccount,
                 ),
             )
-                .toUserStateJsonWithPassword(),
+                .toUserStateJsonWithPassword(masterPasswordUnlock = null),
+        )
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `toUserStateJsonWithPassword with masterPasswordUnlock should update active account to set hasMasterPassword and masterPasswordUnlock`() {
+        val originalProfile = AccountJson.Profile(
+            userId = "activeUserId",
+            email = "email",
+            isEmailVerified = true,
+            name = "name",
+            stamp = null,
+            organizationId = null,
+            avatarColorHex = null,
+            hasPremium = true,
+            forcePasswordResetReason = ForcePasswordResetReason
+                .TDE_USER_WITHOUT_PASSWORD_HAS_PASSWORD_RESET_PERMISSION,
+            kdfType = KdfTypeJson.ARGON2_ID,
+            kdfIterations = 600000,
+            kdfMemory = 16,
+            kdfParallelism = 4,
+            userDecryptionOptions = null,
+            isTwoFactorEnabled = false,
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
+        )
+        val originalAccount = AccountJson(
+            profile = originalProfile,
+            tokens = mockk(),
+            settings = mockk(),
+        )
+        val kdf = mockk<KdfJson>()
+        val masterKeyWrappedUserKey = "masterKeyWrappedUserKey"
+        val salt = "salt"
+        val masterPasswordUnlock = MasterPasswordUnlockData(
+            kdf = mockk<Kdf> { every { toKdfRequestModel() } returns kdf },
+            masterKeyWrappedUserKey = masterKeyWrappedUserKey,
+            salt = salt,
+        )
+        assertEquals(
+            UserStateJson(
+                activeUserId = "activeUserId",
+                accounts = mapOf(
+                    "activeUserId" to originalAccount.copy(
+                        profile = originalProfile.copy(
+                            forcePasswordResetReason = null,
+                            userDecryptionOptions = UserDecryptionOptionsJson(
+                                hasMasterPassword = true,
+                                keyConnectorUserDecryptionOptions = null,
+                                trustedDeviceUserDecryptionOptions = null,
+                                masterPasswordUnlock = MasterPasswordUnlockDataJson(
+                                    kdf = kdf,
+                                    masterKeyWrappedUserKey = masterKeyWrappedUserKey,
+                                    salt = salt,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            UserStateJson(
+                activeUserId = "activeUserId",
+                accounts = mapOf(
+                    "activeUserId" to originalAccount,
+                ),
+            )
+                .toUserStateJsonWithPassword(masterPasswordUnlock = masterPasswordUnlock),
         )
     }
 
@@ -351,7 +435,7 @@ class UserStateJsonExtensionsTest {
                     "activeUserId" to originalAccount,
                 ),
             )
-                .toUserStateJsonWithPassword(),
+                .toUserStateJsonWithPassword(masterPasswordUnlock = null),
         )
     }
 
@@ -1750,6 +1834,10 @@ class UserStateJsonExtensionsTest {
                             hasPremium = false,
                             isTwoFactorEnabled = true,
                             creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
+                            kdfType = KdfTypeJson.PBKDF2_SHA256,
+                            kdfIterations = 600000,
+                            kdfMemory = 16,
+                            kdfParallelism = 4,
                             userDecryptionOptions = UserDecryptionOptionsJson(
                                 hasMasterPassword = true,
                                 trustedDeviceUserDecryptionOptions = null,
@@ -1833,6 +1921,10 @@ class UserStateJsonExtensionsTest {
                             hasPremium = true,
                             isTwoFactorEnabled = true,
                             creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
+                            kdfType = KdfTypeJson.PBKDF2_SHA256,
+                            kdfIterations = 600000,
+                            kdfMemory = 16,
+                            kdfParallelism = 4,
                             userDecryptionOptions = UserDecryptionOptionsJson(
                                 hasMasterPassword = true,
                                 trustedDeviceUserDecryptionOptions = trustedDeviceOptions,
@@ -1913,6 +2005,93 @@ class UserStateJsonExtensionsTest {
                                 trustedDeviceUserDecryptionOptions = null,
                                 keyConnectorUserDecryptionOptions = keyConnectorOptions,
                                 masterPasswordUnlock = null,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            originalUserState.toUpdatedUserStateJson(syncResponse),
+        )
+    }
+
+    @Test
+    @Suppress("MaxLineLength")
+    fun `toUpdatedUserStateJson should update KDF settings when sync response provides updated values`() {
+        val originalProfile = AccountJson.Profile(
+            userId = "activeUserId",
+            email = "email",
+            isEmailVerified = true,
+            name = "name",
+            stamp = null,
+            organizationId = null,
+            avatarColorHex = null,
+            hasPremium = false,
+            forcePasswordResetReason = null,
+            kdfType = KdfTypeJson.PBKDF2_SHA256,
+            kdfIterations = 100_000,
+            kdfMemory = null,
+            kdfParallelism = null,
+            userDecryptionOptions = null,
+            isTwoFactorEnabled = false,
+            creationDate = Instant.parse("2024-09-13T01:00:00.00Z"),
+        )
+        val originalAccount = AccountJson(
+            profile = originalProfile,
+            tokens = null,
+            settings = AccountJson.Settings(environmentUrlData = null),
+        )
+        val originalUserState = UserStateJson(
+            activeUserId = "activeUserId",
+            accounts = mapOf("activeUserId" to originalAccount),
+        )
+
+        val syncResponse = mockk<SyncResponseJson> {
+            every { profile } returns mockk {
+                every { id } returns "activeUserId"
+                every { avatarColor } returns null
+                every { securityStamp } returns null
+                every { isPremium } returns false
+                every { isPremiumFromOrganization } returns false
+                every { isTwoFactorEnabled } returns false
+                every { creationDate } returns Instant.parse("2024-09-13T01:00:00.00Z")
+            }
+            val updatedKdf = KdfJson(
+                kdfType = KdfTypeJson.PBKDF2_SHA256,
+                iterations = DEFAULT_PBKDF2_ITERATIONS,
+                memory = null,
+                parallelism = null,
+            )
+            val updatedMasterPasswordUnlock = MasterPasswordUnlockDataJson(
+                salt = "mockSalt",
+                kdf = updatedKdf,
+                masterKeyWrappedUserKey = "mockMasterKeyWrappedUserKey",
+            )
+            every { userDecryption } returns UserDecryptionJson(
+                masterPasswordUnlock = updatedMasterPasswordUnlock,
+            )
+        }
+
+        assertEquals(
+            UserStateJson(
+                activeUserId = "activeUserId",
+                accounts = mapOf(
+                    "activeUserId" to originalAccount.copy(
+                        profile = originalProfile.copy(
+                            kdfIterations = DEFAULT_PBKDF2_ITERATIONS,
+                            userDecryptionOptions = UserDecryptionOptionsJson(
+                                hasMasterPassword = true,
+                                masterPasswordUnlock = MasterPasswordUnlockDataJson(
+                                    salt = "mockSalt",
+                                    kdf = KdfJson(
+                                        kdfType = KdfTypeJson.PBKDF2_SHA256,
+                                        iterations = DEFAULT_PBKDF2_ITERATIONS,
+                                        memory = null,
+                                        parallelism = null,
+                                    ),
+                                    masterKeyWrappedUserKey = "mockMasterKeyWrappedUserKey",
+                                ),
+                                trustedDeviceUserDecryptionOptions = null,
+                                keyConnectorUserDecryptionOptions = null,
                             ),
                         ),
                     ),
@@ -2111,6 +2290,11 @@ class UserStateJsonExtensionsTest {
 
 private val MOCK_MASTER_PASSWORD_UNLOCK_DATA = MasterPasswordUnlockDataJson(
     salt = "mockSalt",
-    kdf = mockk(),
+    kdf = KdfJson(
+        kdfType = KdfTypeJson.PBKDF2_SHA256,
+        iterations = 600_000,
+        memory = null,
+        parallelism = null,
+    ),
     masterKeyWrappedUserKey = "masterKeyWrappedUserKeyMock",
 )

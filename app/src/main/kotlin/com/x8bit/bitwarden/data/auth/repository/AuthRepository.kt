@@ -230,7 +230,10 @@ interface AuthRepository :
     /**
      * Continue the previously halted login attempt.
      */
-    suspend fun continueKeyConnectorLogin(): LoginResult
+    suspend fun continueKeyConnectorLogin(
+        orgIdentifier: String,
+        email: String,
+    ): LoginResult
 
     /**
      * Cancel the previously halted login attempt.
@@ -277,7 +280,7 @@ interface AuthRepository :
         email: String,
         masterPassword: String,
         masterPasswordHint: String?,
-        emailVerificationToken: String? = null,
+        emailVerificationToken: String,
         shouldCheckDataBreaches: Boolean,
         isMasterPasswordStrong: Boolean,
     ): RegisterResult

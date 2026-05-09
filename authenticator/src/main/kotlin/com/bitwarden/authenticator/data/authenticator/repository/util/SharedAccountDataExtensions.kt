@@ -25,10 +25,12 @@ fun List<SharedAccountData.Account>.toAuthenticatorItems(): List<AuthenticatorIt
                     .pathSegments
                     .firstOrNull()
                     ?.removePrefix("$issuer:")
-                    ?.takeUnless { it.isBlank() }
+                    // If there is no scheme, then the whole uri is the secret.
+                    ?.takeUnless { it.isBlank() || uri.scheme == null }
                     ?: cipherData.username
 
                 AuthenticatorItem(
+                    cipherId = cipherData.id,
                     source = AuthenticatorItem.Source.Shared(
                         userId = sharedAccount.userId,
                         nameOfUser = sharedAccount.name,

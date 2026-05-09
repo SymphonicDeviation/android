@@ -16,6 +16,8 @@ data class AttachmentsHandlers(
     val onDeleteClick: (attachmentId: String) -> Unit,
     val onItemClick: (attachment: AttachmentsState.AttachmentItem) -> Unit,
     val onDismissRequest: () -> Unit,
+    val onFileNameChange: (String) -> Unit,
+    val onUpgradeToPremiumClick: () -> Unit,
 ) {
     @Suppress("UndocumentedPublicClass")
     companion object {
@@ -33,6 +35,12 @@ data class AttachmentsHandlers(
                 onItemClick = { viewModel.trySendAction(AttachmentsAction.ItemClick(it)) },
                 onDismissRequest = {
                     viewModel.trySendAction(AttachmentsAction.DismissDialogClick)
+                },
+                onFileNameChange = {
+                    viewModel.trySendAction(AttachmentsAction.FileNameChange(it))
+                },
+                onUpgradeToPremiumClick = {
+                    viewModel.trySendAction(AttachmentsAction.UpgradeToPremiumClick)
                 },
             )
     }

@@ -173,7 +173,7 @@
     <string name="autofill_noun">Automatické vyplňování</string>
     <string name="autofill_verb">Automatické vyplňování</string>
     <string name="autofill_or_view">Chcete automaticky vyplnit nebo zobrazit tyto přihlašovací údaje?</string>
-    <string name="search">Hledat</string>
+    <string name="search_x" comment="%1$s is a placeholder for the type of item being searched for (e.g. Logins).">Najít %1$s</string>
     <string name="learn_org">Více o organizacích</string>
     <string name="authenticator_app_title">Ověřovací aplikace</string>
     <string name="enter_verification_code_app">Zadejte 6místný kód z ověřovací aplikace.</string>
@@ -191,7 +191,7 @@
     <string name="attachments">Přílohy</string>
     <string name="unable_to_download_file">Nelze stáhnout soubor.</string>
     <string name="downloading">Stahování...</string>
-    <string name="attachment_large_warning">Tato příloha má velikost %1$s. Opravdu ji chcete stáhnout do Vašeho zařízení?</string>
+    <string name="attachment_large_warning">Tento soubor je <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Opravdu jej chcete stáhnout?</string>
     <string name="authenticator_key">Autentizační klíč (TOTP)</string>
     <string name="verification_code_totp">Ověřovací kód (TOTP)</string>
     <string name="authenticator_key_added">Byl přidán ověřovací klíč.</string>
@@ -208,6 +208,7 @@ Načtení proběhne automaticky.</string>
     <string name="choose_file">Vybrat soubor</string>
     <string name="file">Soubor</string>
     <string name="no_file_chosen">Není vybrán žádný soubor</string>
+    <string name="file_name">Název souboru</string>
     <string name="no_attachments">Žádné přílohy.</string>
     <string name="file_source">Zdrojový soubor</string>
     <string name="max_file_size">Maximální velikost souboru je 100 MB.</string>
@@ -229,6 +230,8 @@ Načtení proběhne automaticky.</string>
     <string name="copy_security_code">Kopírovat bezpečnostní kód</string>
     <string name="number">Číslo</string>
     <string name="security_code">Bezpečnostní kód</string>
+    <string name="scan_card">Naskenovat kartu</string>
+    <string name="scan_card_instruction">Pro naskenování umístěte svou kartu do rámečku.</string>
     <string name="type_card">Karta</string>
     <string name="type_identity">Identita</string>
     <string name="type_login">Přihlášení</string>
@@ -294,7 +297,6 @@ Načtení proběhne automaticky.</string>
     <string name="field_type_text">Text</string>
     <string name="select_type_field">Jaký typ vlastního pole chcete přidat?</string>
     <string name="remove">Odebrat</string>
-    <string name="new_uri">Nová URI</string>
     <string name="add_website">Přidat webovou stránku</string>
     <string name="base_domain">Základní doména</string>
     <string name="default_text">Výchozí (%1$s)</string>
@@ -671,7 +673,9 @@ Chcete se přepnout na tento účet?</string>
     <string name="you_will_be_notified_once_approved">Po schválení budete upozorněni.</string>
     <string name="trouble_logging_in">Potíže s přihlášením?</string>
     <string name="block_auto_fill">Blokovat automatické vyplňování</string>
+    <string name="no_uris_blocked">Nejsou blokovány žádné URI</string>
     <string name="auto_fill_will_not_be_offered_for_these_ur_is">Pro tento URI nebude nabízeno automatické vyplňování.</string>
+    <string name="edit_blocked_uri">Upravit blokovanou URI</string>
     <string name="new_blocked_uri">Nový blokovaný URI</string>
     <string name="invalid_format_use_https_http_or_android_app">Neplatný formát. Použijte https://, http:// nebo androidapp://</string>
     <string name="enter_uri">Zadat URI</string>
@@ -1088,6 +1092,7 @@ při opakování problémů.</string>
     <string name="security">Zabezpečení</string>
     <string name="too_many_failed_biometric_attempts">Příliš mnoho neúspěšných pokusů o biometrii.</string>
     <string name="version">Verze</string>
+    <string name="version_x" comment="%1$s is the version string (e.g. 2025.1.0 (1234)).">Verze: %1$s</string>
     <string name="learn_more_about_how_to_use_bitwarden_authenticator_on_the_help_center">Přečtěte si více o tom, jak používat Bitwarden Authenticator v Centru nápovědy.</string>
     <string name="key">Klíč</string>
     <string name="create_verification_code">Vytvořit ověřovací kód</string>
@@ -1226,6 +1231,7 @@ při opakování problémů.</string>
     <string name="archive_unavailable">Archiv je nedostupný</string>
     <string name="archiving_items_is_a_premium_feature">Archivace položek je prémiová funkce. Váš aktuální plán nezahrnuje přístup k této funkci.</string>
     <string name="upgrade_to_premium">Aktualizovat na Premium</string>
+    <string name="plan">Plán</string>
     <string name="unlock_advanced_security_features">Odemknout pokročilé bezpečnostní funkce</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">Předplatné Premium Vám dává více nástrojů k bezpečí a kontrole.</string>
     <string name="this_item_is_archived">Tato položka je archivována.</string>
@@ -1249,10 +1255,15 @@ při opakování problémů.</string>
     <string name="external_link">Externí odkaz</string>
     <string name="external_link_format" comment="Used for accessibility to indicate that tapping this item will leave the app">%1$s, externí odkaz</string>
     <string name="preview_not_available_for_files">Náhled není %1$s souborů k dispozici. Stále si je můžete stáhnout pro zobrazení na Vašem zařízení.</string>
+    <string name="this_file_is_too_large_to_preview">Tento soubor je pro náhled příliš velký. Stále si jej můžete stáhnout pro zobrazení na Vašem zařízení.</string>
     <string name="bitwarden_could_not_decrypt_this_file_so_the_preview_cannot_be_displayed">Bitwarden nemohl dešifrovat tento soubor, takže náhled nelze zobrazit.</string>
     <string name="preview_unavailable_for_this_file">Náhled není pro tento soubor k dispozici. Stále si jej můžete stáhnout pro zobrazení na Vašem zařízení.</string>
     <string name="preview_unavailable">Náhled je nedostupný</string>
+    <string name="download_attachment">Stáhnout přílohu</string>
     <string name="upgraded_to_premium">Aktualizováno na Premium</string>
+    <string name="confirming_your_upgrade">Potvrzování Vaší aktualizace...</string>
+    <string name="upgrade_pending">Nevyřízená aktualizace</string>
+    <string name="upgrade_pending_message">Vaše aktualizace je zpracovávána. Zůstanete na bezplatném tarifu, dokud nebude dokončena. Synchronizujte pro kontrolu, nebo pokračujte a aktualizace se provede automaticky.</string>
     <string name="unlock_premium_features">Odemkněte pokročilejší funkce s předplatným Premium.</string>
     <string name="per_month">/ měsíčně</string>
     <string name="built_in_authenticator">Vestavěný autentifikátor</string>
@@ -1267,4 +1278,40 @@ při opakování problémů.</string>
     <string name="payment_not_received_yet">Platba ještě nebyla přijata</string>
     <string name="return_to_stripe_to_finish">Vraťte se do Stripe ve Vašem prohlížeči, abyste dokončili aktualizaci.</string>
     <string name="go_back">Vrátit se</string>
+    <string name="allow_camera_access">Povolit přístup ke kameře</string>
+    <string name="to_scan_your_card_we_need_access_to_your_camera">Pro naskenování karty budeme potřebovat přístup ke kameře. Toto můžete kdykoli změnit v nastavení zařízení.</string>
+    <string name="show_next_code">Zobrazit další kód</string>
+    <string name="see_upcoming_codes_in_the_list">Zobrazit nadcházející kódy v seznamu</string>
+    <string name="next_code_x">Další kód, %1$s</string>
+    <string name="archive_item">Archivovat položku</string>
+    <string name="once_archived_this_item_will_be_excluded">Jakmile bude tato položka archivována, bude vyloučena z výsledků vyhledávání a z návrhů automatického vyplňování.</string>
+    <string name="pricing_unavailable">Cena není k dispozici</string>
+    <string name="current_plan">Současné předplatné</string>
+    <string name="premium_plan_name">Premium</string>
+    <string name="billing_amount">Fakturovaná částka</string>
+    <string name="storage_cost">Náklady na úložiště</string>
+    <string name="discount">Sleva</string>
+    <string name="estimated_tax">Odhadovaná daň</string>
+    <string name="billing_rate_per_year">%1$s / ročně</string>
+    <string name="billing_rate_per_month">%1$s / měsíčně</string>
+    <string name="manage_plan">Spravovat plán</string>
+    <string name="cancel_premium">Zrušit Premium</string>
+    <string name="cancel_now">Zrušit nyní</string>
+    <string name="cancel_premium_confirmation">Budete mít předplatné Premium až do %1$s.</string>
+    <string name="subscription_status_active">Aktivní</string>
+    <string name="subscription_status_canceled">Zrušeno</string>
+    <string name="subscription_status_overdue_payment">Platba po splatnosti</string>
+    <string name="subscription_status_past_due">Po splatnosti</string>
+    <string name="subscription_status_paused">Pozastaveno</string>
+    <string name="premium_next_charge_summary">Vaše další platba je za %1$s USD, splatná %2$s.</string>
+    <string name="subscription_canceled_description">Vaše předplatné bylo zrušeno %1$s. Chcete-li pokračovat v používání prémiových funkcí, proveďte obnovení.</string>
+    <string name="subscription_overdue_description">Vaši platbu nelze zpracovat. Aktualizujte svou platební metodu před ukončením předplatného %1$s.</string>
+    <string name="subscription_past_due_description">Máte lhůtu k odkladu [%1$d] dnů od data vypršení předplatného. Vyřešte poslední splatné faktury do %2$s.</string>
+    <string name="subscription_paused_description">Vaše předplatné bylo pozastaveno. Chcete-li pokračovat v používání prémiových funkcí, proveďte obnovení.</string>
+    <string name="loading_subscription">Načítání předplatného...</string>
+    <string name="loading_portal">Načítání portálu...</string>
+    <string name="portal_error">Něco se pokazilo</string>
+    <string name="trouble_loading_portal">Měli jsme potíže s načítáním portálu pro správu, zkuste to znovu.</string>
+    <string name="subscription_error">Chyba předplatného</string>
+    <string name="trouble_loading_subscription">Nemohli jsme načíst údaje o předplatném. Zkuste to znovu.</string>
 </resources>

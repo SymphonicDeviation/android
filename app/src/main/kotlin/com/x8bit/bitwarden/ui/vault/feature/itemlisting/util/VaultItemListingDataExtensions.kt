@@ -22,6 +22,7 @@ import com.x8bit.bitwarden.data.autofill.model.AutofillSelectionData
 import com.x8bit.bitwarden.data.autofill.util.isActiveWithFido2Credentials
 import com.x8bit.bitwarden.data.autofill.util.login
 import com.x8bit.bitwarden.data.credentials.model.CreateCredentialRequest
+import com.x8bit.bitwarden.data.platform.util.isActive
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import com.x8bit.bitwarden.data.vault.repository.util.toFailureCipherListView
 import com.x8bit.bitwarden.ui.tools.feature.send.util.toLabelIcons
@@ -50,33 +51,35 @@ fun CipherListView.determineListingPredicate(
 ): Boolean =
     when (itemListingType) {
         is VaultItemListingState.ItemListingType.Vault.Card -> {
-            type is CipherListViewType.Card && deletedDate == null && archivedDate == null
+            type is CipherListViewType.Card && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.Collection -> {
-            itemListingType.collectionId in this.collectionIds &&
-                deletedDate == null &&
-                archivedDate == null
+            itemListingType.collectionId in this.collectionIds && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.Folder -> {
-            folderId == itemListingType.folderId && deletedDate == null && archivedDate == null
+            folderId == itemListingType.folderId && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.Identity -> {
-            type is CipherListViewType.Identity && deletedDate == null && archivedDate == null
+            type is CipherListViewType.Identity && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.Login -> {
-            type is CipherListViewType.Login && deletedDate == null && archivedDate == null
+            type is CipherListViewType.Login && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.SecureNote -> {
-            type is CipherListViewType.SecureNote && deletedDate == null && archivedDate == null
+            type is CipherListViewType.SecureNote && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.SshKey -> {
-            type is CipherListViewType.SshKey && deletedDate == null && archivedDate == null
+            type is CipherListViewType.SshKey && isActive
+        }
+
+        is VaultItemListingState.ItemListingType.Vault.BankAccount -> {
+            type is CipherListViewType.BankAccount && isActive
         }
 
         is VaultItemListingState.ItemListingType.Vault.Trash -> {
@@ -120,7 +123,6 @@ fun VaultData.toViewState(
     totpData: TotpData?,
     isPremiumUser: Boolean,
     restrictItemTypesPolicyOrgIds: List<String>,
-    isArchiveEnabled: Boolean,
 ): VaultItemListingState.ViewState {
     val filteredCipherViewList = decryptCipherListResult
         .successes
@@ -169,7 +171,6 @@ fun VaultData.toViewState(
                         isAutofill = autofillSelectionData != null,
                         isFido2Creation = createCredentialRequestData != null,
                         isPremiumUser = isPremiumUser,
-                        isArchiveEnabled = isArchiveEnabled,
                     ),
                 ),
             displayFolderList = folderList.map { folderView ->
@@ -243,6 +244,10 @@ fun VaultData.toViewState(
                         BitwardenString.no_ssh_keys
                     }
 
+                    VaultItemListingState.ItemListingType.Vault.BankAccount -> {
+                        BitwardenString.no_bank_accounts
+                    }
+
                     VaultItemListingState.ItemListingType.Vault.Archive -> {
                         BitwardenString.no_archives_message
                     }
@@ -271,6 +276,7 @@ fun VaultData.toViewState(
                         VaultItemListingState.ItemListingType.Vault.Login,
                         VaultItemListingState.ItemListingType.Vault.SecureNote,
                         VaultItemListingState.ItemListingType.Vault.SshKey,
+                        VaultItemListingState.ItemListingType.Vault.BankAccount,
                             -> null
 
                         VaultItemListingState.ItemListingType.Vault.Archive -> {
@@ -304,6 +310,10 @@ fun VaultData.toViewState(
                             BitwardenString.new_ssh_key
                         }
 
+                        VaultItemListingState.ItemListingType.Vault.BankAccount -> {
+                            BitwardenString.new_bank_account
+                        }
+
                         else -> BitwardenString.new_item
                     }
                         .asText()
@@ -320,6 +330,7 @@ fun VaultData.toViewState(
                         VaultItemListingState.ItemListingType.Vault.Login,
                         VaultItemListingState.ItemListingType.Vault.SecureNote,
                         VaultItemListingState.ItemListingType.Vault.SshKey,
+                        VaultItemListingState.ItemListingType.Vault.BankAccount,
                             -> null
 
                         VaultItemListingState.ItemListingType.Vault.Archive -> {
@@ -400,6 +411,7 @@ fun VaultItemListingState.ItemListingType.updateWithAdditionalDataIfNecessary(
         is VaultItemListingState.ItemListingType.Send.SendFile -> this
         is VaultItemListingState.ItemListingType.Send.SendText -> this
         is VaultItemListingState.ItemListingType.Vault.SshKey -> this
+        is VaultItemListingState.ItemListingType.Vault.BankAccount -> this
         is VaultItemListingState.ItemListingType.Vault.Archive -> this
     }
 
@@ -411,7 +423,6 @@ private fun List<CipherListView>.toDisplayItemList(
     isAutofill: Boolean,
     isFido2Creation: Boolean,
     isPremiumUser: Boolean,
-    isArchiveEnabled: Boolean,
 ): List<VaultItemListingState.DisplayItem> =
     this.map {
         it.toDisplayItem(
@@ -421,7 +432,6 @@ private fun List<CipherListView>.toDisplayItemList(
             isAutofill = isAutofill,
             isFido2Creation = isFido2Creation,
             isPremiumUser = isPremiumUser,
-            isArchiveEnabled = isArchiveEnabled,
         )
     }
 
@@ -444,7 +454,6 @@ private fun CipherListView.toDisplayItem(
     isAutofill: Boolean,
     isFido2Creation: Boolean,
     isPremiumUser: Boolean,
-    isArchiveEnabled: Boolean,
 ): VaultItemListingState.DisplayItem =
     VaultItemListingState.DisplayItem(
         id = id.orEmpty(),
@@ -470,7 +479,6 @@ private fun CipherListView.toDisplayItem(
         overflowOptions = this.toOverflowActions(
             hasMasterPassword = hasMasterPassword,
             isPremiumUser = isPremiumUser,
-            isArchiveEnabled = isArchiveEnabled,
         ),
         optionsTestTag = "CipherOptionsButton",
         isAutofill = isAutofill,
@@ -532,6 +540,9 @@ private fun CipherListView.toIconTestTag(): String =
         is CipherListViewType.Card -> "CardCipherIcon"
         CipherListViewType.Identity -> "IdentityCipherIcon"
         CipherListViewType.SshKey -> "SshKeyCipherIcon"
+        CipherListViewType.BankAccount -> "BankAccountCipherIcon"
+        CipherListViewType.DriversLicense -> "DriversLicenseCipherIcon"
+        CipherListViewType.Passport -> "PassportCipherIcon"
     }
 
 private fun CipherListView.toIconData(
@@ -594,6 +605,9 @@ private val CipherListViewType.iconRes: Int
         is CipherListViewType.Card -> BitwardenDrawable.ic_payment_card
         CipherListViewType.Identity -> BitwardenDrawable.ic_id_card
         CipherListViewType.SshKey -> BitwardenDrawable.ic_ssh_key
+        CipherListViewType.BankAccount -> BitwardenDrawable.ic_payment_card
+        CipherListViewType.DriversLicense -> BitwardenDrawable.ic_note
+        CipherListViewType.Passport -> BitwardenDrawable.ic_note
     }
 
 private fun List<CipherListView>.applyFilters(

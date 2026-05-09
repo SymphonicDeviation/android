@@ -171,7 +171,7 @@
     <string name="autofill_noun">Avto-doldur</string>
     <string name="autofill_verb">Avto-doldur</string>
     <string name="autofill_or_view">Avto-doldurmaq və ya bu elementə baxmaq istəyirsiniz?</string>
-    <string name="search">Axtar</string>
+    <string name="search_x" comment="%1$s is a placeholder for the type of item being searched for (e.g. Logins).">%1$s axtar</string>
     <string name="learn_org">Təşkilatlar barədə daha ətraflı</string>
     <string name="authenticator_app_title">Kimlik doğrulayıcı tətbiqi</string>
     <string name="enter_verification_code_app">Kimlik doğrulayıcı tətbiqindən 6 rəqəmli doğrulama kodunu daxil edin.</string>
@@ -206,6 +206,7 @@ Skan prosesi avtomatik baş tutacaq.</string>
     <string name="choose_file">Fayl seç</string>
     <string name="file">Fayl</string>
     <string name="no_file_chosen">Heç bir fayl seçilməyib</string>
+    <string name="file_name">Fayl adı</string>
     <string name="no_attachments">Heç bir qoşma yoxdur.</string>
     <string name="file_source">Fayl mənbəsi</string>
     <string name="max_file_size">Maksimal fayl həcmi 100 MB-dır</string>
@@ -227,6 +228,8 @@ Skan prosesi avtomatik baş tutacaq.</string>
     <string name="copy_security_code">Güvənlik kodunu kopyala</string>
     <string name="number">Nömrə</string>
     <string name="security_code">Güvənlik kodu</string>
+    <string name="scan_card">Kartı skan et</string>
+    <string name="scan_card_instruction">Skan etmək üçün kartınızı çərçivəyə yerləşdirin.</string>
     <string name="type_card">Kart</string>
     <string name="type_identity">Kimlik</string>
     <string name="type_login">Giriş</string>
@@ -292,7 +295,6 @@ Skan prosesi avtomatik baş tutacaq.</string>
     <string name="field_type_text">Mətn</string>
     <string name="select_type_field">Necə bir özəl sahə əlavə etmək istəyirsiniz?</string>
     <string name="remove">Çıxart</string>
-    <string name="new_uri">Yeni URI</string>
     <string name="add_website">Veb sayt əlavə et</string>
     <string name="base_domain">Baza domeni</string>
     <string name="default_text">İlkin (%1$s)</string>
@@ -663,7 +665,9 @@ Bu hesaba keçmək istəyirsiniz?</string>
     <string name="you_will_be_notified_once_approved">Təsdiqləndikdən sonra məlumatlandırılacaqsınız.</string>
     <string name="trouble_logging_in">Girişdə problem var?</string>
     <string name="block_auto_fill">Avto-doldurmanı əngəllə</string>
+    <string name="no_uris_blocked">Heç bir URI əngəllənməyib</string>
     <string name="auto_fill_will_not_be_offered_for_these_ur_is">Bu URI-lər üçün avto-doldurma təklif olunmayacaq.</string>
+    <string name="edit_blocked_uri">Əngəllənən URI-yə düzəliş</string>
     <string name="new_blocked_uri">Yeni əngəllənən URI</string>
     <string name="invalid_format_use_https_http_or_android_app">Yararsız format. https://, http:// və ya androidapp:// istifadə edin</string>
     <string name="enter_uri">URI-ni daxil et</string>
@@ -1074,6 +1078,7 @@ fəaliyyəti yaxalamaq üçün sizə vaxt verəcək.</string>
     <string name="security">Güvənlik</string>
     <string name="too_many_failed_biometric_attempts">Həddən artıq uğursuz biometrik cəhdi.</string>
     <string name="version">Versiya</string>
+    <string name="version_x" comment="%1$s is the version string (e.g. 2025.1.0 (1234)).">Versiya: %1$s</string>
     <string name="learn_more_about_how_to_use_bitwarden_authenticator_on_the_help_center">Kömək Mərkəzində Bitwarden Authenticator-u necə istifadə ediləcəyi ilə bağlı ətraflı öyrənin.</string>
     <string name="key">Açar</string>
     <string name="create_verification_code">Doğrulama kodu yarat</string>
@@ -1208,6 +1213,7 @@ fəaliyyəti yaxalamaq üçün sizə vaxt verəcək.</string>
     <string name="archive_unavailable">Arxiv əlçatmazdır</string>
     <string name="archiving_items_is_a_premium_feature">Elementləri arxivləmə, Premium bir özəllikdir. Hazırkı planınızda bu özəlliyə erişim yoxdur.</string>
     <string name="upgrade_to_premium">\"Premium\"a yüksəlt</string>
+    <string name="plan">Plan</string>
     <string name="unlock_advanced_security_features">Qabaqcıl təhlükəsizlik özəlliklərinin kilidini aç</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">Premium plan, güvəndə qalmağınız və nəzarəti əlinizdə saxlamağınız üçün sizə daha çox alət verir</string>
     <string name="this_item_is_archived">Bu element arxivləndi.</string>
@@ -1231,10 +1237,15 @@ fəaliyyəti yaxalamaq üçün sizə vaxt verəcək.</string>
     <string name="external_link">Xarici keçid</string>
     <string name="external_link_format" comment="Used for accessibility to indicate that tapping this item will leave the app">%1$s, Xarici keçidi</string>
     <string name="preview_not_available_for_files">%1$s fayl üçün önizləmə mövcud deyil. Hələ də cihazınızda baxmaq üçün endirə bilərsiniz.</string>
+    <string name="this_file_is_too_large_to_preview">Bu fayl, önizləmək üçün çox böyükdür. Cihazınızda baxmaq üçün yenə də endirə bilərsiniz.</string>
     <string name="bitwarden_could_not_decrypt_this_file_so_the_preview_cannot_be_displayed">Bitwarden bu faylın şifrəsini aça bilmədi, ona görə də önizləmə nümayiş oluna bilmir.</string>
     <string name="preview_unavailable_for_this_file">Bu fayl üçün önizləmə mövcud deyil. Hələ də cihazınızda baxmaq üçün endirə bilərsiniz.</string>
     <string name="preview_unavailable">Önizləmə mövcud deyil</string>
+    <string name="download_attachment">Qoşmanı endir</string>
     <string name="upgraded_to_premium">\"Premium\"a yüksəldildi</string>
+    <string name="confirming_your_upgrade">Yüksəltmənizi təsdiqləyin…</string>
+    <string name="upgrade_pending">Yüksəltmə gözlənilir</string>
+    <string name="upgrade_pending_message">Yüksəltmə prosesiniz emal olunur. Tamamlanana qədər ödənişsiz planda qalacaqsınız. Yoxlamaq üçün indi sinxronlaşdırın və ya davam edin və özü avtomatik güncəllənəcək.</string>
     <string name="unlock_premium_features">Premium planla daha qabaqcıl özəlliklərin kilidini açın.</string>
     <string name="per_month">/ ay</string>
     <string name="built_in_authenticator">Daxili kimlik doğrulayıcı</string>
@@ -1249,4 +1260,40 @@ fəaliyyəti yaxalamaq üçün sizə vaxt verəcək.</string>
     <string name="payment_not_received_yet">Ödəniş hələ alınmayıb</string>
     <string name="return_to_stripe_to_finish">Yüksəltməni tamamlamaq üçün brauzerinizdə Stripe-a qayıdın.</string>
     <string name="go_back">Geri qayıt</string>
+    <string name="allow_camera_access">Kamera erişiminə icazə ver</string>
+    <string name="to_scan_your_card_we_need_access_to_your_camera">Kartınızı skan etmək üçün kameranıza erişməliyik. Bunu istənilən vaxt cihaz ayarlarında dəyişdirə bilərsiniz.</string>
+    <string name="show_next_code">Növbəti kodu göstər</string>
+    <string name="see_upcoming_codes_in_the_list">Siyahıda yaxınlaşan kodlara bax</string>
+    <string name="next_code_x">Növbəti kod, %1$s</string>
+    <string name="archive_item">Elementi arxivlə</string>
+    <string name="once_archived_this_item_will_be_excluded">Arxivləndikdən sonra, bu element axtarış nəticələrindən və avto-doldurma təkliflərindən xaric ediləcək.</string>
+    <string name="pricing_unavailable">Qiymət mövcud deyil</string>
+    <string name="current_plan">Current plan</string>
+    <string name="premium_plan_name">Premium</string>
+    <string name="billing_amount">Faktura məbləği</string>
+    <string name="storage_cost">Anbar xərci</string>
+    <string name="discount">Endirim</string>
+    <string name="estimated_tax">Estimated tax</string>
+    <string name="billing_rate_per_year">%1$s / year</string>
+    <string name="billing_rate_per_month">%1$s / month</string>
+    <string name="manage_plan">Planı idarə et</string>
+    <string name="cancel_premium">Premium ləğv edildi</string>
+    <string name="cancel_now">Cancel now</string>
+    <string name="cancel_premium_confirmation">You’ll continue to have Premium access until %1$s.</string>
+    <string name="subscription_status_active">Aktiv</string>
+    <string name="subscription_status_canceled">Ləğv edildi</string>
+    <string name="subscription_status_overdue_payment">Overdue payment</string>
+    <string name="subscription_status_past_due">Vaxtı keçmiş</string>
+    <string name="subscription_status_paused">Paused</string>
+    <string name="premium_next_charge_summary">Your next charge is for %1$s USD due on %2$s.</string>
+    <string name="subscription_canceled_description">Your subscription was canceled on %1$s. Resubscribe to continue using premium features.</string>
+    <string name="subscription_overdue_description">We couldn’t process your payment. Update your payment before your subscription ends on %1$s.</string>
+    <string name="subscription_past_due_description">You have a grace period of %1$d days from your subscription expiration date. Please resolve the past due amount by %2$s.</string>
+    <string name="subscription_paused_description">Your subscription is paused. Resume to continue using premium features.</string>
+    <string name="loading_subscription">Loading subscription…</string>
+    <string name="loading_portal">Loading portal…</string>
+    <string name="portal_error">Nəsə səhv getdi</string>
+    <string name="trouble_loading_portal">We had trouble loading the management portal, so try again.</string>
+    <string name="subscription_error">Subscription error</string>
+    <string name="trouble_loading_subscription">We couldn’t load your subscription details. Please try again.</string>
 </resources>

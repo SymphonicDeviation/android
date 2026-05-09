@@ -400,6 +400,38 @@ class VaultItemListingDataExtensionsTest {
 
     @Test
     @Suppress("MaxLineLength")
+    fun `determineListingPredicate should return the correct predicate for a non trash BankAccount cipherView`() {
+        val cipherView = createMockCipherListView(
+            number = 1,
+            isDeleted = false,
+            type = CipherListViewType.BankAccount,
+        )
+
+        mapOf(
+            VaultItemListingState.ItemListingType.Vault.Login to false,
+            VaultItemListingState.ItemListingType.Vault.Card to false,
+            VaultItemListingState.ItemListingType.Vault.SecureNote to false,
+            VaultItemListingState.ItemListingType.Vault.Identity to false,
+            VaultItemListingState.ItemListingType.Vault.Archive to false,
+            VaultItemListingState.ItemListingType.Vault.Trash to false,
+            VaultItemListingState.ItemListingType.Vault.SshKey to false,
+            VaultItemListingState.ItemListingType.Vault.BankAccount to true,
+            VaultItemListingState.ItemListingType.Vault.Folder(folderId = "mockId-1") to true,
+            VaultItemListingState.ItemListingType.Vault.Collection(collectionId = "mockId-1") to true,
+        )
+            .forEach { (type, expected) ->
+                val result = cipherView.determineListingPredicate(
+                    itemListingType = type,
+                )
+                assertEquals(
+                    expected,
+                    result,
+                )
+            }
+    }
+
+    @Test
+    @Suppress("MaxLineLength")
     fun `determineListingPredicate should return the correct predicate for item not in a folder`() {
         val cipherView = createMockCipherListView(
             number = 1,
@@ -579,7 +611,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = emptyList(),
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -676,7 +707,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = emptyList(),
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -763,7 +793,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = emptyList(),
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -833,7 +862,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -857,7 +885,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -879,7 +906,27 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
+            ),
+        )
+
+        // Bank accounts
+        assertEquals(
+            VaultItemListingState.ViewState.NoItems(
+                message = BitwardenString.no_bank_accounts.asText(),
+                shouldShowAddButton = true,
+                buttonText = BitwardenString.new_bank_account.asText(),
+            ),
+            vaultData.toViewState(
+                itemListingType = VaultItemListingState.ItemListingType.Vault.BankAccount,
+                vaultFilterType = VaultFilterType.AllVaults,
+                hasMasterPassword = true,
+                baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
+                isIconLoadingDisabled = false,
+                autofillSelectionData = null,
+                createCredentialRequestData = null,
+                totpData = null,
+                isPremiumUser = true,
+                restrictItemTypesPolicyOrgIds = emptyList(),
             ),
         )
 
@@ -902,7 +949,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -924,7 +970,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -946,7 +991,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -968,7 +1012,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -992,7 +1035,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -1018,7 +1060,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -1044,7 +1085,6 @@ class VaultItemListingDataExtensionsTest {
                 totpData = null,
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
 
@@ -1071,7 +1111,6 @@ class VaultItemListingDataExtensionsTest {
                 },
                 isPremiumUser = true,
                 restrictItemTypesPolicyOrgIds = emptyList(),
-                isArchiveEnabled = true,
             ),
         )
     }
@@ -1270,6 +1309,15 @@ class VaultItemListingDataExtensionsTest {
         )
 
         assertEquals(
+            VaultItemListingState.ItemListingType.Vault.BankAccount,
+            VaultItemListingState.ItemListingType.Vault.BankAccount
+                .updateWithAdditionalDataIfNecessary(
+                    folderList = folderViewList,
+                    collectionList = collectionViewList,
+                ),
+        )
+
+        assertEquals(
             VaultItemListingState.ItemListingType.Vault.Card,
             VaultItemListingState.ItemListingType.Vault.Card
                 .updateWithAdditionalDataIfNecessary(
@@ -1326,7 +1374,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = emptyList(),
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -1374,7 +1421,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = emptyList(),
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -1454,7 +1500,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = listOf("restrict_item_type_policy_id"),
-            isArchiveEnabled = true,
         )
 
         assertEquals(
@@ -1504,7 +1549,6 @@ class VaultItemListingDataExtensionsTest {
             totpData = null,
             isPremiumUser = true,
             restrictItemTypesPolicyOrgIds = listOf("restrict_item_type_policy_id"),
-            isArchiveEnabled = true,
         )
 
         // Card type

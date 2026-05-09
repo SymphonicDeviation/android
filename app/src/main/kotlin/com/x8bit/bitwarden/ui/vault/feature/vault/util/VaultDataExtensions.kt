@@ -14,6 +14,7 @@ import com.bitwarden.vault.FolderView
 import com.bitwarden.vault.LoginUriView
 import com.x8bit.bitwarden.data.autofill.util.card
 import com.x8bit.bitwarden.data.autofill.util.login
+import com.x8bit.bitwarden.data.platform.util.isActive
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
 import com.x8bit.bitwarden.data.vault.repository.util.toFailureCipherListView
 import com.x8bit.bitwarden.ui.vault.feature.util.getFilteredCollections
@@ -45,7 +46,8 @@ fun VaultData.toViewState(
     baseIconUrl: String,
     vaultFilterType: VaultFilterType,
     restrictItemTypesPolicyOrgIds: List<String>,
-    isArchiveEnabled: Boolean,
+    validTotpIds: Set<String>,
+    isNewItemTypesEnabled: Boolean,
 ): VaultState.ViewState {
     val allCipherViews =
         decryptCipherListResult
@@ -64,9 +66,7 @@ fun VaultData.toViewState(
                 excludeDeleted = false,
             )
 
-    val activeCipherViews = allCipherViews
-        .filter { it.deletedDate == null && it.archivedDate == null }
-
+    val activeCipherViews = allCipherViews.filter { it.isActive }
     val activeDecryptedCipherViews = decryptCipherListResult
         .successes
         .applyFilters(
@@ -112,7 +112,6 @@ fun VaultData.toViewState(
                     baseIconUrl = baseIconUrl,
                     isPremiumUser = isPremium,
                     hasDecryptionError = false,
-                    isArchiveEnabled = isArchiveEnabled,
                 )
             }
             .plus(
@@ -125,24 +124,19 @@ fun VaultData.toViewState(
                             baseIconUrl = baseIconUrl,
                             isPremiumUser = isPremium,
                             hasDecryptionError = true,
-                            isArchiveEnabled = isArchiveEnabled,
                         )
                     },
             )
         val shouldShowUnGroupedItems = filteredCollectionViewList.isEmpty() &&
             noFolderItems.size < NO_FOLDER_ITEM_THRESHOLD
-        val totpItems = activeCipherViews.filter { it.login?.totp != null }
         val cardCount = activeCipherViews.count { it.type is CipherListViewType.Card }
         val archiveCount = allCipherViews.count {
             it.archivedDate != null && it.deletedDate == null
         }
+
         VaultState.ViewState.Content(
             itemTypesCount = itemTypesCount,
-            totpItemsCount = if (isPremium) {
-                totpItems.count()
-            } else {
-                totpItems.count { it.organizationUseTotp }
-            },
+            totpItemsCount = activeCipherViews.count { it.id in validTotpIds },
             loginItemsCount = activeCipherViews.count { it.type is CipherListViewType.Login },
             cardItemsCount = cardCount,
             identityItemsCount = activeCipherViews
@@ -151,6 +145,8 @@ fun VaultData.toViewState(
                 .count { it.type is CipherListViewType.SecureNote },
             sshKeyItemsCount = activeCipherViews
                 .count { it.type is CipherListViewType.SshKey },
+            bankAccountItemsCount = activeCipherViews
+                .count { it.type is CipherListViewType.BankAccount },
             favoriteItems = activeDecryptedCipherViews
                 .filter { it.favorite }
                 .mapNotNull {
@@ -160,7 +156,6 @@ fun VaultData.toViewState(
                         baseIconUrl = baseIconUrl,
                         isPremiumUser = isPremium,
                         hasDecryptionError = false,
-                        isArchiveEnabled = isArchiveEnabled,
                     )
                 }
                 .plus(
@@ -173,7 +168,6 @@ fun VaultData.toViewState(
                                 baseIconUrl = baseIconUrl,
                                 isPremiumUser = isPremium,
                                 hasDecryptionError = true,
-                                isArchiveEnabled = isArchiveEnabled,
                             )
                         },
                 ),
@@ -220,13 +214,13 @@ fun VaultData.toViewState(
                 },
             trashItemsCount = allCipherViews.count { it.deletedDate != null },
             archivedItemsCount = archiveCount.takeIf { isPremium || archiveCount > 0 },
-            archiveEnabled = isArchiveEnabled,
             archiveEndIcon = BitwardenDrawable.ic_locked.takeIf { !isPremium && archiveCount == 0 },
             archiveSubText = BitwardenString
                 .premium_subscription_required
                 .asText()
                 .takeIf { !isPremium && archiveCount == 0 },
             showCardGroup = cardCount != 0 || restrictItemTypesPolicyOrgIds.isEmpty(),
+            showBankAccountGroup = isNewItemTypesEnabled,
         )
     }
 }
@@ -280,14 +274,13 @@ fun List<LoginUriView>?.toLoginIconData(
 /**
  * Transforms a [CipherListView] into a [VaultState.ViewState.VaultItem].
  */
-@Suppress("MagicNumber", "LongMethod", "CyclomaticComplexMethod", "LongParameterList")
+@Suppress("MagicNumber", "LongMethod", "CyclomaticComplexMethod")
 private fun CipherListView.toVaultItemOrNull(
     hasMasterPassword: Boolean,
     isIconLoadingDisabled: Boolean,
     baseIconUrl: String,
     isPremiumUser: Boolean,
     hasDecryptionError: Boolean,
-    isArchiveEnabled: Boolean,
 ): VaultState.ViewState.VaultItem? {
     val id = this.id ?: return null
     return when (type) {
@@ -310,7 +303,6 @@ private fun CipherListView.toVaultItemOrNull(
                 toOverflowActions(
                     hasMasterPassword = hasMasterPassword,
                     isPremiumUser = isPremiumUser,
-                    isArchiveEnabled = isArchiveEnabled,
                 )
             },
             extraIconList = toLabelIcons(),
@@ -325,7 +317,6 @@ private fun CipherListView.toVaultItemOrNull(
             overflowOptions = toOverflowActions(
                 hasMasterPassword = hasMasterPassword,
                 isPremiumUser = isPremiumUser,
-                isArchiveEnabled = isArchiveEnabled,
             ),
             extraIconList = toLabelIcons(),
             shouldShowMasterPasswordReprompt = hasMasterPassword &&
@@ -341,7 +332,6 @@ private fun CipherListView.toVaultItemOrNull(
             overflowOptions = toOverflowActions(
                 hasMasterPassword = hasMasterPassword,
                 isPremiumUser = isPremiumUser,
-                isArchiveEnabled = isArchiveEnabled,
             ),
             extraIconList = toLabelIcons(),
             shouldShowMasterPasswordReprompt = hasMasterPassword &&
@@ -356,7 +346,6 @@ private fun CipherListView.toVaultItemOrNull(
             overflowOptions = toOverflowActions(
                 hasMasterPassword = hasMasterPassword,
                 isPremiumUser = isPremiumUser,
-                isArchiveEnabled = isArchiveEnabled,
             ),
             extraIconList = toLabelIcons(),
             shouldShowMasterPasswordReprompt = hasMasterPassword &&
@@ -371,12 +360,28 @@ private fun CipherListView.toVaultItemOrNull(
             overflowOptions = toOverflowActions(
                 hasMasterPassword = hasMasterPassword,
                 isPremiumUser = isPremiumUser,
-                isArchiveEnabled = isArchiveEnabled,
             ),
             shouldShowMasterPasswordReprompt = hasMasterPassword &&
                 reprompt == CipherRepromptType.PASSWORD,
             hasDecryptionError = hasDecryptionError,
         )
+
+        CipherListViewType.BankAccount -> VaultState.ViewState.VaultItem.BankAccount(
+            id = id,
+            name = name.asText(),
+            overflowOptions = toOverflowActions(
+                hasMasterPassword = hasMasterPassword,
+                isPremiumUser = isPremiumUser,
+            ),
+            extraIconList = toLabelIcons(),
+            shouldShowMasterPasswordReprompt = hasMasterPassword &&
+                reprompt == CipherRepromptType.PASSWORD,
+            hasDecryptionError = hasDecryptionError,
+        )
+
+        // TODO: [PM-32009] Map DriversLicense/Passport when their UIs are wired.
+        CipherListViewType.DriversLicense -> null
+        CipherListViewType.Passport -> null
     }
 }
 
