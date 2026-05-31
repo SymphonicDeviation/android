@@ -25,9 +25,9 @@ import com.bitwarden.network.model.GetTokenResponseJson
 import com.bitwarden.network.model.IdentityTokenAuthModel
 import com.bitwarden.network.model.OrganizationAutoEnrollStatusResponseJson
 import com.bitwarden.network.model.OrganizationKeysResponseJson
+import com.bitwarden.network.model.OrganizationStatusType
 import com.bitwarden.network.model.OrganizationType
 import com.bitwarden.network.model.PasswordHintResponseJson
-import com.bitwarden.network.model.PolicyTypeJson
 import com.bitwarden.network.model.PrevalidateSsoResponseJson
 import com.bitwarden.network.model.RefreshTokenResponseJson
 import com.bitwarden.network.model.RegisterFinishRequestJson
@@ -38,7 +38,6 @@ import com.bitwarden.network.model.ResetPasswordRequestJson
 import com.bitwarden.network.model.SendVerificationEmailRequestJson
 import com.bitwarden.network.model.SendVerificationEmailResponseJson
 import com.bitwarden.network.model.SetPasswordRequestJson
-import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.TrustedDeviceUserDecryptionOptionsJson
 import com.bitwarden.network.model.TwoFactorAuthMethod
 import com.bitwarden.network.model.TwoFactorDataModel
@@ -52,6 +51,8 @@ import com.bitwarden.network.service.HaveIBeenPwnedService
 import com.bitwarden.network.service.IdentityService
 import com.bitwarden.network.service.OrganizationService
 import com.bitwarden.network.util.isSslHandShakeError
+import com.bitwarden.policies.PolicyType
+import com.bitwarden.policies.PolicyView
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.x8bit.bitwarden.data.auth.datasource.disk.AuthDiskSource
 import com.x8bit.bitwarden.data.auth.datasource.disk.model.AccountJson
@@ -73,6 +74,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.AuthState
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.DeleteAccountResult
 import com.x8bit.bitwarden.data.auth.repository.model.EmailTokenResult
+import com.x8bit.bitwarden.data.auth.repository.model.GetDevicesResult
 import com.x8bit.bitwarden.data.auth.repository.model.KnownDeviceResult
 import com.x8bit.bitwarden.data.auth.repository.model.LeaveOrganizationResult
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
@@ -107,6 +109,7 @@ import com.x8bit.bitwarden.data.auth.repository.util.activeUserIdChangesFlow
 import com.x8bit.bitwarden.data.auth.repository.util.policyInformation
 import com.x8bit.bitwarden.data.auth.repository.util.privateKey
 import com.x8bit.bitwarden.data.auth.repository.util.toAccountCryptographicState
+import com.x8bit.bitwarden.data.auth.repository.util.toDeviceInfo
 import com.x8bit.bitwarden.data.auth.repository.util.toOrganizations
 import com.x8bit.bitwarden.data.auth.repository.util.toRemovedPasswordUserStateJson
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
@@ -150,7 +153,6 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.Clock
 import javax.inject.Singleton
@@ -187,7 +189,7 @@ class AuthRepositoryImpl(
     private val featureFlagManager: FeatureFlagManager,
     logsManager: LogsManager,
     pushManager: PushManager,
-    private val dispatcherManager: DispatcherManager,
+    dispatcherManager: DispatcherManager,
 ) : AuthRepository,
     AuthRequestManager by authRequestManager,
     BiometricsEncryptionManager by biometricsEncryptionManager,
@@ -310,6 +312,7 @@ class AuthRepositoryImpl(
     override val organizations: List<Organization>
         get() = activeUserId
             ?.let { authDiskSource.getOrganizations(it) }
+            ?.filter { it.status == OrganizationStatusType.CONFIRMED }
             .orEmpty()
             .toOrganizations()
 
@@ -364,7 +367,7 @@ class AuthRepositoryImpl(
 
         // When the policies for the user have been set, complete the login process.
         policyManager
-            .getActivePoliciesFlow(type = PolicyTypeJson.MASTER_PASSWORD)
+            .getActivePoliciesFlow(type = PolicyType.MASTER_PASSWORD)
             .onEach { policies ->
                 val userId = activeUserId ?: return@onEach
 
@@ -561,15 +564,14 @@ class AuthRepositoryImpl(
     ): Result<VaultUnlockResult> {
         val userId = profile.userId
         val shouldTrustDevice = authDiskSource.getShouldTrustDevice(userId = userId) == true
-        return withContext(dispatcherManager.io) {
-            authSdkSource.postKeysForTdeRegistration(
+        return authSdkSource
+            .postKeysForTdeRegistration(
                 userId = userId,
                 organizationId = orgAutoEnrollStatus.organizationId,
                 organizationPublicKey = orgKeys.publicKey,
                 deviceIdentifier = authDiskSource.uniqueAppId,
                 shouldTrustDevice = shouldTrustDevice,
             )
-        }
             .map { response ->
                 // Clear the 'should trust device' flag, since the SDK trusted the device above.
                 authDiskSource.storeShouldTrustDevice(userId = userId, shouldTrustDevice = null)
@@ -972,15 +974,14 @@ class AuthRepositoryImpl(
             return RegisterResult.WeakPassword
         }
         if (featureFlagManager.getFeatureFlag(key = FlagKey.V2EncryptionPassword)) {
-            return withContext(dispatcherManager.io) {
-                authSdkSource.postKeysForUserPasswordRegistration(
+            return authSdkSource
+                .postKeysForUserPasswordRegistration(
                     email = email,
                     salt = email,
                     masterPassword = masterPassword,
                     masterPasswordHint = masterPasswordHint,
                     emailVerificationToken = emailVerificationToken,
                 )
-            }
                 .fold(
                     onSuccess = { RegisterResult.Success },
                     onFailure = { RegisterResult.Error(errorMessage = null, error = it) },
@@ -1056,7 +1057,7 @@ class AuthRepositoryImpl(
             ?: return RemovePasswordResult.Error(error = MissingPropertyException("User Key"))
         val keyConnectorUrl = organizations
             .find {
-                it.shouldUseKeyConnector &&
+                it.isKeyConnectorEnabled &&
                     it.role != OrganizationType.OWNER &&
                     it.role != OrganizationType.ADMIN
             }
@@ -1277,18 +1278,16 @@ class AuthRepositoryImpl(
                     .map { orgKeys -> enrollStatus to orgKeys }
             }
             .flatMap { (enrollStatus, orgKeys) ->
-                withContext(dispatcherManager.io) {
-                    authSdkSource.postKeysForJitPasswordRegistration(
-                        userId = userId,
-                        organizationId = enrollStatus.organizationId,
-                        organizationPublicKey = orgKeys.publicKey,
-                        organizationSsoIdentifier = organizationIdentifier,
-                        salt = profile.email,
-                        masterPassword = password,
-                        masterPasswordHint = passwordHint,
-                        shouldResetPasswordEnroll = enrollStatus.isResetPasswordEnabled,
-                    )
-                }
+                authSdkSource.postKeysForJitPasswordRegistration(
+                    userId = userId,
+                    organizationId = enrollStatus.organizationId,
+                    organizationPublicKey = orgKeys.publicKey,
+                    organizationSsoIdentifier = organizationIdentifier,
+                    salt = profile.email,
+                    masterPassword = password,
+                    masterPasswordHint = passwordHint,
+                    shouldResetPasswordEnroll = enrollStatus.isResetPasswordEnabled,
+                )
             }
             .onSuccess { response ->
                 authDiskSource.storeAccountKeys(
@@ -1460,6 +1459,20 @@ class AuthRepositoryImpl(
     override fun setCookieCallbackResult(result: CookieCallbackResult) {
         mutableCookieCallbackResultFlow.tryEmit(result)
     }
+
+    override suspend fun getDevices(): GetDevicesResult =
+        devicesService
+            .getDevices()
+            .fold(
+                onFailure = { GetDevicesResult.Error },
+                onSuccess = { response ->
+                    GetDevicesResult.Success(
+                        devices = response.devices.map { json ->
+                            json.toDeviceInfo(currentDeviceIdentifier = authDiskSource.uniqueAppId)
+                        },
+                    )
+                },
+            )
 
     override suspend fun getIsKnownDevice(emailAddress: String): KnownDeviceResult =
         devicesService
@@ -1690,7 +1703,7 @@ class AuthRepositoryImpl(
      */
     private suspend fun passwordPassesPolicies(
         password: String,
-        policies: List<SyncResponseJson.Policy>,
+        policies: List<PolicyView>,
     ): Boolean {
         // If there are no master password policies that are enabled and should be
         // enforced on login, the check should complete.
