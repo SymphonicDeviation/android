@@ -3,8 +3,9 @@ package com.x8bit.bitwarden.ui.auth.feature.startregistration
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.bitwarden.data.datasource.disk.model.ServerConfig
+import com.bitwarden.data.repository.ServerConfigRepository
 import com.bitwarden.data.repository.model.Environment
-import com.bitwarden.data.repository.model.Environment.Type
 import com.bitwarden.ui.platform.base.BackgroundEvent
 import com.bitwarden.ui.platform.base.BaseViewModel
 import com.bitwarden.ui.platform.base.util.isValidEmail
@@ -19,6 +20,8 @@ import com.x8bit.bitwarden.data.auth.repository.model.SendVerificationEmailResul
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -37,18 +40,21 @@ private const val KEY_STATE = "state"
 class StartRegistrationViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
+    serverConfigRepository: ServerConfigRepository,
     private val authRepository: AuthRepository,
     private val environmentRepository: EnvironmentRepository,
 ) : BaseViewModel<StartRegistrationState, StartRegistrationEvent, StartRegistrationAction>(
-    initialState = savedStateHandle[KEY_STATE]
-        ?: StartRegistrationState(
+    initialState = savedStateHandle[KEY_STATE] ?: run {
+        val environmentType = environmentRepository.environment.type
+        StartRegistrationState(
             emailInput = "",
             nameInput = "",
-            isReceiveMarketingEmailsToggled = environmentRepository.environment.type == Type.US,
+            isReceiveMarketingEmailsToggled = environmentType == Environment.Type.US,
             isContinueButtonEnabled = false,
-            selectedEnvironmentType = environmentRepository.environment.type,
+            selectedEnvironmentType = environmentType,
             dialog = null,
-        ),
+        )
+    },
 ) {
 
     init {
@@ -66,6 +72,11 @@ class StartRegistrationViewModel @Inject constructor(
         snackbarRelayManager
             .getSnackbarDataFlow(SnackbarRelay.ENVIRONMENT_SAVED)
             .map { StartRegistrationAction.Internal.SnackbarDataReceived(it) }
+            .onEach(::sendAction)
+            .launchIn(viewModelScope)
+        serverConfigRepository
+            .serverConfigStateFlow
+            .map { StartRegistrationAction.Internal.ServerConfigReceived(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
     }
@@ -106,6 +117,10 @@ class StartRegistrationViewModel @Inject constructor(
             is StartRegistrationAction.Internal.UpdatedEnvironmentReceive -> {
                 handleUpdatedEnvironmentReceive(action)
             }
+
+            is StartRegistrationAction.Internal.ServerConfigReceived -> {
+                handleServerConfigReceived(action)
+            }
         }
     }
 
@@ -115,11 +130,16 @@ class StartRegistrationViewModel @Inject constructor(
 
     private fun handleEnvironmentTypeSelect(action: StartRegistrationAction.EnvironmentTypeSelect) {
         val environment = when (action.environmentType) {
-            Type.US -> Environment.Us
-            Type.EU -> Environment.Eu
-            Type.SELF_HOSTED -> {
+            Environment.Type.US -> Environment.Prod.Us
+            Environment.Type.EU -> Environment.Prod.Eu
+            Environment.Type.SELF_HOSTED -> {
                 // Launch the self-hosted screen and select the full environment details there.
                 sendEvent(StartRegistrationEvent.NavigateToEnvironment)
+                return
+            }
+
+            Environment.Type.FED_RAMP -> {
+                // New account creation is not supported with FedRAMP.
                 return
             }
         }
@@ -142,6 +162,25 @@ class StartRegistrationViewModel @Inject constructor(
             it.copy(
                 selectedEnvironmentType = action.environment.type,
             )
+        }
+    }
+
+    private fun handleServerConfigReceived(
+        action: StartRegistrationAction.Internal.ServerConfigReceived,
+    ) {
+        val serverData = action.serverConfig?.serverData ?: return
+        if (serverData.settings?.disableUserRegistration == true) {
+            // Show the dialog informing the user that they cannot create an account.
+            mutableStateFlow.update {
+                it.copy(
+                    dialog = StartRegistrationDialog.Error(
+                        title = BitwardenString.account_creation_restricted.asText(),
+                        message = BitwardenString
+                            .only_allows_invited_users_to_create_accounts
+                            .asText(serverData.environment?.vaultUrl.orEmpty()),
+                    ),
+                )
+            }
         }
     }
 
@@ -286,9 +325,18 @@ data class StartRegistrationState(
     val nameInput: String,
     val isReceiveMarketingEmailsToggled: Boolean,
     val isContinueButtonEnabled: Boolean,
-    val selectedEnvironmentType: Type,
+    val selectedEnvironmentType: Environment.Type,
     val dialog: StartRegistrationDialog?,
-) : Parcelable
+) : Parcelable {
+    /**
+     * The selectable environments.
+     */
+    val environmentTypeOptions: ImmutableList<Environment.Type>
+        get() = Environment.Type
+            .entries
+            .filterNot { it == Environment.Type.FED_RAMP }
+            .toImmutableList()
+}
 
 /**
  * Models dialogs that can be displayed on the start registration screen.
@@ -397,7 +445,7 @@ sealed class StartRegistrationAction {
      * Indicates that the selection from the region drop down has changed.
      */
     data class EnvironmentTypeSelect(
-        val environmentType: Type,
+        val environmentType: Environment.Type,
     ) : StartRegistrationAction()
 
     /**
@@ -453,6 +501,13 @@ sealed class StartRegistrationAction {
          */
         data class UpdatedEnvironmentReceive(
             val environment: Environment,
+        ) : Internal()
+
+        /**
+         * Indicates that an updated [serverConfig] has been received.
+         */
+        data class ServerConfigReceived(
+            val serverConfig: ServerConfig?,
         ) : Internal()
     }
 }

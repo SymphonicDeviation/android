@@ -18,6 +18,7 @@ import com.x8bit.bitwarden.data.auth.manager.KdfManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
 import com.x8bit.bitwarden.data.auth.manager.UserStateManager
+import com.x8bit.bitwarden.data.autofill.manager.FillAssistManager
 import com.x8bit.bitwarden.data.platform.datasource.disk.SettingsDiskSource
 import com.x8bit.bitwarden.data.platform.manager.DatabaseSchemeManager
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
@@ -224,6 +225,7 @@ object VaultManagerModule {
     @Provides
     @Singleton
     fun provideVaultSyncManager(
+        fillAssistManager: FillAssistManager,
         syncService: SyncService,
         settingsDiskSource: SettingsDiskSource,
         authDiskSource: AuthDiskSource,
@@ -237,6 +239,7 @@ object VaultManagerModule {
         pushManager: PushManager,
         dispatcherManager: DispatcherManager,
     ): VaultSyncManager = VaultSyncManagerImpl(
+        fillAssistManager = fillAssistManager,
         syncService = syncService,
         settingsDiskSource = settingsDiskSource,
         authDiskSource = authDiskSource,

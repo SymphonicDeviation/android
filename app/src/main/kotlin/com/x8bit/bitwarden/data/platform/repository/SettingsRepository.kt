@@ -146,6 +146,16 @@ interface SettingsRepository : FlightRecorderManager {
     var isInlineAutofillEnabled: Boolean
 
     /**
+     * Whether fill assist is enabled for the current user.
+     */
+    var isFillAssistEnabled: Boolean
+
+    /**
+     * Emits updates that track [isFillAssistEnabled] for the current user.
+     */
+    val isFillAssistEnabledFlow: Flow<Boolean>
+
+    /**
      * Whether the auto copying totp when autofilling is disabled for the current user.
      */
     var isAutoCopyTotpDisabled: Boolean
@@ -186,6 +196,16 @@ interface SettingsRepository : FlightRecorderManager {
      * Whether screen capture is allowed for the current user.
      */
     val isScreenCaptureAllowedStateFlow: StateFlow<Boolean>
+
+    /**
+     * Whether the accessibility disclaimer has been displayed to the user.
+     */
+    val hasShownAccessibilityDisclaimerFlow: StateFlow<Boolean>
+
+    /**
+     * Stores that the accessibility disclaimer has been displayed to the user.
+     */
+    fun accessibilityDisclaimerHasBeenShown()
 
     /**
      * Disables autofill if it is currently enabled.

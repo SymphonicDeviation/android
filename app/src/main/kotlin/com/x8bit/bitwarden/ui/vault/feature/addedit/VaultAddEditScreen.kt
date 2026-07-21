@@ -87,10 +87,10 @@ import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditCardTyp
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditCommonHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditIdentityTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditLicenseTypeHandlers
-import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.rememberVaultAddEditPassportTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditLoginTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditSshKeyTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditUserVerificationHandlers
+import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.rememberVaultAddEditPassportTypeHandlers
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
@@ -500,7 +500,7 @@ private fun VaultAddEditItemDialogs(
     when (dialogState) {
         is VaultAddEditState.DialogState.ArchiveRequiresPremium -> {
             BitwardenTwoButtonDialog(
-                title = stringResource(id = BitwardenString.archive_unavailable),
+                title = stringResource(id = BitwardenString.premium_subscription_required),
                 message = stringResource(id = BitwardenString.archiving_items_is_a_premium_feature),
                 confirmButtonText = stringResource(id = BitwardenString.upgrade_to_premium),
                 dismissButtonText = stringResource(id = BitwardenString.cancel),
@@ -805,38 +805,31 @@ private fun OwnerSelectionBottomSheet(
     modifier: Modifier = Modifier,
 ) {
 
-    var selectedOptionState by rememberSaveable {
-        mutableStateOf(state.selectedOwner?.name.orEmpty())
+    var selectedOwner by rememberSaveable {
+        mutableStateOf(state.selectedOwner)
     }
     BitwardenModalBottomSheet(
-        sheetTitle = stringResource(BitwardenString.owner),
+        sheetTitle = stringResource(BitwardenString.select_vault),
         onDismiss = handlers.onDismissBottomSheet,
         topBarActions = { animatedOnDismiss ->
             BitwardenTextButton(
                 label = stringResource(BitwardenString.save),
                 onClick = {
                     handlers.onDismissBottomSheet()
-                    state
-                        .availableOwners
-                        .firstOrNull {
-                            it.name == selectedOptionState
-                        }
-                        ?.run {
-                            handlers.onOwnerSelected(this.id)
-                        }
+                    selectedOwner?.let { handlers.onOwnerSelected(it.id) }
                     animatedOnDismiss()
                 },
-                isEnabled = selectedOptionState.isNotBlank(),
+                isEnabled = selectedOwner != null,
             )
         },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         modifier = modifier.statusBarsPadding(),
     ) {
         OwnerSelectionBottomSheetContent(
-            options = state.availableOwners.map { it.name }.toImmutableList(),
-            selectedOption = selectedOptionState,
+            options = state.availableOwners,
+            selectedOwner = selectedOwner,
             onOptionSelected = {
-                selectedOptionState = it
+                selectedOwner = it
             },
         )
     }
@@ -844,9 +837,9 @@ private fun OwnerSelectionBottomSheet(
 
 @Composable
 private fun OwnerSelectionBottomSheetContent(
-    options: ImmutableList<String>,
-    selectedOption: String,
-    onOptionSelected: (String) -> Unit,
+    options: ImmutableList<VaultAddEditState.Owner>,
+    selectedOwner: VaultAddEditState.Owner?,
+    onOptionSelected: (VaultAddEditState.Owner) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -870,7 +863,7 @@ private fun OwnerSelectionBottomSheetContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = option,
+                    text = option.name(),
                     color = BitwardenTheme.colorScheme.text.primary,
                     style = BitwardenTheme.typography.bodyLarge,
                     modifier = Modifier
@@ -878,7 +871,7 @@ private fun OwnerSelectionBottomSheetContent(
                         .padding(horizontal = 16.dp),
                 )
                 BitwardenRadioButton(
-                    isSelected = selectedOption == option,
+                    isSelected = selectedOwner == option,
                     onClick = {
                         onOptionSelected(option)
                     },

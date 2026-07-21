@@ -52,7 +52,6 @@ class VaultDiskSourceImpl(
                 CipherEntity(
                     id = cipher.id,
                     userId = userId,
-                    hasTotp = cipher.login?.totp != null,
                     cipherType = json.encodeToString(cipher.type),
                     cipherJson = json.encodeToString(cipher),
                     organizationId = cipher.organizationId,
@@ -119,8 +118,8 @@ class VaultDiskSourceImpl(
         }
     }
 
-    override suspend fun getTotpCiphers(userId: String): List<SyncResponseJson.Cipher> {
-        val entities = ciphersDao.getAllTotpCiphers(userId = userId)
+    override suspend fun getLoginCiphers(userId: String): List<SyncResponseJson.Cipher> {
+        val entities = ciphersDao.getAllLoginCiphers(userId = userId)
         return withContext(context = dispatcherManager.default) {
             entities
                 .map { entity ->
@@ -131,11 +130,6 @@ class VaultDiskSourceImpl(
                     }
                 }
                 .awaitAll()
-                .filter {
-                    // A safety-check since after the DB migration, we will temporarily think
-                    // all ciphers contain a totp code
-                    it.login?.totp != null
-                }
         }
     }
 
@@ -166,7 +160,6 @@ class VaultDiskSourceImpl(
                 CipherEntity(
                     id = cipher.id,
                     userId = userId,
-                    hasTotp = cipher.login?.totp != null,
                     cipherType = json.encodeToString(cipher.type),
                     cipherJson = json.encodeToString(cipher),
                     organizationId = cipher.organizationId,
@@ -368,7 +361,6 @@ class VaultDiskSourceImpl(
                         CipherEntity(
                             id = cipher.id,
                             userId = userId,
-                            hasTotp = cipher.login?.totp != null,
                             cipherType = json.encodeToString(cipher.type),
                             cipherJson = json.encodeToString(cipher),
                             organizationId = cipher.organizationId,

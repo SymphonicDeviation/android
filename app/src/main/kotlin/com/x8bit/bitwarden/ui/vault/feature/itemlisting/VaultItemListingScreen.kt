@@ -68,7 +68,6 @@ import com.x8bit.bitwarden.ui.vault.feature.itemlisting.handlers.VaultItemListin
 import com.x8bit.bitwarden.ui.vault.model.VaultAddEditType
 import com.x8bit.bitwarden.ui.vault.model.VaultItemListingType
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Displays the vault item listing screen.
@@ -408,7 +407,7 @@ private fun VaultItemListingDialogs(
 
         is VaultItemListingState.DialogState.ArchiveRequiresPremium -> {
             BitwardenTwoButtonDialog(
-                title = stringResource(id = BitwardenString.archive_unavailable),
+                title = stringResource(id = BitwardenString.premium_subscription_required),
                 message = stringResource(id = BitwardenString.archiving_items_is_a_premium_feature),
                 confirmButtonText = stringResource(id = BitwardenString.upgrade_to_premium),
                 dismissButtonText = stringResource(id = BitwardenString.cancel),
@@ -501,7 +500,7 @@ private fun VaultItemListingScaffold(
         overlay = {
             BitwardenAccountSwitcher(
                 isVisible = isAccountMenuVisible,
-                accountSummaries = state.accountSummaries.toImmutableList(),
+                accountSummaries = state.accountSummaries,
                 onSwitchAccountClick = vaultItemListingHandlers.switchAccountClick,
                 onLockAccountClick = vaultItemListingHandlers.lockAccountClick,
                 onLogoutAccountClick = vaultItemListingHandlers.logoutAccountClick,

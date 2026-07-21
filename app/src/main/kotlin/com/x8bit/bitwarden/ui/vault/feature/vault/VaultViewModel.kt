@@ -36,6 +36,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.ValidatePasswordResult
 import com.x8bit.bitwarden.data.autofill.manager.browser.BrowserAutofillDialogManager
 import com.x8bit.bitwarden.data.billing.manager.PremiumStateManager
 import com.x8bit.bitwarden.data.billing.manager.UPGRADED_TO_PREMIUM_LEARN_MORE_URL
+import com.x8bit.bitwarden.data.billing.model.PremiumCard
 import com.x8bit.bitwarden.data.platform.manager.CredentialExchangeRegistryManager
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
@@ -83,7 +84,6 @@ import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -94,6 +94,7 @@ import kotlinx.parcelize.Parcelize
 import timber.log.Timber
 import java.time.Clock
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val VAULT_DATA_RECEIVED_DELAY: Long = 550L
 private const val LOGIN_SUCCESS_SNACKBAR_DELAY: Long = 550L
@@ -120,13 +121,13 @@ class VaultViewModel @Inject constructor(
     private val networkConnectionManager: NetworkConnectionManager,
     private val browserAutofillDialogManager: BrowserAutofillDialogManager,
     private val credentialExchangeRegistryManager: CredentialExchangeRegistryManager,
-    private val buildInfoManager: BuildInfoManager,
+    buildInfoManager: BuildInfoManager,
     featureFlagManager: FeatureFlagManager,
     snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
 ) : BaseViewModel<VaultState, VaultEvent, VaultAction>(
     initialState = run {
         val userState = authRepository.userStateFlow.value
-        val accountSummaries = userState?.toAccountSummaries().orEmpty()
+        val accountSummaries = userState?.toAccountSummaries().orEmpty().toImmutableList()
         val activeAccount = userState?.activeAccount ?: run {
             // We use this empty account to avoid a crash that can occur during a race condition.
             // The state-based navigation brought us here but the UserState has now been set to
@@ -150,7 +151,7 @@ class VaultViewModel @Inject constructor(
             isIconLoadingDisabled = settingsRepository.isIconLoadingDisabled,
             isPremium = activeAccount.isPremium,
             isPullToRefreshSettingEnabled = settingsRepository.getPullToRefreshEnabledFlow().value,
-            baseIconUrl = activeAccount.environment.environmentUrlData.baseIconUrl,
+            baseIconUrl = activeAccount.environment.baseIconUrl,
             hasMasterPassword = activeAccount.hasMasterPassword,
             isRefreshing = false,
             showImportActionCard = false,
@@ -218,7 +219,7 @@ class VaultViewModel @Inject constructor(
             .onEach {
                 // When the vault data is received, the current activity is about to
                 // be recreated. Adding this delay prevents the dialogs from disappearing.
-                delay(VAULT_DATA_RECEIVED_DELAY)
+                delay(VAULT_DATA_RECEIVED_DELAY.milliseconds)
                 trySendAction(it)
             }
             .launchIn(viewModelScope)
@@ -268,10 +269,10 @@ class VaultViewModel @Inject constructor(
             .launchIn(viewModelScope)
 
         premiumStateManager
-            .isPremiumUpgradeBannerEligibleFlow
+            .premiumCardStateFlow
             .map {
                 VaultAction.Internal.PremiumUpgradeBannerEligibilityReceive(
-                    isEligible = it,
+                    premiumCard = it,
                 )
             }
             .onEach(::sendAction)
@@ -357,8 +358,6 @@ class VaultViewModel @Inject constructor(
             }
 
             is VaultAction.Internal -> handleInternalAction(action)
-            VaultAction.DismissImportActionCard -> handleDismissImportActionCard()
-            VaultAction.ImportActionCardClick -> handleImportActionCardClick()
             VaultAction.LifecycleResumed -> handleLifecycleResumed()
             VaultAction.SelectAddItemType -> handleSelectAddItemType()
             VaultAction.DismissFlightRecorderSnackbar -> handleDismissFlightRecorderSnackbar()
@@ -430,10 +429,7 @@ class VaultViewModel @Inject constructor(
         if (premiumStateManager.isInAppUpgradeAvailable()) {
             sendEvent(VaultEvent.NavigateToUpgradePremium)
         } else {
-            val baseUrl = environmentRepository
-                .environment
-                .environmentUrlData
-                .baseWebVaultUrlOrDefault
+            val baseUrl = environmentRepository.environment.baseWebVaultUrlOrDefault
             val url = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium"
             sendEvent(VaultEvent.NavigateToUrl(url = url))
         }
@@ -449,8 +445,18 @@ class VaultViewModel @Inject constructor(
                 premiumStateManager.dismissPremiumUpgradeBanner()
             }
 
+            VaultState.ActionCardState.PremiumNeedsAttention -> {
+                // No-op: The user must address the issue
+            }
+
             VaultState.ActionCardState.IntroducingArchive -> {
                 settingsRepository.dismissIntroducingArchiveActionCard()
+            }
+
+            VaultState.ActionCardState.ImportItems -> {
+                firstTimeActionManager.storeShowImportLoginsSettingsBadge(showBadge = true)
+                if (!state.showImportActionCard) return
+                firstTimeActionManager.storeShowImportLogins(showImportLogins = false)
             }
         }
     }
@@ -466,11 +472,17 @@ class VaultViewModel @Inject constructor(
                 sendEvent(VaultEvent.NavigateToUpgradePremium)
             }
 
+            VaultState.ActionCardState.PremiumNeedsAttention -> {
+                sendEvent(VaultEvent.NavigateToUpgradePremium)
+            }
+
             VaultState.ActionCardState.IntroducingArchive -> {
                 settingsRepository.dismissIntroducingArchiveActionCard()
-                sendEvent(
-                    VaultEvent.NavigateToItemListing(VaultItemListingType.Archive),
-                )
+                sendEvent(VaultEvent.NavigateToItemListing(VaultItemListingType.Archive))
+            }
+
+            VaultState.ActionCardState.ImportItems -> {
+                sendEvent(VaultEvent.NavigateToImportLogins)
             }
         }
     }
@@ -515,16 +527,6 @@ class VaultViewModel @Inject constructor(
         if (reviewPromptManager.shouldPromptForAppReview()) {
             sendEvent(VaultEvent.PromptForAppReview)
         }
-    }
-
-    private fun handleImportActionCardClick() {
-        sendEvent(VaultEvent.NavigateToImportLogins)
-    }
-
-    private fun handleDismissImportActionCard() {
-        firstTimeActionManager.storeShowImportLoginsSettingsBadge(true)
-        if (!state.showImportActionCard) return
-        firstTimeActionManager.storeShowImportLogins(false)
     }
 
     private fun handleIconLoadingSettingReceive(
@@ -732,6 +734,9 @@ class VaultViewModel @Inject constructor(
     }
 
     private fun handleTryAgainClick() {
+        mutableStateFlow.update {
+            it.copy(dialog = VaultState.DialogState.Syncing)
+        }
         vaultRepository.sync(forced = true)
     }
 
@@ -745,7 +750,7 @@ class VaultViewModel @Inject constructor(
     private fun handleRefreshPull() {
         mutableStateFlow.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
-            delay(250)
+            delay(250.milliseconds)
             if (networkConnectionManager.isNetworkConnected) {
                 vaultRepository.sync(forced = false)
             } else {
@@ -1273,7 +1278,7 @@ class VaultViewModel @Inject constructor(
         action: VaultAction.Internal.PremiumUpgradeBannerEligibilityReceive,
     ) {
         mutableStateFlow.update {
-            it.copy(isPremiumUpgradeBannerEligible = action.isEligible)
+            it.copy(premiumCard = action.premiumCard)
         }
     }
 
@@ -1444,21 +1449,40 @@ class VaultViewModel @Inject constructor(
         vaultData: DataState.Error<VaultData>,
         validTotpIds: Set<String>,
     ) {
-        mutableStateFlow.updateToErrorStateOrDialog(
-            baseIconUrl = state.baseIconUrl,
-            vaultData = vaultData.data,
-            vaultFilterType = vaultFilterTypeOrDefault,
-            isIconLoadingDisabled = state.isIconLoadingDisabled,
-            isPremium = state.isPremium,
-            hasMasterPassword = state.hasMasterPassword,
-            errorTitle = BitwardenString.an_error_has_occurred.asText(),
-            errorMessage = vaultData.error.userFriendlyMessage?.asText()
-                ?: BitwardenString.generic_error_message.asText(),
-            isRefreshing = false,
-            restrictItemTypesPolicyOrgIds = state.restrictItemTypesPolicyOrgIds,
-            validTotpIds = validTotpIds,
-            isNewItemTypesEnabled = state.isNewItemTypesEnabled,
-        )
+        val errorMessage = vaultData.error.userFriendlyMessage?.asText()
+            ?: BitwardenString.vault_sync_failed_description.asText()
+        mutableStateFlow.update { currentVaultState ->
+            vaultData
+                .data
+                ?.let {
+                    currentVaultState.copy(
+                        viewState = it.toViewState(
+                            baseIconUrl = state.baseIconUrl,
+                            isPremium = state.isPremium,
+                            hasMasterPassword = state.hasMasterPassword,
+                            vaultFilterType = vaultFilterTypeOrDefault,
+                            isIconLoadingDisabled = state.isIconLoadingDisabled,
+                            restrictItemTypesPolicyOrgIds = state.restrictItemTypesPolicyOrgIds,
+                            validTotpIds = validTotpIds,
+                            isNewItemTypesEnabled = state.isNewItemTypesEnabled,
+                        ),
+                        dialog = VaultState.DialogState.SyncError(
+                            title = BitwardenString.vault_sync_unsuccessful.asText(),
+                            message = errorMessage,
+                        ),
+                        isRefreshing = false,
+                        validTotpIds = validTotpIds.toImmutableSet(),
+                    )
+                }
+                ?: currentVaultState.copy(
+                    viewState = VaultState.ViewState.Error(
+                        message = errorMessage,
+                    ),
+                    dialog = null,
+                    isRefreshing = false,
+                    validTotpIds = validTotpIds.toImmutableSet(),
+                )
+        }
     }
 
     private fun vaultLoadedReceive(
@@ -1729,7 +1753,7 @@ data class VaultState(
     val appBarTitle: Text,
     private val avatarColorString: String,
     val initials: String,
-    val accountSummaries: List<AccountSummary>,
+    val accountSummaries: ImmutableList<AccountSummary>,
     val vaultFilterData: VaultFilterData? = null,
     val viewState: ViewState,
     val dialog: DialogState? = null,
@@ -1747,7 +1771,7 @@ data class VaultState(
     val hasShownDecryptionFailureAlert: Boolean,
     val restrictItemTypesPolicyOrgIds: List<String>,
     val isIntroducingArchiveActionCardDismissed: Boolean,
-    val isPremiumUpgradeBannerEligible: Boolean = false,
+    val premiumCard: PremiumCard = PremiumCard.NONE,
     val isUpgradedToPremiumCardEligible: Boolean = false,
     val isAwaitingKdfSync: Boolean = false,
     val validTotpIds: ImmutableSet<String>,
@@ -1758,14 +1782,30 @@ data class VaultState(
      * Indicates what action card to display.
      */
     val actionCard: ActionCardState?
-        get() = (viewState as? ViewState.Content)?.let {
-            ActionCardState.UpgradedToPremium
-                .takeIf { isUpgradedToPremiumCardEligible }
-                ?: ActionCardState.UpgradePremium
-                    .takeIf { isPremiumUpgradeBannerEligible }
-                ?: ActionCardState.IntroducingArchive.takeIf {
-                    isPremium && !isIntroducingArchiveActionCardDismissed
-                }
+        get() = when (viewState) {
+            is ViewState.Content -> {
+                ActionCardState.UpgradedToPremium
+                    .takeIf { isUpgradedToPremiumCardEligible }
+                    ?: ActionCardState.UpgradePremium.takeIf { premiumCard == PremiumCard.UPGRADE }
+                    ?: ActionCardState.PremiumNeedsAttention.takeIf {
+                        premiumCard == PremiumCard.NEEDS_ATTENTION
+                    }
+                    ?: ActionCardState.IntroducingArchive.takeIf {
+                        isPremium && !isIntroducingArchiveActionCardDismissed
+                    }
+            }
+
+            ViewState.NoItems -> {
+                ActionCardState.UpgradePremium.takeIf { premiumCard == PremiumCard.UPGRADE }
+                    ?: ActionCardState.PremiumNeedsAttention.takeIf {
+                        premiumCard == PremiumCard.NEEDS_ATTENTION
+                    }
+                    ?: ActionCardState.ImportItems.takeIf { showImportActionCard }
+            }
+
+            is ViewState.Error,
+            ViewState.Loading,
+                -> null
         }
 
     /**
@@ -2111,6 +2151,46 @@ data class VaultState(
                 override val supportingLabel: Text? get() = null
                 override val type: VaultItemCipherType get() = VaultItemCipherType.BANK_ACCOUNT
             }
+
+            /**
+             * Represents a License item within the vault.
+             */
+            @Parcelize
+            data class License(
+                override val id: String,
+                override val name: Text,
+                override val startIcon: IconData = IconData.Local(
+                    iconRes = BitwardenDrawable.ic_id_card,
+                ),
+                override val startIconTestTag: String = "LicenseCipherIcon",
+                override val extraIconList: ImmutableList<IconData> = persistentListOf(),
+                override val overflowOptions: ImmutableList<ListingItemOverflowAction.VaultAction>,
+                override val shouldShowMasterPasswordReprompt: Boolean,
+                override val hasDecryptionError: Boolean,
+            ) : VaultItem() {
+                override val supportingLabel: Text? get() = null
+                override val type: VaultItemCipherType get() = VaultItemCipherType.DRIVERS_LICENSE
+            }
+
+            /**
+             * Represents a Passport item within the vault.
+             */
+            @Parcelize
+            data class Passport(
+                override val id: String,
+                override val name: Text,
+                override val startIcon: IconData = IconData.Local(
+                    iconRes = BitwardenDrawable.ic_passport,
+                ),
+                override val startIconTestTag: String = "PassportCipherIcon",
+                override val extraIconList: ImmutableList<IconData> = persistentListOf(),
+                override val overflowOptions: ImmutableList<ListingItemOverflowAction.VaultAction>,
+                override val shouldShowMasterPasswordReprompt: Boolean,
+                override val hasDecryptionError: Boolean,
+            ) : VaultItem() {
+                override val supportingLabel: Text? get() = null
+                override val type: VaultItemCipherType get() = VaultItemCipherType.PASSPORT
+            }
         }
     }
 
@@ -2130,9 +2210,19 @@ data class VaultState(
         data object UpgradePremium : ActionCardState()
 
         /**
+         * Indicates that the user needs to address an issue with their Premium account.
+         */
+        data object PremiumNeedsAttention : ActionCardState()
+
+        /**
          * Indicates that the archive feature is ready for use.
          */
         data object IntroducingArchive : ActionCardState()
+
+        /**
+         * Indicates that the import items card should be displayed.
+         */
+        data object ImportItems : ActionCardState()
     }
 
     /**
@@ -2210,6 +2300,15 @@ data class VaultState(
             val title: Text,
             val message: Text,
             val error: Throwable? = null,
+        ) : DialogState()
+
+        /**
+         * Represents an error dialog with the given [title] and [message].
+         */
+        @Parcelize
+        data class SyncError(
+            val title: Text,
+            val message: Text,
         ) : DialogState()
     }
 }
@@ -2513,16 +2612,6 @@ sealed class VaultAction {
     data object TryAgainClick : VaultAction()
 
     /**
-     * The user has dismissed the import action card.
-     */
-    data object DismissImportActionCard : VaultAction()
-
-    /**
-     * The user has clicked the import action card.
-     */
-    data object ImportActionCardClick : VaultAction()
-
-    /**
      * User clicked an overflow action.
      */
     data class OverflowOptionClick(
@@ -2707,11 +2796,10 @@ sealed class VaultAction {
         ) : Internal()
 
         /**
-         * Indicates that the Premium upgrade banner eligibility has been
-         * updated.
+         * Indicates that the Premium upgrade banner eligibility has been updated.
          */
         data class PremiumUpgradeBannerEligibilityReceive(
-            val isEligible: Boolean,
+            val premiumCard: PremiumCard,
         ) : Internal()
 
         /**
@@ -2720,53 +2808,5 @@ sealed class VaultAction {
         data class UpgradedToPremiumCardEligibilityReceive(
             val isEligible: Boolean,
         ) : Internal()
-    }
-}
-
-@Suppress("LongParameterList")
-private fun MutableStateFlow<VaultState>.updateToErrorStateOrDialog(
-    baseIconUrl: String,
-    vaultData: VaultData?,
-    vaultFilterType: VaultFilterType,
-    isIconLoadingDisabled: Boolean,
-    isPremium: Boolean,
-    hasMasterPassword: Boolean,
-    errorTitle: Text,
-    errorMessage: Text,
-    isRefreshing: Boolean,
-    restrictItemTypesPolicyOrgIds: List<String>,
-    validTotpIds: Set<String>,
-    isNewItemTypesEnabled: Boolean,
-) {
-    this.update {
-        if (vaultData != null) {
-            it.copy(
-                viewState = vaultData.toViewState(
-                    baseIconUrl = baseIconUrl,
-                    isPremium = isPremium,
-                    hasMasterPassword = hasMasterPassword,
-                    vaultFilterType = vaultFilterType,
-                    isIconLoadingDisabled = isIconLoadingDisabled,
-                    restrictItemTypesPolicyOrgIds = restrictItemTypesPolicyOrgIds,
-                    validTotpIds = validTotpIds,
-                    isNewItemTypesEnabled = isNewItemTypesEnabled,
-                ),
-                dialog = VaultState.DialogState.Error(
-                    title = errorTitle,
-                    message = errorMessage,
-                ),
-                isRefreshing = isRefreshing,
-                validTotpIds = validTotpIds.toImmutableSet(),
-            )
-        } else {
-            it.copy(
-                viewState = VaultState.ViewState.Error(
-                    message = errorMessage,
-                ),
-                dialog = null,
-                isRefreshing = isRefreshing,
-                validTotpIds = validTotpIds.toImmutableSet(),
-            )
-        }
     }
 }

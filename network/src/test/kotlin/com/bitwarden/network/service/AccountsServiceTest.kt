@@ -9,7 +9,6 @@ import com.bitwarden.network.base.BaseServiceTest
 import com.bitwarden.network.model.KdfJson
 import com.bitwarden.network.model.KdfTypeJson
 import com.bitwarden.network.model.KeyConnectorKeyRequestJson
-import com.bitwarden.network.model.KeyConnectorMasterKeyResponseJson
 import com.bitwarden.network.model.MasterPasswordAuthenticationDataJson
 import com.bitwarden.network.model.MasterPasswordUnlockDataJson
 import com.bitwarden.network.model.PasswordHintResponseJson
@@ -167,11 +166,11 @@ class AccountsServiceTest : BaseServiceTest() {
     }
 
     @Test
-    fun `resetPassword with empty response is success`() = runTest {
+    fun `resetPassword with v1 request and empty response is success`() = runTest {
         val response = MockResponse().setBody("")
         server.enqueue(response)
         val result = service.resetPassword(
-            body = ResetPasswordRequestJson(
+            body = ResetPasswordRequestJson.V1(
                 currentPasswordHash = "",
                 newPasswordHash = "",
                 passwordHint = null,
@@ -182,26 +181,72 @@ class AccountsServiceTest : BaseServiceTest() {
     }
 
     @Test
-    fun `resetPassword with empty response and null current password is success`() = runTest {
+    fun `resetPassword with v2 request and empty response is success`() = runTest {
         val response = MockResponse().setBody("")
         server.enqueue(response)
         val result = service.resetPassword(
-            body = ResetPasswordRequestJson(
-                currentPasswordHash = null,
-                newPasswordHash = "",
+            body = ResetPasswordRequestJson.V2(
+                currentPasswordHash = "",
                 passwordHint = null,
-                key = "",
+                kdf = KdfJson(
+                    iterations = 7,
+                    memory = 1,
+                    parallelism = 2,
+                    kdfType = KdfTypeJson.ARGON2_ID,
+                ),
+                salt = "",
+                masterPasswordAuthenticationHash = "",
+                masterKeyWrappedUserKey = "",
             ),
         )
         assertTrue(result.isSuccess)
     }
 
     @Test
-    fun `setPassword with empty response is success`() = runTest {
+    fun `resetPassword with v1 request and empty response and null current password is success`() =
+        runTest {
+            val response = MockResponse().setBody("")
+            server.enqueue(response)
+            val result = service.resetPassword(
+                body = ResetPasswordRequestJson.V1(
+                    currentPasswordHash = null,
+                    newPasswordHash = "",
+                    passwordHint = null,
+                    key = "",
+                ),
+            )
+            assertTrue(result.isSuccess)
+        }
+
+    @Test
+    fun `resetPassword with v2 request and empty response and null current password is success`() =
+        runTest {
+            val response = MockResponse().setBody("")
+            server.enqueue(response)
+            val result = service.resetPassword(
+                body = ResetPasswordRequestJson.V2(
+                    currentPasswordHash = null,
+                    passwordHint = null,
+                    kdf = KdfJson(
+                        iterations = 7,
+                        memory = 1,
+                        parallelism = 2,
+                        kdfType = KdfTypeJson.ARGON2_ID,
+                    ),
+                    salt = "",
+                    masterPasswordAuthenticationHash = "",
+                    masterKeyWrappedUserKey = "",
+                ),
+            )
+            assertTrue(result.isSuccess)
+        }
+
+    @Test
+    fun `setPassword with v1 request and empty response is success`() = runTest {
         val response = MockResponse().setBody("")
         server.enqueue(response)
         val result = service.setPassword(
-            body = SetPasswordRequestJson(
+            body = SetPasswordRequestJson.V1(
                 passwordHash = "passwordHash",
                 passwordHint = "passwordHint",
                 organizationIdentifier = "organizationId",
@@ -210,10 +255,32 @@ class AccountsServiceTest : BaseServiceTest() {
                 kdfParallelism = 2,
                 kdfType = null,
                 key = "encryptedUserKey",
-                keys = SetPasswordRequestJson.Keys(
+                keys = SetPasswordRequestJson.V1.Keys(
                     publicKey = "public",
                     encryptedPrivateKey = "private",
                 ),
+            ),
+        )
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `setPassword with v2 request and empty response is success`() = runTest {
+        val response = MockResponse().setBody("")
+        server.enqueue(response)
+        val result = service.setPassword(
+            body = SetPasswordRequestJson.V2(
+                masterPasswordAuthenticationHash = "passwordHash",
+                passwordHint = "passwordHint",
+                organizationIdentifier = "organizationId",
+                kdf = KdfJson(
+                    iterations = 7,
+                    memory = 1,
+                    parallelism = 2,
+                    kdfType = KdfTypeJson.ARGON2_ID,
+                ),
+                salt = "sample@bitwarden.com",
+                masterKeyWrappedUserKey = "encryptedUserKey",
             ),
         )
         assertTrue(result.isSuccess)
@@ -239,21 +306,6 @@ class AccountsServiceTest : BaseServiceTest() {
             ),
         )
         assertTrue(result.isSuccess)
-    }
-
-    @Test
-    fun `getMasterKeyFromKeyConnector with token and empty response is success`() = runTest {
-        val masterKey = "masterKey"
-        val response = MockResponse().setBody("""{ "key": "$masterKey" }""")
-        server.enqueue(response)
-        val result = service.getMasterKeyFromKeyConnector(
-            url = "$url/test",
-            accessToken = "token",
-        )
-        assertEquals(
-            KeyConnectorMasterKeyResponseJson(masterKey = masterKey).asSuccess(),
-            result,
-        )
     }
 
     @Test

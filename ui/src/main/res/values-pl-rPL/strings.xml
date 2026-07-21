@@ -78,6 +78,7 @@
     <string name="bitwarden_autofill_service">Usługa autouzupełniania Bitwarden</string>
     <string name="change_master_password">Zmień hasło główne</string>
     <string name="close">Zamknij</string>
+    <string name="close_app">Zamnknij aplikację</string>
     <string name="continue_text">Kontynuuj</string>
     <string name="create_account">Utwórz konto</string>
     <string name="create_an_account">Utwórz konto</string>
@@ -202,7 +203,6 @@ Skanowanie nastąpi automatycznie.</string>
     <string name="copy_totp_automatically">Kopiuj kod TOTP automatycznie</string>
     <string name="premium_required">Konto Premium jest wymagane, aby skorzystać z tej funkcji.</string>
     <string name="attachment_deleted">Załącznik został usunięty</string>
-    <string name="attachments_unavailable">Załączniki są niedostępne</string>
     <string name="attachments_are_a_premium_feature">Załączniki są funkcją Premium. Twój obecny plan nie zawiera tej funkcji.</string>
     <string name="choose_file">Wybierz plik</string>
     <string name="file">Plik</string>
@@ -619,6 +619,10 @@ Skanowanie nastąpi automatycznie.</string>
     <string name="forwarded_email_description">Wygeneruj alias za pomocą zewnętrznej usługi.</string>
     <string name="accessibility_service_disclosure">Omówienie usługi ułatwienia dostępu</string>
     <string name="accessibility_disclosure_text">Bitwarden używa usługi ułatwienia dostępu do wyszukiwania pól logowania w aplikacjach i stronach internetowych, a następnie ustanawia odpowiednie identyfikatory pól do nazwy użytkownika i hasła. Nie przechowujemy żadnych informacji przedstawionych nam przez usługę, ani nie podejmujemy żadnych prób kontrolowania jakichkolwiek innych elementów na ekranie.</string>
+    <string name="accessibility_disclosure_start_up_text_1">Przed uruchomieniem autouzupełniania konieczne jest wyświetlenie tego powiadomienia.</string>
+    <string name="accessibility_disclosure_start_up_text_2">Bitwarden oferuje opcjonalną metodę autouzupełniania, która wykorzystuje usługę ułatwienia dostępu. Jeśli ją włączysz, Bitwarden zidentyfikuje odpowiednie pola i uzupełni dane logowania.</string>
+    <string name="accessibility_disclosure_start_up_text_3">Nie przechowujemy żadnych informacji dotyczących zawartości ekranu podczas korzystania z usługi ułatwienia dostępu. Nie kontrolujemy żadnych elementów wyświetlanych na ekranie poza polem logowania.</string>
+    <string name="i_understand">Rozumiem</string>
     <string name="accept">Akceptuj</string>
     <string name="decline">Odrzuć</string>
     <string name="login_request_has_already_expired">Prośba logowania wygasła.</string>
@@ -1002,9 +1006,8 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="delete_logs">Usuń logi</string>
     <string name="do_you_really_want_to_delete_all_recorded_logs">Czy na pewno chcesz usunąć wszystkie zarejestrowane logi?</string>
     <string name="confirm_key_connector_domain">Potwierdź domenę Key Connector</string>
-    <string name="key_connector_domain">Domena Key Connector:</string>
-    <string name="key_connector_organization">Organizacja:</string>
-    <string name="password_no_longer_required_confirm_domain">Hasło główne nie jest już wymagane dla członków następującej organizacji. Potwierdź poniższą domenę z administratorem organizacji.</string>
+    <string name="key_connector_domain">Domena Key Connector</string>
+    <string name="your_organization_no_longer_requires_a_master_password">Twoja organizacja nie wymaga już od swoich użytkowników podawania hasła głównego. Zweryfikuj domenę u administratora i wpisz hasło główne, aby kontynuować.</string>
     <string name="please_confirm_domain_with_admin">Potwierdź domenę przy pomocy administratora organizacji.\n\nDomena Key Connector:\n%1$s</string>
     <string name="flight_recorder_banner_title">Rejestrator zdarzeń jest włączony</string>
     <string name="flight_recorder_banner_message">Rejestrator zdarzeń będzie aktywny do %1$s %2$s. Przejdź do ustawień, aby wyłączyć go teraz.</string>
@@ -1165,6 +1168,8 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="no_items_imported">Brak zaimportowanych elementów</string>
     <string name="no_items_received_from_the_selected_app">Nie odebrano żadnych elementów z wybranej aplikacji.</string>
     <string name="vault_sync_failed">Synchronizacja sejfu nie powiodła się</string>
+    <string name="vault_sync_unsuccessful">Synchronizacja nie powiodła się</string>
+    <string name="vault_sync_failed_description">Nie mogliśmy zsynchronizować sejfu z serwerem. Sejf może nie zawierać najnowszych zmian. Spróbuj ponownie lub poczekaj na automatyczną synchronizację.</string>
     <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">Elementy zostały zaimportowane, ale nie można zsynchronizować sejfu. Zaimportowane elementy będą widoczne w sejfie dopiero po synchronizacji.</string>
     <string name="there_was_a_problem_importing_your_items">Wystąpił problem z importowaniem elementów. Spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z pomocą techniczną.</string>
     <string name="saving_items">Zapisywanie elementów…</string>
@@ -1226,12 +1231,15 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="unarchiving">Usuwanie z archiwum</string>
     <string name="item_moved_to_archived">Element został przeniesiony do archiwum</string>
     <string name="item_moved_to_vault">Element został przeniesiony do archiwum</string>
-    <string name="archive_unavailable">Archiwum jest niedostępne</string>
     <string name="archiving_items_is_a_premium_feature">Archiwizowanie elementów jest funkcją Premium. Twój obecny plan nie zawiera tej funkcji.</string>
+    <string name="totp_is_a_premium_feature">Klucz uwierzytelniający (TOTP) jest funkcją Premium. Twój obecny plan nie zawiera tej funkcji.</string>
     <string name="upgrade_to_premium">Kup konto Premium</string>
     <string name="plan">Plan</string>
     <string name="to_manage_your_premium_subscription_youll_need_to_login_to_your_web_vault_on_a_computer">Aby zarządzać subskrypcją Premium, zaloguj się do sejfu internetowego na komputerze.</string>
     <string name="unlock_advanced_security_features">Odblokuj zaawansowane funkcje bezpieczeństwa</string>
+    <string name="your_subscription_needs_attention">Subskrypcja wymaga uwagi</string>
+    <string name="check_your_plan_for_details">Sprawdź plan, aby uzyskać szczegóły.</string>
+    <string name="view_plan">Pokaż plan</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">Plan Premium zapewnia więcej narzędzi, które pomogą Ci zachować bezpieczeństwo i kontrolę.</string>
     <string name="this_item_is_archived">Element jest zarchiwizowany.</string>
     <string name="introducing_archive">Przedstawiamy archiwum</string>
@@ -1254,17 +1262,17 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="external_link">Link zewnętrzny</string>
     <string name="external_link_format" comment="Used for accessibility to indicate that tapping this item will leave the app">%1$s (link zewnętrzny)</string>
     <string name="devices">Urządzenia</string>
-    <string name="mobile_platform">Mobile - %1$s</string>
-    <string name="extension_platform">Extension - %1$s</string>
-    <string name="web_platform">Web - %1$s</string>
-    <string name="desktop_platform">Desktop - %1$s</string>
-    <string name="cli_platform">CLI - %1$s</string>
+    <string name="mobile_platform">Aplikacja mobilna %1$s</string>
+    <string name="extension_platform">Rozszerzenie %1$s</string>
+    <string name="web_platform">Aplikacja internetowa %1$s</string>
+    <string name="desktop_platform">Aplikacja desktopowa %1$s</string>
+    <string name="cli_platform">CLI %1$s</string>
     <string name="sdk">SDK</string>
     <string name="server">Serwer</string>
     <string name="unknown_device">Nieznane urządzenie</string>
     <string name="first_login_date"><annotation emphasis="bold">Pierwsze logowanie:</annotation> <annotation arg="0">%1$s</annotation></string>
     <string name="current_session">Obecna sesja</string>
-    <string name="pending_request">Pending request</string>
+    <string name="pending_request">Oczekująca prośba</string>
     <string name="today">Dzisiaj</string>
     <string name="past_seven_days">Ostatnie 7 dni</string>
     <string name="past_fourteen_days">Ostatnie 14 dni</string>
@@ -1285,13 +1293,13 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="upgrade_pending">Trwa ulepszanie</string>
     <string name="upgrade_pending_message">Ulepszenie jest przetwarzane. Do czasu jego zakończenia będziesz korzystać z darmowego planu. Zsynchronizuj, aby sprawdzić status lub kontynuuj. Aktualizacja nastąpi automatycznie.</string>
     <string name="unlock_premium_features">Odblokuj więcej zaawansowanych funkcji za pomocą planu Premium.</string>
-    <string name="per_month">/ miesiąc</string>
+    <string name="per_month_cancel_anytime">/ month · Cancel anytime</string>
+    <string name="per_month_cancel_anytime_content_description">%1$s per month, cancel anytime</string>
     <string name="built_in_authenticator">Wbudowana aplikacja uwierzytelniająca</string>
     <string name="emergency_access">Dostęp awaryjny</string>
     <string name="secure_file_storage">Bezpieczne przechowywanie plików</string>
     <string name="breach_monitoring">Monitorowanie naruszeń</string>
-    <string name="upgrade_now">Ulepsz teraz</string>
-    <string name="youll_go_to_stripes_secure_checkout_to_complete_your_purchase">Zostaniesz przekierowany do płatności Stripe, aby zakończyć zakup.</string>
+    <string name="youll_complete_the_purchase_with_stripe_secure_checkout">You’ll complete the purchase with Stripe secure checkout.</string>
     <string name="opening_checkout">Otwieranie zamówienia…</string>
     <string name="secure_checkout_didnt_load">Nie udało się załadować płatności</string>
     <string name="trouble_opening_payment_page">Mieliśmy problem z otwarciem płatności. Spróbuj ponownie.</string>
@@ -1316,36 +1324,39 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="billing_rate_per_year">%1$s / rok</string>
     <string name="billing_rate_per_month">%1$s / miesiąc</string>
     <string name="manage_plan">Zarządzaj planem</string>
-    <string name="manage_your_subscription_plan_in_the_bitwarden_web_app">Manage your subscription plan in the Bitwarden web app.</string>
+    <string name="manage_your_subscription_plan_in_the_bitwarden_web_app">Zarządzaj subskrypcją w aplikacji internetowej Bitwarden.</string>
     <string name="cancel_premium">Anuluj Konto Premium</string>
     <string name="subscription_status_active">Aktywny</string>
     <string name="subscription_status_canceled">Anulowano</string>
+    <string name="subscription_status_expired">Wygasła</string>
     <string name="subscription_status_past_due">Termin przekroczony</string>
     <string name="subscription_status_paused">Wstrzymano</string>
+    <string name="subscription_status_unpaid">Nieopłacone</string>
     <string name="subscription_status_update_payment">Zaktualizuj płatność</string>
-    <string name="subscription_status_pending_cancellation">Pending cancellation</string>
-    <string name="subscription_pending_cancellation_description">Your subscription is scheduled to cancel on <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. You can reinstate it anytime before then.</string>
-    <string name="premium_next_charge_summary">Następna płatność %2$s w kwocie %1$s USD.</string>
-    <string name="subscription_canceled_description">Twoja subskrypcja została anulowana %1$s. Zasubskrybuj ponownie, aby kontynuować korzystanie z funkcji Premium.</string>
+    <string name="subscription_status_pending_cancellation">Oczekiwanie na anulowanie</string>
+    <string name="subscription_pending_cancellation_description">Twoja subskrypcja zostanie anulowana <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Możesz ją odnowić w dowolnym momencie.</string>
+    <string name="premium_next_charge_summary">Następna płatność <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation> w kwocie <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> USD.</string>
+    <string name="subscription_canceled_description">Twoja subskrypcja została anulowana <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Zasubskrybuj ponownie, aby kontynuować korzystanie z funkcji Premium.</string>
+    <string name="subscription_unpaid_description">Twoja subskrypcja została zawieszona <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Aby ją reaktywować, opłać zaległe faktury.</string>
     <string name="subscription_update_payment_description">Nie mogliśmy przetworzyć płatności. Zaktualizuj metodę płatności przed <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>.</string>
     <plurals name="subscription_past_due_description">
-        <item quantity="one">Masz %1$d dzień od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do %2$s.</item>
-        <item quantity="few">Masz %1$d dni od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do %2$s.</item>
-        <item quantity="many">Masz %1$d dni od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do %2$s.</item>
-        <item quantity="other">Masz %1$d dnia od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do %2$s.</item>
+        <item quantity="one">Masz <annotation arg="0">%1$d</annotation> dzień od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation>.</item>
+        <item quantity="few">Masz <annotation arg="0">%1$d</annotation> dni od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation>.</item>
+        <item quantity="many">Masz <annotation arg="0">%1$d</annotation> dni od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation>.</item>
+        <item quantity="other">Masz <annotation arg="0">%1$d</annotation> dnia od daty wygaśnięcia subskrypcji na uregulowanie płatności. Zapłać zaległe faktury do <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation>.</item>
     </plurals>
     <string name="subscription_paused_description">Subskrypcja jest wstrzymana. Wznów ją, aby kontynuować korzystanie z funkcji Premium.</string>
+    <string name="subscription_expired_description">Twoja subskrypcja wygasła <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Zasubskrybuj ponownie, aby kontynuować korzystanie z funkcji Premium.</string>
     <string name="loading_subscription">Ładowanie subskrypcji…</string>
     <string name="loading_portal">Ładowanie…</string>
     <string name="portal_error">Coś poszło nie tak</string>
     <string name="trouble_loading_portal">Mieliśmy problem z załadowaniem płatności. Spróbuj ponownie.</string>
-    <string name="subscription_error">Błąd subskrypcji</string>
     <string name="trouble_loading_subscription">Nie mogliśmy załadować szczegółów subskrypcji. Spróbuj ponownie.</string>
     <string name="view_bank_account">Pokaż konto bankowe</string>
     <string name="view_license">Pokaż prawo jazdy</string>
     <string name="view_passport">Pokaż paszport</string>
     <string name="add_bank_account">Dodaj konto bankowe</string>
-    <string name="add_license">Add license</string>
+    <string name="add_license">Dodaj prawo jazdy</string>
     <string name="add_passport">Dodaj paszport</string>
     <string name="edit_bank_account">Edytuj konto bankowe</string>
     <string name="edit_license">Edytuj prawo jazdy</string>
@@ -1403,12 +1414,21 @@ Czy chcesz przełączyć się na to konto?</string>
     <string name="national_identification_number">Numer PESEL</string>
     <string name="copy_national_identification_number">Kopiuj numer PESEL</string>
     <string name="access_your_local_network">Dostęp do sieci lokalnej</string>
-    <string name="local_network_access_required">Local network access required</string>
+    <string name="local_network_access_required">Dostęp do sieci lokalnej jest wymagany</string>
     <string name="ask_again_later">Zapytaj później</string>
     <string name="enable_local_network_access">Włącz dostęp do sieci lokalnej</string>
     <string name="bitwarden_needs_local_network_access_to_sync_with_your_server">Aplikacja Bitwarden wymaga dostępu do sieci lokalnej, aby zsynchronizować się z serwerem. Bez tego uprawnienia aplikacja nie będzie mogła nawiązać połączenia.</string>
-    <string name="without_this_permission_bitwarden_wont_be_able_to_sync_with_your_server">Without this permission, Bitwarden won’t be able to connect and sync with your server. You can enable this in your device settings.</string>
-    <string name="your_request_was_interrupted_because_the_app_needs_local_network_access">Your request was interrupted because the app needs local network access. You can enable this in your device settings.</string>
+    <string name="without_this_permission_bitwarden_wont_be_able_to_sync_with_your_server">Bez tego uprawnienia aplikacja Bitwarden nie będzie mogła połączyć się z serwerem. Możesz włączyć tę opcję w ustawieniach urządzenia.</string>
+    <string name="your_request_was_interrupted_because_the_app_needs_local_network_access">Żądanie zostało przerwane, ponieważ aplikacja wymaga dostępu do sieci lokalnej. Możesz włączyć tę opcję w ustawieniach urządzenia.</string>
     <string name="continue_to_stripe">Kontynuować przejście do Stripe?</string>
-    <string name="youll_be_taken_to_stripe_to_manage_your_subscription_cancellation">You’ll be taken to Stripe to manage your subscription cancellation.</string>
+    <string name="youll_be_taken_to_stripe_to_manage_your_subscription_cancellation">Zostaniesz przekierowany do płatności Stripe, aby anulować subskrypcję.</string>
+    <string name="unlock_advanced_protection">Unlock advanced protection</string>
+    <string name="breeze_through_2fa_with_built_in_codes">Breeze through 2FA with built-in codes</string>
+    <string name="run_reports_to_find_risky_passwords">Run reports to find risky passwords</string>
+    <string name="add_a_trusted_emergency_contact">Add a trusted emergency contact</string>
+    <string name="identify_unsecure_websites">Identify unsecure websites</string>
+    <string name="flag_accounts_with_inactive_2fa">Flag accounts with inactive 2FA</string>
+    <string name="keep_documents_safe_and_encrypted">Keep documents safe and encrypted</string>
+    <string name="share_files_securely_with_anyone_using_send">Share files securely with anyone using Send</string>
+    <string name="receive_24_7_priority_support">Receive 24/7 priority support</string>
 </resources>

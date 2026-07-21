@@ -107,11 +107,13 @@ private val SERVER_CONFIG = ServerConfig(
             identityUrl = "http://localhost:33656",
             notificationsUrl = "http://localhost:61840",
             ssoUrl = "http://localhost:51822",
+            fillAssistRulesUrl = null,
         ),
         featureStates = mapOf(
             "duo-redirect" to JsonPrimitive(true),
             "flexible-collections-v-1" to JsonPrimitive(false),
         ),
         communication = null,
+        settings = null,
     ),
 )

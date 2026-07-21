@@ -114,6 +114,7 @@ import io.mockk.runs
 import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -360,7 +361,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
                         availableOwners = listOf(
                             VaultAddEditState.Owner(
                                 id = "organizationId",
-                                name = "organizationName",
+                                name = "organizationName".asText(),
                                 collections = emptyList(),
                             ),
                         ),
@@ -543,6 +544,40 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
         verify(exactly = 0) {
             organizationEventManager.trackEvent(event = any())
         }
+    }
+
+    @Test
+    fun `vault data Error with data should determine the content state from the available data`() =
+        runTest {
+            val stateWithName = createVaultAddItemState(
+                commonContentViewState = createCommonContentViewState(name = "mockName-1"),
+            )
+            mutableVaultDataFlow.value = DataState.Error(
+                error = Throwable("Fail"),
+                data = createVaultData(),
+            )
+            val viewModel = createAddVaultItemViewModel(
+                createSavedStateHandleWithState(
+                    state = stateWithName,
+                    vaultAddEditType = VaultAddEditType.AddItem,
+                    vaultItemCipherType = VaultItemCipherType.LOGIN,
+                ),
+            )
+
+            assertEquals(stateWithName, viewModel.stateFlow.value)
+        }
+
+    @Test
+    fun `vault data Error without data should update view state to Error`() = runTest {
+        mutableVaultDataFlow.value = DataState.Error(error = Throwable("Fail"))
+        val viewModel = createAddVaultItemViewModel()
+
+        assertEquals(
+            VaultAddEditState.ViewState.Error(
+                message = BitwardenString.generic_error_message.asText(),
+            ),
+            viewModel.stateFlow.value.viewState,
+        )
     }
 
     @Test
@@ -2409,136 +2444,32 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
         }
 
     @Test
-    fun `in add mode, SaveClick with a License item should emit ShowSnackbar without saving`() =
-        runTest {
-            mutableVaultDataFlow.value = DataState.Loaded(createVaultData())
-            val licenseState = createVaultAddItemState(
-                vaultItemCipherType = VaultItemCipherType.DRIVERS_LICENSE,
-                commonContentViewState = createCommonContentViewState(name = "mockName-1"),
-                typeContentViewState =
-                    VaultAddEditState.ViewState.Content.ItemType.License(),
-            )
-            val viewModel = createAddVaultItemViewModel(
-                createSavedStateHandleWithState(
-                    state = licenseState,
-                    vaultAddEditType = VaultAddEditType.AddItem,
-                    vaultItemCipherType = VaultItemCipherType.DRIVERS_LICENSE,
-                ),
-            )
-
-            viewModel.eventFlow.test {
-                viewModel.trySendAction(VaultAddEditAction.Common.SaveClick)
-                assertEquals(
-                    VaultAddEditEvent.ShowSnackbar(
-                        message = BitwardenString.an_error_has_occurred.asText(),
-                    ),
-                    awaitItem(),
-                )
-            }
-            assertEquals(licenseState, viewModel.stateFlow.value)
-            coVerify(exactly = 0) {
-                vaultRepository.createCipher(any())
-                vaultRepository.createCipherInOrganization(any(), any())
-            }
-        }
-
-    @Suppress("MaxLineLength")
-    @Test
-    fun `in add mode, SaveClick with a Passport item should not short-circuit and should run validation`() =
-        runTest {
-            mutableVaultDataFlow.value = DataState.Loaded(createVaultData())
-            val passportState = createVaultAddItemState(
-                vaultItemCipherType = VaultItemCipherType.PASSPORT,
-                commonContentViewState = createCommonContentViewState(name = ""),
-                typeContentViewState = VaultAddEditState.ViewState.Content.ItemType.Passport(),
-            )
-            val expectedValidationDialogState = passportState.copy(
-                dialog = VaultAddEditState.DialogState.Generic(
-                    title = BitwardenString.an_error_has_occurred.asText(),
-                    message = BitwardenString.validation_field_required
-                        .asText(BitwardenString.name.asText()),
-                ),
-            )
-            val viewModel = createAddVaultItemViewModel(
-                createSavedStateHandleWithState(
-                    state = passportState,
-                    vaultAddEditType = VaultAddEditType.AddItem,
-                    vaultItemCipherType = VaultItemCipherType.PASSPORT,
-                ),
-            )
-
-            viewModel.stateEventFlow(backgroundScope) { stateFlow, eventFlow ->
-                viewModel.trySendAction(VaultAddEditAction.Common.SaveClick)
-                assertEquals(passportState, stateFlow.awaitItem())
-                assertEquals(expectedValidationDialogState, stateFlow.awaitItem())
-                eventFlow.expectNoEvents()
-            }
-        }
-
-    @Suppress("MaxLineLength")
-    @Test
-    fun `in add mode, SaveClick with a Bank Account item should not short-circuit and should run validation`() =
-        runTest {
-            mutableVaultDataFlow.value = DataState.Loaded(createVaultData())
-            val bankAccountState = createVaultAddItemState(
-                vaultItemCipherType = VaultItemCipherType.BANK_ACCOUNT,
-                commonContentViewState = createCommonContentViewState(name = ""),
-                typeContentViewState =
-                    VaultAddEditState.ViewState.Content.ItemType.BankAccount(),
-            )
-            val expectedValidationDialogState = bankAccountState.copy(
-                dialog = VaultAddEditState.DialogState.Generic(
-                    title = BitwardenString.an_error_has_occurred.asText(),
-                    message = BitwardenString.validation_field_required
-                        .asText(BitwardenString.name.asText()),
-                ),
-            )
-            val viewModel = createAddVaultItemViewModel(
-                createSavedStateHandleWithState(
-                    state = bankAccountState,
-                    vaultAddEditType = VaultAddEditType.AddItem,
-                    vaultItemCipherType = VaultItemCipherType.BANK_ACCOUNT,
-                ),
-            )
-
-            viewModel.stateEventFlow(backgroundScope) { stateFlow, eventFlow ->
-                viewModel.trySendAction(VaultAddEditAction.Common.SaveClick)
-                assertEquals(bankAccountState, stateFlow.awaitItem())
-                assertEquals(expectedValidationDialogState, stateFlow.awaitItem())
-                eventFlow.expectNoEvents()
-            }
-        }
-
-    @Test
-    fun `ItemType BankAccount should expose BANK_ACCOUNT itemTypeOption and be SDK supported`() {
+    fun `ItemType BankAccount should expose BANK_ACCOUNT itemTypeOption`() {
         val itemType = VaultAddEditState.ViewState.Content.ItemType.BankAccount()
         assertEquals(
             VaultAddEditState.ItemTypeOption.BANK_ACCOUNT,
             itemType.itemTypeOption,
         )
-        assertTrue(itemType.isSdkSupported)
         assertTrue(itemType.vaultLinkedFieldTypes.isEmpty())
     }
 
     @Test
-    fun `ItemType License should expose DRIVERS_LICENSE itemTypeOption and not be SDK supported`() {
+    fun `ItemType License should expose DRIVERS_LICENSE itemTypeOption`() {
         val itemType = VaultAddEditState.ViewState.Content.ItemType.License()
         assertEquals(
             VaultAddEditState.ItemTypeOption.LICENSE,
             itemType.itemTypeOption,
         )
-        assertFalse(itemType.isSdkSupported)
         assertTrue(itemType.vaultLinkedFieldTypes.isEmpty())
     }
 
     @Test
-    fun `ItemType Passport should expose PASSPORT itemTypeOption and be SDK supported`() {
+    fun `ItemType Passport should expose PASSPORT itemTypeOption`() {
         val itemType = VaultAddEditState.ViewState.Content.ItemType.Passport()
         assertEquals(
             VaultAddEditState.ItemTypeOption.PASSPORT,
             itemType.itemTypeOption,
         )
-        assertTrue(itemType.isSdkSupported)
         assertTrue(itemType.vaultLinkedFieldTypes.isEmpty())
     }
 
@@ -5351,7 +5282,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
                             availableOwners = listOf(
                                 VaultAddEditState.Owner(
                                     id = "organizationId",
-                                    name = "organizationName",
+                                    name = "organizationName".asText(),
                                     collections = emptyList(),
                                 ),
                             ),
@@ -6457,7 +6388,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
             selectedOwnerId = selectedOwnerId,
             originalCipher = originalCipher,
             availableFolders = availableFolders,
-            availableOwners = availableOwners,
+            availableOwners = availableOwners.toImmutableList(),
             hasOrganizations = hasOrganizations,
             canDelete = canDelete,
             canAssignToCollections = canAssociateToCollections,
@@ -6553,7 +6484,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
                     name = "activeName",
                     email = "activeEmail",
                     avatarColorHex = "#ffecbc49",
-                    environment = Environment.Eu,
+                    environment = Environment.Prod.Eu,
                     isPremium = true,
                     isPremiumFromSelf = true,
                     isLoggedIn = false,
@@ -6589,12 +6520,12 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
         listOf(
             VaultAddEditState.Owner(
                 id = null,
-                name = "activeEmail",
+                name = BitwardenString.my_vault.asText(),
                 collections = emptyList(),
             ),
             VaultAddEditState.Owner(
                 id = "organizationId",
-                name = "organizationName",
+                name = "organizationName".asText(),
                 collections = if (hasCollection) {
                     listOf(
                         VaultCollection(
@@ -6630,40 +6561,36 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
         initialState: VaultAddEditState,
         type: CustomFieldType,
     ) {
-        lateinit var expectedCustomField: VaultAddEditState.Custom
-        lateinit var action: VaultAddEditAction.Common
-        lateinit var expectedState: VaultAddEditState.ViewState.Content
-
-        when (type) {
+        val expectedCustomField: VaultAddEditState.Custom = when (type) {
             CustomFieldType.LINKED -> {
-                expectedCustomField = VaultAddEditState.Custom.LinkedField(
-                    "TestId 4",
-                    "Linked Field",
-                    VaultLinkedFieldType.PASSWORD,
+                VaultAddEditState.Custom.LinkedField(
+                    itemId = "TestId 4",
+                    name = "Linked Field",
+                    vaultLinkedFieldType = VaultLinkedFieldType.PASSWORD,
                 )
             }
 
             CustomFieldType.HIDDEN -> {
-                expectedCustomField = VaultAddEditState.Custom.HiddenField(
-                    "TestId 2",
-                    "Test Hidden",
-                    "Updated Test Text",
+                VaultAddEditState.Custom.HiddenField(
+                    itemId = "TestId 2",
+                    name = "Test Hidden",
+                    value = "Updated Test Text",
                 )
             }
 
             CustomFieldType.BOOLEAN -> {
-                expectedCustomField = VaultAddEditState.Custom.BooleanField(
-                    "TestId 3",
-                    "Boolean Field",
-                    false,
+                VaultAddEditState.Custom.BooleanField(
+                    itemId = "TestId 3",
+                    name = "Boolean Field",
+                    value = false,
                 )
             }
 
             CustomFieldType.TEXT -> {
-                expectedCustomField = VaultAddEditState.Custom.TextField(
-                    "TestId 1",
-                    "Test Text",
-                    "Updated Test Text",
+                VaultAddEditState.Custom.TextField(
+                    itemId = "TestId 1",
+                    name = "Test Text",
+                    value = "Updated Test Text",
                 )
             }
         }
@@ -6678,13 +6605,12 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
 
         val currentContentState =
             (viewModel.stateFlow.value.viewState as VaultAddEditState.ViewState.Content)
-        action = VaultAddEditAction.Common.CustomFieldValueChange(expectedCustomField)
-        expectedState = currentContentState
-            .copy(
-                common = currentContentState.common.copy(
-                    customFieldData = listOf(expectedCustomField),
-                ),
-            )
+        val action = VaultAddEditAction.Common.CustomFieldValueChange(expectedCustomField)
+        val expectedState = currentContentState.copy(
+            common = currentContentState.common.copy(
+                customFieldData = listOf(expectedCustomField),
+            ),
+        )
 
         viewModel.trySendAction(action)
 

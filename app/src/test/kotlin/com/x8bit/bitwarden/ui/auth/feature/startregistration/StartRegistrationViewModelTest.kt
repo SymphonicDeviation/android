@@ -3,7 +3,10 @@ package com.x8bit.bitwarden.ui.auth.feature.startregistration
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.data.datasource.disk.model.ServerConfig
+import com.bitwarden.data.repository.ServerConfigRepository
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.network.model.ConfigResponseJson
 import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
 import com.bitwarden.ui.platform.manager.snackbar.SnackbarRelayManager
@@ -31,6 +34,7 @@ import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -45,6 +49,10 @@ class StartRegistrationViewModelTest : BaseViewModelTest() {
         } returns mutableSnackbarSharedFlow
     }
     private val fakeEnvironmentRepository = FakeEnvironmentRepository()
+    private val mutableServerConfigFlow = MutableStateFlow<ServerConfig?>(null)
+    private val serverConfigRepository: ServerConfigRepository = mockk {
+        every { serverConfigStateFlow } returns mutableServerConfigFlow
+    }
 
     @Test
     fun `initial state should be correct`() {
@@ -251,22 +259,34 @@ class StartRegistrationViewModelTest : BaseViewModelTest() {
     }
 
     @Test
-    fun `EnvironmentTypeSelect should update value of selected region for US or EU`() = runTest {
-        val inputEnvironmentType = Environment.Type.EU
-        val viewModel = createViewModel()
-        viewModel.stateFlow.test {
-            awaitItem()
-            viewModel.trySendAction(
-                EnvironmentTypeSelect(
-                    inputEnvironmentType,
-                ),
-            )
-            assertEquals(
-                DEFAULT_STATE.copy(selectedEnvironmentType = Environment.Type.EU),
-                awaitItem(),
-            )
+    fun `EnvironmentTypeSelect should update value of selected region for UE, US, and FedRAMP`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.stateFlow.test {
+                skipItems(count = 1)
+
+                viewModel.trySendAction(
+                    EnvironmentTypeSelect(environmentType = Environment.Type.EU),
+                )
+                assertEquals(
+                    DEFAULT_STATE.copy(selectedEnvironmentType = Environment.Type.EU),
+                    awaitItem(),
+                )
+
+                viewModel.trySendAction(
+                    EnvironmentTypeSelect(environmentType = Environment.Type.US),
+                )
+                assertEquals(
+                    DEFAULT_STATE.copy(selectedEnvironmentType = Environment.Type.US),
+                    awaitItem(),
+                )
+
+                viewModel.trySendAction(
+                    EnvironmentTypeSelect(environmentType = Environment.Type.FED_RAMP),
+                )
+                expectNoEvents()
+            }
         }
-    }
 
     @Test
     fun `EnvironmentTypeSelect should emit NavigateToEnvironment for self-hosted`() = runTest {
@@ -338,12 +358,45 @@ class StartRegistrationViewModelTest : BaseViewModelTest() {
         }
     }
 
+    @Test
+    fun `ServerConfigReceive with user registration disabled should show error dialog`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.stateFlow.test {
+                assertEquals(DEFAULT_STATE, awaitItem())
+                mutableServerConfigFlow.value = createServerConfig(disableUserRegistration = true)
+                assertEquals(
+                    DEFAULT_STATE.copy(
+                        dialog = StartRegistrationDialog.Error(
+                            title = BitwardenString.account_creation_restricted.asText(),
+                            message = BitwardenString
+                                .only_allows_invited_users_to_create_accounts
+                                .asText("https://bitwarden.com"),
+                        ),
+                    ),
+                    awaitItem(),
+                )
+            }
+        }
+
+    @Test
+    fun `ServerConfigReceive with user registration enabled should not update state`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.stateFlow.test {
+                assertEquals(DEFAULT_STATE, awaitItem())
+                mutableServerConfigFlow.value = createServerConfig(disableUserRegistration = false)
+                expectNoEvents()
+            }
+        }
+
     private fun createViewModel(
         state: StartRegistrationState? = null,
     ): StartRegistrationViewModel =
         StartRegistrationViewModel(
             authRepository = mockAuthRepository,
             environmentRepository = fakeEnvironmentRepository,
+            serverConfigRepository = serverConfigRepository,
             snackbarRelayManager = snackbarRelayManager,
             savedStateHandle = SavedStateHandle().apply {
                 set(key = "state", value = state)
@@ -368,4 +421,30 @@ private val VALID_INPUT_STATE: StartRegistrationState = StartRegistrationState(
     isContinueButtonEnabled = true,
     selectedEnvironmentType = Environment.Type.US,
     dialog = null,
+)
+
+private fun createServerConfig(
+    disableUserRegistration: Boolean,
+): ServerConfig = ServerConfig(
+    lastSync = 0L,
+    serverData = ConfigResponseJson(
+        type = null,
+        version = null,
+        gitHash = null,
+        server = null,
+        environment = ConfigResponseJson.EnvironmentJson(
+            cloudRegion = "US",
+            vaultUrl = "https://bitwarden.com",
+            apiUrl = "https://api.bitwarden.com",
+            identityUrl = "https://identity.bitwarden.com",
+            notificationsUrl = "https://notifications.bitwarden.com",
+            ssoUrl = null,
+            fillAssistRulesUrl = null,
+        ),
+        featureStates = null,
+        communication = null,
+        settings = ConfigResponseJson.SettingJson(
+            disableUserRegistration = disableUserRegistration,
+        ),
+    ),
 )

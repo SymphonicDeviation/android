@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * @property environment The environment information containing URLs (vault, api, identity, etc.).
  * @property featureStates A map containing various feature states.
  * @property communication The communication configuration for server bootstrap (nullable).
+ * @property settings The settings configuration for the environment (nullable).
  */
 @Serializable
 data class ConfigResponseJson(
@@ -37,6 +38,9 @@ data class ConfigResponseJson(
 
     @SerialName("communication")
     val communication: CommunicationJson?,
+
+    @SerialName("settings")
+    val settings: SettingJson?,
 ) {
     /**
      * Represents a server in the configuration response.
@@ -62,6 +66,8 @@ data class ConfigResponseJson(
      * @param identityUrl The URL of the identity service in the environment.
      * @param notificationsUrl The URL of the notifications service in the environment.
      * @param ssoUrl The URL of the single sign-on (SSO) service in the environment.
+     * @param fillAssistRulesUrl The base URL of the fill-assist targeting rules, or null if
+     * the server does not provide fill-assist rules.
      */
     @Serializable
     data class EnvironmentJson(
@@ -82,6 +88,9 @@ data class ConfigResponseJson(
 
         @SerialName("sso")
         val ssoUrl: String?,
+
+        @SerialName("fillAssistRules")
+        val fillAssistRulesUrl: String?,
     )
 
     /**
@@ -117,4 +126,16 @@ data class ConfigResponseJson(
             val cookieDomain: String?,
         )
     }
+
+    /**
+     * Represents the settings configuration in the configuration response.
+     *
+     * @param disableUserRegistration If `true`, the environment does not allow for new user
+     * registration.
+     */
+    @Serializable
+    data class SettingJson(
+        @SerialName("disableUserRegistration")
+        val disableUserRegistration: Boolean,
+    )
 }

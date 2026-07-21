@@ -64,6 +64,16 @@ internal class RetrofitsImpl(
 
     //endregion Unauthenticated Retrofits
 
+    //region Fill-Assist Retrofit
+
+    override val fillAssistRetrofit: Retrofit by lazy {
+        createExternalRetrofit(
+            baseUrlInterceptor = baseUrlInterceptors.fillAssistInterceptor,
+        )
+    }
+
+    //endregion Fill-Assist Retrofit
+
     //region Static Retrofit
 
     override fun createStaticRetrofit(isAuthenticated: Boolean, baseUrl: String): Retrofit {
@@ -98,6 +108,14 @@ internal class RetrofitsImpl(
     private val baseOkHttpClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(headersInterceptor)
         .addNetworkInterceptor(cookieInterceptor)
+        .configureSsl(certificateProvider = certificateProvider)
+        .build()
+
+    // For requests to external (non-Bitwarden) URLs. CookieInterceptor must be excluded because
+    // it treats all 302s as Bitwarden load-balancer auth redirects, which is only correct for
+    // Bitwarden's own infrastructure.
+    private val externalOkHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(headersInterceptor)
         .configureSsl(certificateProvider = certificateProvider)
         .build()
 
@@ -144,6 +162,21 @@ internal class RetrofitsImpl(
             .newBuilder()
             .client(
                 baseOkHttpClient
+                    .newBuilder()
+                    .addInterceptor(baseUrlInterceptor)
+                    .addInterceptor(loggingInterceptor)
+                    .addInterceptor(permissionInterceptor)
+                    .build(),
+            )
+            .build()
+
+    private fun createExternalRetrofit(
+        baseUrlInterceptor: BaseUrlInterceptor,
+    ): Retrofit =
+        baseRetrofit
+            .newBuilder()
+            .client(
+                externalOkHttpClient
                     .newBuilder()
                     .addInterceptor(baseUrlInterceptor)
                     .addInterceptor(loggingInterceptor)

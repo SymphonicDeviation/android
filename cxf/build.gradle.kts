@@ -18,7 +18,7 @@ configure<LibraryExtension> {
 
     defaultConfig {
         minSdk {
-            version = release(libs.versions.minSdkBwa.get().toInt())
+            version = release(libs.versions.minSdk.get().toInt())
         }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
@@ -31,6 +31,16 @@ configure<LibraryExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+    }
+    flavorDimensions += listOf("mode")
+    productFlavors {
+        create("standard") {
+            isDefault = true
+            dimension = "mode"
+        }
+        create("fdroid") {
+            dimension = "mode"
         }
     }
     compileOptions {
@@ -46,6 +56,9 @@ kotlin {
 }
 
 dependencies {
+    fun standardImplementation(dependencyNotation: Any) {
+        add("standardImplementation", dependencyNotation)
+    }
 
     implementation(project(":annotation"))
     implementation(project(":core"))
@@ -57,12 +70,15 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.providerevents)
-    implementation(libs.androidx.credentials.providerevents.play.services)
     implementation(libs.google.hilt.android)
     ksp(libs.google.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization)
     implementation(libs.timber)
+
+    // Play Services backend for ProviderEventsManager is not FOSS, so it is excluded from the
+    // F-Droid flavor. The F-Droid flavor supplies no-op stubs instead.
+    standardImplementation(libs.androidx.credentials.providerevents.play.services)
 
     testImplementation(platform(libs.junit.bom))
     testRuntimeOnly(libs.junit.platform.launcher)

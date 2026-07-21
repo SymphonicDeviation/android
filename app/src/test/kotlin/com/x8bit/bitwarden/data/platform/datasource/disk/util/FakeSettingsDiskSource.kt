@@ -42,6 +42,9 @@ class FakeSettingsDiskSource(
     private val mutablePullToRefreshEnabledFlowMap =
         mutableMapOf<String, MutableSharedFlow<Boolean?>>()
 
+    private val mutableFillAssistEnabledFlowMap =
+        mutableMapOf<String, MutableSharedFlow<Boolean?>>()
+
     private val mutableIsIconLoadingDisabled =
         bufferedMutableSharedFlow<Boolean?>()
 
@@ -72,6 +75,7 @@ class FakeSettingsDiskSource(
     private val storedUpgradedToPremiumCardPending = mutableMapOf<String, Boolean?>()
     private val storedPremiumUpgradePending = mutableMapOf<String, Boolean?>()
     private val storedInlineAutofillEnabled = mutableMapOf<String, Boolean?>()
+    private val storedFillAssistEnabled = mutableMapOf<String, Boolean?>()
     private val storedBlockedAutofillUris = mutableMapOf<String, List<String>?>()
     private var storedIsIconLoadingDisabled: Boolean? = null
     private var storedIsCrashLoggingEnabled: Boolean? = null
@@ -93,6 +97,7 @@ class FakeSettingsDiskSource(
     private var hasSeenAddLoginCoachMark: Boolean? = null
     private var hasSeenGeneratorCoachMark: Boolean? = null
     private var storedIsDynamicColorsEnabled: Boolean? = null
+    private var storedHasShownAccessibilityDisclaimer: Boolean? = null
     private var storedBrowserAutofillDialogReshowTime: Instant? = null
 
     private val mutableShowAutoFillSettingBadgeFlowMap =
@@ -109,6 +114,8 @@ class FakeSettingsDiskSource(
 
     private val mutableIsDynamicColorsEnabled =
         bufferedMutableSharedFlow<Boolean?>()
+
+    private val mutableHasShownAccessibilityDisclaimerFlow = bufferedMutableSharedFlow<Boolean?>()
 
     private val mutableVaultRegisteredForExportFlow =
         bufferedMutableSharedFlow<Boolean?>()
@@ -160,6 +167,18 @@ class FakeSettingsDiskSource(
     override val isDynamicColorsEnabledFlow: Flow<Boolean?>
         get() = mutableIsDynamicColorsEnabled.onSubscription {
             emit(isDynamicColorsEnabled)
+        }
+
+    override var hasShownAccessibilityDisclaimer: Boolean?
+        get() = storedHasShownAccessibilityDisclaimer
+        set(value) {
+            storedHasShownAccessibilityDisclaimer = value
+            mutableHasShownAccessibilityDisclaimerFlow.tryEmit(value)
+        }
+
+    override val hasShownAccessibilityDisclaimerFlow: Flow<Boolean?>
+        get() = mutableHasShownAccessibilityDisclaimerFlow.onSubscription {
+            emit(hasShownAccessibilityDisclaimer)
         }
 
     override var screenCaptureAllowed: Boolean?
@@ -247,6 +266,7 @@ class FakeSettingsDiskSource(
         storedDisableAutofillSavePrompt.remove(userId)
         storedPullToRefreshEnabled.remove(userId)
         storedInlineAutofillEnabled.remove(userId)
+        storedFillAssistEnabled.remove(userId)
         storedBlockedAutofillUris.remove(userId)
         storedClearClipboardFrequency.remove(userId)
 
@@ -413,6 +433,18 @@ class FakeSettingsDiskSource(
         isInlineAutofillEnabled: Boolean?,
     ) {
         storedInlineAutofillEnabled[userId] = isInlineAutofillEnabled
+    }
+
+    override fun getFillAssistEnabled(userId: String): Boolean? =
+        storedFillAssistEnabled[userId]
+
+    override fun getFillAssistEnabledFlow(userId: String): Flow<Boolean?> =
+        getMutableFillAssistEnabledFlow(userId = userId)
+            .onSubscription { emit(getFillAssistEnabled(userId = userId)) }
+
+    override fun storeFillAssistEnabled(userId: String, isFillAssistEnabled: Boolean?) {
+        storedFillAssistEnabled[userId] = isFillAssistEnabled
+        getMutableFillAssistEnabledFlow(userId = userId).tryEmit(isFillAssistEnabled)
     }
 
     override fun getBlockedAutofillUris(userId: String): List<String>? =
@@ -644,6 +676,13 @@ class FakeSettingsDiskSource(
         userId: String,
     ): MutableSharedFlow<Boolean?> =
         mutablePullToRefreshEnabledFlowMap.getOrPut(userId) {
+            bufferedMutableSharedFlow(replay = 1)
+        }
+
+    private fun getMutableFillAssistEnabledFlow(
+        userId: String,
+    ): MutableSharedFlow<Boolean?> =
+        mutableFillAssistEnabledFlowMap.getOrPut(userId) {
             bufferedMutableSharedFlow(replay = 1)
         }
 

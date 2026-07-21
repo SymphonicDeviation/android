@@ -147,7 +147,7 @@ class AddEditSendViewModel @Inject constructor(
                 is AddEditSendType.EditItem -> AddEditSendState.ViewState.Loading
             },
             dialogState = null,
-            baseWebSendUrl = environmentRepo.environment.environmentUrlData.baseWebSendUrl,
+            baseWebSendUrl = environmentRepo.environment.baseWebSendUrl,
             policyDisablesSend = policyManager
                 .getActivePolicies(type = PolicyType.DISABLE_SEND)
                 .any(),
@@ -402,10 +402,7 @@ class AddEditSendViewModel @Inject constructor(
                         viewState = sendDataState
                             .data
                             ?.toViewState(
-                                baseWebSendUrl = environmentRepo
-                                    .environment
-                                    .environmentUrlData
-                                    .baseWebSendUrl,
+                                baseWebSendUrl = environmentRepo.environment.baseWebSendUrl,
                                 isHideEmailAddressEnabled = isHideEmailAddressEnabled,
                             )
                             ?: AddEditSendState.ViewState.Error(
@@ -442,10 +439,7 @@ class AddEditSendViewModel @Inject constructor(
                         viewState = sendDataState
                             .data
                             ?.toViewState(
-                                baseWebSendUrl = environmentRepo
-                                    .environment
-                                    .environmentUrlData
-                                    .baseWebSendUrl,
+                                baseWebSendUrl = environmentRepo.environment.baseWebSendUrl,
                                 isHideEmailAddressEnabled = isHideEmailAddressEnabled,
                             )
                             ?: AddEditSendState.ViewState.Error(
@@ -548,7 +542,13 @@ class AddEditSendViewModel @Inject constructor(
         // Check if user is trying to select Email auth without Premium
         if (action.sendAuth is SendAuth.Email && !state.isPremium) {
             mutableStateFlow.update {
-                it.copy(dialogState = AddEditSendState.DialogState.EmailAuthRequiresPremium)
+                it.copy(
+                    dialogState = AddEditSendState.DialogState.PremiumRequired(
+                        message = BitwardenString
+                            .sharing_with_specific_people_is_a_premium_feature
+                            .asText(),
+                    ),
+                )
             }
             return
         }
@@ -632,10 +632,7 @@ class AddEditSendViewModel @Inject constructor(
         if (premiumStateManager.isInAppUpgradeAvailable()) {
             sendEvent(AddEditSendEvent.NavigateToPlanModal)
         } else {
-            val baseUrl = environmentRepo
-                .environment
-                .environmentUrlData
-                .baseWebVaultUrlOrDefault
+            val baseUrl = environmentRepo.environment.baseWebVaultUrlOrDefault
             sendEvent(
                 AddEditSendEvent.NavigateToPremium(
                     uri = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium",
@@ -701,8 +698,7 @@ class AddEditSendViewModel @Inject constructor(
                         // check just in case.
                         mutableStateFlow.update {
                             it.copy(
-                                dialogState = AddEditSendState.DialogState.Error(
-                                    title = BitwardenString.send.asText(),
+                                dialogState = AddEditSendState.DialogState.PremiumRequired(
                                     message = BitwardenString.send_file_premium_required.asText(),
                                 ),
                             )
@@ -1036,11 +1032,12 @@ data class AddEditSendState(
         ) : DialogState()
 
         /**
-         * Displays a dialog to the user indicating that email authentication requires
-         * a Premium account.
+         * Displays a dialog to the user indicating that a Premium account is required.
          */
         @Parcelize
-        data object EmailAuthRequiresPremium : DialogState()
+        data class PremiumRequired(
+            val message: Text,
+        ) : DialogState()
     }
 }
 

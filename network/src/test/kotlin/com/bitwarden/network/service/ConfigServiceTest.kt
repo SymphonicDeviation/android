@@ -50,6 +50,9 @@ private const val CONFIG_RESPONSE_JSON = """
       "cookieName": "sso-cookie",
       "cookieDomain": ".example.com"
     }
+  },
+  "settings":{
+    "disableUserRegistration":false
   }
 }
 """
@@ -68,6 +71,7 @@ private val CONFIG_RESPONSE = ConfigResponseJson(
         notificationsUrl = "notificationsUrl",
         identityUrl = "identityUrl",
         ssoUrl = "ssoUrl",
+        fillAssistRulesUrl = null,
     ),
     featureStates = mapOf(
         "feature one" to JsonPrimitive(false),
@@ -79,5 +83,8 @@ private val CONFIG_RESPONSE = ConfigResponseJson(
             cookieName = "sso-cookie",
             cookieDomain = ".example.com",
         ),
+    ),
+    settings = ConfigResponseJson.SettingJson(
+        disableUserRegistration = false,
     ),
 )

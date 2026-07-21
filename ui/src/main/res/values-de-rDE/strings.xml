@@ -2,7 +2,7 @@
 <resources>
     <string name="about">Über</string>
     <string name="add_folder">Ordner hinzufügen</string>
-    <string name="add_item">Neuer Eintrag</string>
+    <string name="add_item">Eintrag hinzufügen</string>
     <string name="an_error_has_occurred">Es ist ein Fehler aufgetreten</string>
     <string name="apply">Anwenden</string>
     <string name="back">Zurück</string>
@@ -78,6 +78,7 @@
     <string name="bitwarden_autofill_service">Bitwarden Auto-Ausfüllen Funktion</string>
     <string name="change_master_password">Master-Passwort ändern</string>
     <string name="close">Schließen</string>
+    <string name="close_app">App schließen</string>
     <string name="continue_text">Fortsetzen</string>
     <string name="create_account">Konto erstellen</string>
     <string name="create_an_account">Ein Konto erstellen</string>
@@ -200,7 +201,6 @@ Das Scannen erfolgt automatisch.</string>
     <string name="copy_totp_automatically">TOTP automatisch kopieren</string>
     <string name="premium_required">Für diese Funktion benötigst du eine Premiummitgliedschaft.</string>
     <string name="attachment_deleted">Anhang entfernt</string>
-    <string name="attachments_unavailable">Anhänge sind nicht verfügbar</string>
     <string name="attachments_are_a_premium_feature">Anhänge sind eine Premium-Funktion. Dein aktueller Tarif enthält keinen Zugriff auf diese Funktion.</string>
     <string name="choose_file">Datei auswählen</string>
     <string name="file">Datei</string>
@@ -611,6 +611,10 @@ Das Scannen erfolgt automatisch.</string>
     <string name="forwarded_email_description">Generiere ein E-Mail-Alias mit einem externen Weiterleitungsdienst.</string>
     <string name="accessibility_service_disclosure">Bedienungshilfen Offenlegung</string>
     <string name="accessibility_disclosure_text">Bitwarden verwendet die Bedienungshilfen, um nach Anmeldefeldern in Apps und auf Webseiten zu suchen und legt dann die entsprechenden Feld-IDs fest, um einen Benutzernamen und Passwort einzugeben, wenn eine Übereinstimmung mit der App oder der Seite gefunden wird. Wir speichern keine der Informationen, die uns der Dienst zur Verfügung stellt. Ebenso wenig versuchen wir beliebige Elemente auf dem Bildschirm außer der Texteingabe von Anmeldedaten zu kontrollieren.</string>
+    <string name="accessibility_disclosure_start_up_text_1">Diese Benachrichtigung ist erforderlich, bevor Bitwarden Auto-Ausfüllen auf Basis der Barrierefreiheit anbieten kann.</string>
+    <string name="accessibility_disclosure_start_up_text_2">Bitwarden bietet eine optionale Funktion zum automatischen Ausfüllen an, die den Android-Bedienungshilfendienst nutzt, um Anmeldefelder zu erkennen. Wenn du diese Funktion aktivierst, erkennt Bitwarden die entsprechenden Felder und füllt deine Zugangsdaten aus, sobald eine Übereinstimmung gefunden wurde.</string>
+    <string name="accessibility_disclosure_start_up_text_3">Wir speichern keine Informationen darüber, was während der Nutzung des Bedienungshilfendienstes auf dem Bildschirm angezeigt wird und wir haben keine Kontrolle über Bildschirmelemente, die über die Eingabe von Zugangsdaten hinausgehen.</string>
+    <string name="i_understand">Verstanden</string>
     <string name="accept">Akzeptieren</string>
     <string name="decline">Ablehnen</string>
     <string name="login_request_has_already_expired">Anmeldeanfrage ist bereits abgelaufen.</string>
@@ -991,8 +995,7 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="do_you_really_want_to_delete_all_recorded_logs">Willst du wirklich alle aufgezeichneten Protokolle löschen?</string>
     <string name="confirm_key_connector_domain">Key Connector-Domain bestätigen</string>
     <string name="key_connector_domain">Key Connector-Domain:</string>
-    <string name="key_connector_organization">Organisation:</string>
-    <string name="password_no_longer_required_confirm_domain">Für Mitglieder der folgenden Organisation ist kein Master-Passwort mehr erforderlich. Bitte bestätige die folgende Domain bei deinem Organisations-Administrator.</string>
+    <string name="your_organization_no_longer_requires_a_master_password">Deine Organisation verlangt von ihren Mitgliedern kein Master-Passwort mehr. Bitte überprüfe die folgende Domain mit deinem Administrator und gib dein Master-Passwort ein, um fortzufahren.</string>
     <string name="please_confirm_domain_with_admin">Bitte bestätige die folgende Domain bei deinem Organisations-Administrator.\n\nKey Connector-Domain:\n%1$s</string>
     <string name="flight_recorder_banner_title">Flugschreiber eingeschaltet</string>
     <string name="flight_recorder_banner_message">Der Flugschreiber wird bis zum %1$s um %2$s aktiv sein. Gehe zurück zu den Einstellungen, um ihn jetzt zu deaktivieren.</string>
@@ -1149,6 +1152,8 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="no_items_imported">Keine Einträge importiert</string>
     <string name="no_items_received_from_the_selected_app">Keine Einträge von der ausgewählten App erhalten.</string>
     <string name="vault_sync_failed">Synchronisation des Tresors fehlgeschlagen</string>
+    <string name="vault_sync_unsuccessful">Synchronisation fehlgeschlagen</string>
+    <string name="vault_sync_failed_description">Wir konnten deinen Tresor nicht mit dem Server synchronisieren. Möglicherweise sind deine letzten Änderungen noch nicht im Tresor enthalten. Du kannst es jetzt erneut versuchen oder die Synchronisierung erfolgt später automatisch.</string>
     <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">Deine Einträge wurden erfolgreich importiert, aber sie werden erst in deinem Tresor sichtbar sein, wenn eine Synchronisation durchgeführt wurde.</string>
     <string name="there_was_a_problem_importing_your_items">Beim Importieren deiner Einträge ist ein Problem aufgetreten. Bitte versuch es erneut. Wenn das Problem weiterhin besteht, kontaktiere den Support.</string>
     <string name="saving_items">Einträge werden gespeichert…</string>
@@ -1208,12 +1213,15 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="unarchiving">Wird aus dem Archiv entfernt</string>
     <string name="item_moved_to_archived">Eintrag in das Archiv verschoben</string>
     <string name="item_moved_to_vault">Eintrag in Tresor verschoben</string>
-    <string name="archive_unavailable">Archiv nicht verfügbar</string>
     <string name="archiving_items_is_a_premium_feature">Das Archivieren von Einträgen ist eine Premium-Funktion. Dein aktueller Tarif umfasst keinen Zugriff auf diese Funktion.</string>
+    <string name="totp_is_a_premium_feature">Authentifizierungsschlüssel (TOTP) sind eine Premium-Funktion. Dein aktueller Tarif enthält keinen Zugriff auf diese Funktion.</string>
     <string name="upgrade_to_premium">Auf Premium upgraden</string>
     <string name="plan">Tarif</string>
     <string name="to_manage_your_premium_subscription_youll_need_to_login_to_your_web_vault_on_a_computer">Um dein Premium-Abonnement zu verwalten, musst du dich bei deinem Web-Tresor auf einem Computer anmelden.</string>
     <string name="unlock_advanced_security_features">Erweiterte Sicherheitsfunktionen freischalten</string>
+    <string name="your_subscription_needs_attention">Dein Abonnement benötigt Aufmerksamkeit</string>
+    <string name="check_your_plan_for_details">Überprüfe deinen Tarif für Details.</string>
+    <string name="view_plan">Tarif anzeigen</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">Mit einem Premium-Tarif stehen dir mehr Werkzeuge zur Verfügung, um sicher zu bleiben und die Kontrolle zu behalten.</string>
     <string name="this_item_is_archived">Dieser Eintrag ist archiviert.</string>
     <string name="introducing_archive">Einführung des Archivs</string>
@@ -1267,13 +1275,13 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="upgrade_pending">Upgrade ausstehend</string>
     <string name="upgrade_pending_message">Dein Upgrade wird gerade bearbeitet. Bis zum Abschluss des Vorgangs bleibst du im kostenlosen Tarif. Führe jetzt eine Synchronisierung durch, um den Status zu überprüfen, oder fahre fort und die Aktualisierung erfolgt dann automatisch.</string>
     <string name="unlock_premium_features">Schalte mehr erweiterte Funktionen mit einem Premium-Tarif frei.</string>
-    <string name="per_month">/ Monat</string>
+    <string name="per_month_cancel_anytime">/ month · Cancel anytime</string>
+    <string name="per_month_cancel_anytime_content_description">%1$s per month, cancel anytime</string>
     <string name="built_in_authenticator">Integrierter Authenticator</string>
     <string name="emergency_access">Notfallzugriff</string>
     <string name="secure_file_storage">Sichere Dateispeicherung</string>
     <string name="breach_monitoring">Datendiebstahl-Überwachung</string>
-    <string name="upgrade_now">Jetzt upgraden</string>
-    <string name="youll_go_to_stripes_secure_checkout_to_complete_your_purchase">Du wirst zur sicheren Kaufabwicklung von Stripe weitergeleitet, um deinen Kauf abzuschließen.</string>
+    <string name="youll_complete_the_purchase_with_stripe_secure_checkout">You’ll complete the purchase with Stripe secure checkout.</string>
     <string name="opening_checkout">Kaufabwicklung wird geöffnet…</string>
     <string name="secure_checkout_didnt_load">Die sichere Kaufabwicklung wurde nicht geladen</string>
     <string name="trouble_opening_payment_page">Wir hatten Probleme beim Öffnen der Zahlungsseite. Bitte versuche es erneut.</string>
@@ -1302,24 +1310,27 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="cancel_premium">Premium kündigen</string>
     <string name="subscription_status_active">Aktiv</string>
     <string name="subscription_status_canceled">Gekündigt</string>
+    <string name="subscription_status_expired">Abgelaufen</string>
     <string name="subscription_status_past_due">Überfällig</string>
     <string name="subscription_status_paused">Pausiert</string>
+    <string name="subscription_status_unpaid">Offen</string>
     <string name="subscription_status_update_payment">Zahlungsmethode aktualisieren</string>
     <string name="subscription_status_pending_cancellation">Ausstehende Kündigung</string>
     <string name="subscription_pending_cancellation_description">Dein Abonnement läuft am <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> ab. Du kannst es jederzeit vor diesem Datum wieder aktivieren.</string>
     <string name="premium_next_charge_summary">Deine nächste Abbuchung in Höhe von %1$s USD ist am %2$s fällig.</string>
     <string name="subscription_canceled_description">Dein Abonnement wurde am %1$s gekündigt. Abonniere erneut, um die Premium-Funktionen weiterhin nutzen zu können.</string>
+    <string name="subscription_unpaid_description">Dein Abonnement wurde am <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> ausgesetz. Um es wieder zu aktivieren, begleiche bitte deine überfälligen Rechnungen.</string>
     <string name="subscription_update_payment_description">Deine Zahlung konnte nicht bearbeitet werden. Aktualisiere deine Zahlungsmethode, bevor dein Abonnement am <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> endet.</string>
     <plurals name="subscription_past_due_description">
         <item quantity="one">Du hast eine Nachfrist von %1$d Tag ab dem Ablaufdatum deines Abonnements. Bitte begleiche den ausstehenden Betrag bis zum %2$s.</item>
         <item quantity="other">Du hast eine Nachfrist von %1$d Tagen ab dem Ablaufdatum deines Abonnements. Bitte begleiche den ausstehenden Betrag bis zum %2$s.</item>
     </plurals>
     <string name="subscription_paused_description">Dein Abonnement ist pausiert. Setze es fort, um die Premium-Funktionen weiterhin nutzen zu können.</string>
+    <string name="subscription_expired_description">Dein Abonnement ist am <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> abgelaufen. Abonniere erneut, um die Premium-Funktionen weiterhin nutzen zu können.</string>
     <string name="loading_subscription">Abonnements werden geladen…</string>
     <string name="loading_portal">Portal wird geladen…</string>
     <string name="portal_error">Etwas ist schiefgelaufen</string>
     <string name="trouble_loading_portal">Wir hatten Probleme beim Laden des Verwaltungsportals. Bitte versuche es erneut.</string>
-    <string name="subscription_error">Abonnement-Fehler</string>
     <string name="trouble_loading_subscription">Wir konnten deine Abonnementdetails nicht laden. Bitte versuche es erneut.</string>
     <string name="view_bank_account">Bankkonto anzeigen</string>
     <string name="view_license">Führerschein anzeigen</string>
@@ -1391,4 +1402,13 @@ Möchtest du zu diesem Konto wechseln?</string>
     <string name="your_request_was_interrupted_because_the_app_needs_local_network_access">Deine Anfrage wurde unterbrochen, da die App lokalen Netzwerkzugriff benötigt. Du kannst dies in deinen Geräteeinstellungen aktivieren.</string>
     <string name="continue_to_stripe">Weiter zu Stripe?</string>
     <string name="youll_be_taken_to_stripe_to_manage_your_subscription_cancellation">Du wirst zu Stripe weitergeleitet, um die Kündigung deines Abonnements vorzunehmen.</string>
+    <string name="unlock_advanced_protection">Unlock advanced protection</string>
+    <string name="breeze_through_2fa_with_built_in_codes">Breeze through 2FA with built-in codes</string>
+    <string name="run_reports_to_find_risky_passwords">Run reports to find risky passwords</string>
+    <string name="add_a_trusted_emergency_contact">Add a trusted emergency contact</string>
+    <string name="identify_unsecure_websites">Identify unsecure websites</string>
+    <string name="flag_accounts_with_inactive_2fa">Flag accounts with inactive 2FA</string>
+    <string name="keep_documents_safe_and_encrypted">Keep documents safe and encrypted</string>
+    <string name="share_files_securely_with_anyone_using_send">Share files securely with anyone using Send</string>
+    <string name="receive_24_7_priority_support">Receive 24/7 priority support</string>
 </resources>

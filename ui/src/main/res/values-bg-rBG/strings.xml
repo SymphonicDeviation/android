@@ -78,6 +78,7 @@
     <string name="bitwarden_autofill_service">Услуга за автоматично дописване на Битуорден</string>
     <string name="change_master_password">Промяна на главната парола</string>
     <string name="close">Затваряне</string>
+    <string name="close_app">Затваряне на приложението</string>
     <string name="continue_text">Продължаване</string>
     <string name="create_account">Регистрация</string>
     <string name="create_an_account">Създаване на регистрация</string>
@@ -200,7 +201,6 @@
     <string name="copy_totp_automatically">Автоматично копиране на TOTP</string>
     <string name="premium_required">За да се възползвате от тази възможност, трябва да ползвате платен абонамент.</string>
     <string name="attachment_deleted">Файлът е махнат</string>
-    <string name="attachments_unavailable">Прикачването на файлове не е налично</string>
     <string name="attachments_are_a_premium_feature">Прикачването на файлове е платена функционалност. Текущият Ви план не включва достъп до нея.</string>
     <string name="choose_file">Изберете файл</string>
     <string name="file">Файл</string>
@@ -612,6 +612,10 @@
     <string name="forwarded_email_description">Създайте псевдоним на е-поща с външна услуга за препращане.</string>
     <string name="accessibility_service_disclosure">Използване на услугата за достъпност</string>
     <string name="accessibility_disclosure_text">Битуорден използва услугата за достъпност, за да разпознава полета за вписване в приложенията и уеб сайтовете и, ако в трезора има съвпадение, да попълва потребителското име и паролата. Никаква информация, предоставена ни от услугата, не се запазва, както и не правим опити да контролираме елементите на екрана, освен въвеждането на данните за идентификация.</string>
+    <string name="accessibility_disclosure_start_up_text_1">Тази забележка е задължителна, преди Битуорден да може да предложи автоматично попълване основавано на системата за улеснен достъп.</string>
+    <string name="accessibility_disclosure_start_up_text_2">Битуорден предлага и начин за автоматично попълване, който използва системата за улеснен достъп, за да разпознава полетата за вписване. Ако включите това, Битуорден ще разпознава правилните полета и ще попълва данните Ви, когато открие съвпадение.</string>
+    <string name="accessibility_disclosure_start_up_text_3">Не се запазва никаква информация относно това, което се вижда на екрана, когато се ползва системата за улеснен достъп. Също така, ние не контролираме никакви елементи по екрана, освен тези за въвеждането на данните за вписване.</string>
+    <string name="i_understand">Разбирам</string>
     <string name="accept">Приемане</string>
     <string name="decline">Отказване</string>
     <string name="login_request_has_already_expired">Заявката за вписване вече е изтекла.</string>
@@ -994,8 +998,7 @@
     <string name="do_you_really_want_to_delete_all_recorded_logs">Наистина ли искате да изтриете всички записани журнали?</string>
     <string name="confirm_key_connector_domain">Потвърждаване на домейна на конектора за ключове</string>
     <string name="key_connector_domain">Домейн на конектора за ключове:</string>
-    <string name="key_connector_organization">Организация:</string>
-    <string name="password_no_longer_required_confirm_domain">За членовете на следната организация вече не се изисква главна парола. Потвърдете домейна по-долу с администратора на организацията си.</string>
+    <string name="your_organization_no_longer_requires_a_master_password">Вашата организация вече не изисква членовете да имат главна парола. Моля, потвърдете домейна по-долу с администратора си, и въведете главната си парола, за да продължите.</string>
     <string name="please_confirm_domain_with_admin">Моля, потвърдете домейна по-долу с администратора на организацията си.\n\nДомейн на конектора за ключове:\n%1$s</string>
     <string name="flight_recorder_banner_title">Проследяването чрез журнали е включено</string>
     <string name="flight_recorder_banner_message">Проследяването чрез журнали ще бъде включено до %1$s в %2$s. Върнете се в настройките, ако искате да го изключите още сега.</string>
@@ -1152,6 +1155,8 @@
     <string name="no_items_imported">Не бяха внесени никакви елементи</string>
     <string name="no_items_received_from_the_selected_app">Не са получени никакви данни от избраното приложение.</string>
     <string name="vault_sync_failed">Синхронизирането на трезора беше неуспешно</string>
+    <string name="vault_sync_unsuccessful">Синхронизирането беше неуспешно</string>
+    <string name="vault_sync_failed_description">Трезорът не беше синхронизиран със сървъра. Последните промени може да не се виждат в трезора. По-късно ще се направи нов опит за синхронизиране, но може да опитате отново и още сега.</string>
     <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">Данните бяха внесени успешно, но трезорът не може да бъде синхронизиран. Внесените елементи няма да бъдат видими в трезора, докато не се извърши синхронизиране.</string>
     <string name="there_was_a_problem_importing_your_items">Имаше проблем при внасянето на данните. Моля, опитайте отново. Ако това се повтори, свържете се с поддръжката.</string>
     <string name="saving_items">Запазване на елементите…</string>
@@ -1211,12 +1216,15 @@
     <string name="unarchiving">Изваждане от архива</string>
     <string name="item_moved_to_archived">Елементът е преместен в архива</string>
     <string name="item_moved_to_vault">Елементът е преместен в трезора</string>
-    <string name="archive_unavailable">Архивирането не е налично</string>
     <string name="archiving_items_is_a_premium_feature">Архивирането на елементи е платена функционалност. Текущият Ви план не включва достъп до нея.</string>
+    <string name="totp_is_a_premium_feature">Удостоверителният ключ (TOTP) е платена функционалност. Текущият Ви план не включва достъп до нея.</string>
     <string name="upgrade_to_premium">Надградете до Платения план</string>
     <string name="plan">План</string>
     <string name="to_manage_your_premium_subscription_youll_need_to_login_to_your_web_vault_on_a_computer">За да управлявате своя платен абонамент, ще трябва да се впишете в трезора си чрез уеб браузър на компютър.</string>
     <string name="unlock_advanced_security_features">Отключване на разширените функционалности по сигурността</string>
+    <string name="your_subscription_needs_attention">Абонаментът Ви се туждае от внимание</string>
+    <string name="check_your_plan_for_details">Проверете плана си за подробности.</string>
+    <string name="view_plan">Преглед на плана</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">Платеният план предоставя повече инструменти за защита и управление.</string>
     <string name="this_item_is_archived">Този елемент е архивиран.</string>
     <string name="introducing_archive">Представяме архива</string>
@@ -1270,13 +1278,13 @@
     <string name="upgrade_pending">Има чакащо надграждане</string>
     <string name="upgrade_pending_message">Надграждането се обработва. Докато не бъде завършено, ще останете на безплатния план. Синхронизирайте сега, ако искате да направите проверка, или продължите и ще се опресни автоматично.</string>
     <string name="unlock_premium_features">Отключете още разширени функционалности с Платения план.</string>
-    <string name="per_month">/ месец</string>
+    <string name="per_month_cancel_anytime">/ месец · Прекратяване по всяко време</string>
+    <string name="per_month_cancel_anytime_content_description">%1$s на месец, отказване по всяко време</string>
     <string name="built_in_authenticator">Вграден удостоверител</string>
     <string name="emergency_access">Авариен достъп</string>
     <string name="secure_file_storage">Сигурно съхранение на файлове</string>
     <string name="breach_monitoring">Наблюдение за пробиви</string>
-    <string name="upgrade_now">Надграждане сега</string>
-    <string name="youll_go_to_stripes_secure_checkout_to_complete_your_purchase">Ще бъдете прехвърлен(а) към страницата за сигурни разплащания на Stripe, за да завършите покупката си.</string>
+    <string name="youll_complete_the_purchase_with_stripe_secure_checkout">Ще завършите покупката със защитената обработка на Stripe.</string>
     <string name="opening_checkout">Отваряне на страницата за разплащания…</string>
     <string name="secure_checkout_didnt_load">Страницата за разплащания не може да бъде заредена</string>
     <string name="trouble_opening_payment_page">Имаше проблем при отварянето на страницата за разплащания. Моля, опитайте отново.</string>
@@ -1297,7 +1305,7 @@
     <string name="storage_cost">Цена за съхранение</string>
     <string name="discount">Отстъпка</string>
     <string name="estimated_tax">Приблизителен данък</string>
-    <string name="total">Total</string>
+    <string name="total">Общо</string>
     <string name="billing_rate_per_year">%1$s / година</string>
     <string name="billing_rate_per_month">%1$s / месец</string>
     <string name="manage_plan">Управление на плана</string>
@@ -1305,24 +1313,27 @@
     <string name="cancel_premium">Отказване от платения план</string>
     <string name="subscription_status_active">Активно</string>
     <string name="subscription_status_canceled">Отказано</string>
+    <string name="subscription_status_expired">Изтекъл</string>
     <string name="subscription_status_past_due">Просрочено</string>
     <string name="subscription_status_paused">На пауза</string>
+    <string name="subscription_status_unpaid">Дължимо</string>
     <string name="subscription_status_update_payment">Актуализиране на плащанията</string>
     <string name="subscription_status_pending_cancellation">Предстоящо прекратяване на абонамента</string>
     <string name="subscription_pending_cancellation_description">Абонаментът Ви по план ще бъде преустановен на <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>.. Можете да го подновите по всяко време преди това.</string>
     <string name="premium_next_charge_summary">Следващото плащане ще бъде %1$s USD, на дата %2$s.</string>
     <string name="subscription_canceled_description">Абонаментът беше прекратен на %1$s. Ако искате да продължите да ползвате предимствата на платения план, ще трябва да се абонирате отново.</string>
+    <string name="subscription_unpaid_description">Вашият абонамент беше прекъснат на <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. За да го подновите, ще трябва да платите старите си задължения.</string>
     <string name="subscription_update_payment_description">Плащането не беше успешно. Обновете плащането си, преди абонаментът да бъде прекратен на <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>.</string>
     <plurals name="subscription_past_due_description">
         <item quantity="one">След като просрочите периода на абонамента си, разполагате с още %1$d ден. Моля, заплатете старите фактури до %2$s.</item>
         <item quantity="other">След като просрочите периода на абонамента си, разполагате с още %1$d дни. Моля, заплатете старите фактури до %2$s.</item>
     </plurals>
     <string name="subscription_paused_description">Абонаментът беше спрян на пауза. Можете да го стартирате отново, ако искате да продължите да ползвате функционалностите на платения план.</string>
+    <string name="subscription_expired_description">Вашият абонамент изтече на <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Ако искате да продължите да ползвате предимствата на платения план, ще трябва да се абонирате отново.</string>
     <string name="loading_subscription">Зареждане на абонамента…</string>
     <string name="loading_portal">Зареждане на портала…</string>
     <string name="portal_error">Нещо се обърка</string>
     <string name="trouble_loading_portal">Имаше проблем при зареждането на портала за управление. Опитайте отново.</string>
-    <string name="subscription_error">Грешка в абонамента</string>
     <string name="trouble_loading_subscription">Зареждането на подробностите за абонамента на беше успешно. Опитайте отново.</string>
     <string name="view_bank_account">Преглед на банковата сметка</string>
     <string name="view_license">Преглед на лиценза</string>
@@ -1394,4 +1405,13 @@
     <string name="your_request_was_interrupted_because_the_app_needs_local_network_access">Вашата заявка беше прекъсната, тъй като приложението има нужда от достъп до локалната мрежа. Можете да включите това в настройките на устройството си.</string>
     <string name="continue_to_stripe">Продължаване към Stripe?</string>
     <string name="youll_be_taken_to_stripe_to_manage_your_subscription_cancellation">Ще бъдете прехвърлен(а) към Stripe, където ще можете да прекратите абонамента си.</string>
+    <string name="unlock_advanced_protection">Отключете допълнителна защита</string>
+    <string name="breeze_through_2fa_with_built_in_codes">Безпроблемно двустепенно удостоверяване чрез вградените кодове</string>
+    <string name="run_reports_to_find_risky_passwords">Създавайте доклади, за да намирате слабите пароли</string>
+    <string name="add_a_trusted_emergency_contact">Добавете доверен контакт за спешни случаи</string>
+    <string name="identify_unsecure_websites">Разпознавайте опасните уеб сайтове</string>
+    <string name="flag_accounts_with_inactive_2fa">Отбелязвайте акаунтите с неактивно двустепенно удостоверяване</string>
+    <string name="keep_documents_safe_and_encrypted">Пазете документите си на сигурно място, шифровани</string>
+    <string name="share_files_securely_with_anyone_using_send">Споделяйте файлове сигурно с всеки чрез Изпращанията</string>
+    <string name="receive_24_7_priority_support">Получавайте 24-часова приоритетна поддръжка</string>
 </resources>

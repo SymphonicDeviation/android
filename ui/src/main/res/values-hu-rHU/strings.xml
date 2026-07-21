@@ -12,7 +12,7 @@
     <string name="copy_username">Felhasználónév másolása</string>
     <string name="delete">Törlés</string>
     <string name="preview">Előnézet</string>
-    <string name="deleting">Deleting…</string>
+    <string name="deleting">Törlés…</string>
     <string name="do_you_really_want_to_delete">Tényleg törölni akarod? Ezt nem lehet visszavonni.</string>
     <string name="edit">Szerkesztés</string>
     <string name="edit_folder">Mappa szerkesztése</string>
@@ -78,6 +78,7 @@
     <string name="bitwarden_autofill_service">Bitwarden automatikus kitöltő szolgáltatás</string>
     <string name="change_master_password">Mesterjelszó megváltoztatása</string>
     <string name="close">Bezár</string>
+    <string name="close_app">Alkalmazás bezárása</string>
     <string name="continue_text">Folytatás</string>
     <string name="create_account">Fiók létrehozása</string>
     <string name="create_an_account">Fiók létrehozása</string>
@@ -138,7 +139,7 @@
     <string name="other">Egyéb</string>
     <string name="password_generator">Jelszógenerátor</string>
     <string name="password_hint">Jelszó emlékeztető</string>
-    <string name="password_hint_alert">We’ve sent you an email with your master password hint.</string>
+    <string name="password_hint_alert">Elküldtünk neked egy mesterjelszó emlékeztetődet tartalmazó E-mailt.</string>
     <string name="password_override_alert">Biztosan felül akarod írni a jelenlegi jelszót?</string>
     <string name="retype_master_password">Mesterjelszó ismételt beírása</string>
     <string name="retype_new_master_password_required">Az új mesterjelszó ismételt megadása (kötelező)</string>
@@ -148,7 +149,7 @@
     <string name="item_details">Elem részletek</string>
     <string name="item_updated">Az elem frissítésre került.</string>
     <string name="submitting">Beküldés…</string>
-    <string name="syncing">Syncing…</string>
+    <string name="syncing">Szinkronizálás…</string>
     <string name="syncing_complete">A szinkronizálás kész.</string>
     <string name="two_step_login">Kétlépcsős bejelentkezés</string>
     <string name="unlock_with_biometrics">Biometrikus feloldás</string>
@@ -199,7 +200,6 @@
     <string name="copy_totp_automatically">TOTP automatikus másolása</string>
     <string name="premium_required">A funkció használatához prémium tagság szükséges.</string>
     <string name="attachment_deleted">Melléklet törölve</string>
-    <string name="attachments_unavailable">A mellékletek nem érhetők el.</string>
     <string name="attachments_are_a_premium_feature">A mellékletek prémium funkció. A jelenlegi csomag nem tartalmazza a hozzáférést ehhez a funkcióhoz.</string>
     <string name="choose_file">Fájl kiválasztása</string>
     <string name="file">Fájl</string>
@@ -406,7 +406,7 @@
     <string name="save_attachment_success">A melléklet sikeresen mentésre került.</string>
     <string name="autofill_tile_accessibility_required">Please turn on “Autofill Accessibility Service” from Bitwarden Settings to use the Autofill tile.</string>
     <string name="autofill_tile_uri_not_found">Nincs érzékelt jelszó mező.</string>
-    <string name="soft_deleting">Sending to trash…</string>
+    <string name="soft_deleting">A lomtárba küldés folyamatban van…</string>
     <string name="item_soft_deleted">Az elem a lomtárba került.</string>
     <string name="restore">Visszaállítás</string>
     <string name="restoring">Visszaállítás…</string>
@@ -611,6 +611,10 @@ TOTP hozzáadása a kulcs biztonságos tárolásához lehetőséget.</string>
     <string name="forwarded_email_description">Email álnév generálása külső továbbító szolgáltatással.</string>
     <string name="accessibility_service_disclosure">Kisegítő lehetőségek szolgáltatás publikálása</string>
     <string name="accessibility_disclosure_text">A Bitwarden az akadálymentesítési szolgáltatást használja a bejelentkezési mezők megkeresésére az alkalmazásokban és webhelyeken, majd létrehozza a megfelelő mezőazonosítókat a felhasználónév és jelszó megadásához, ha talál egyezést az alkalmazáshoz vagy webhelyhez. A szolgáltatás által rendelkezésünkre bocsátott információk nem kerülnek tárolásra és nincs kísérlet a képernyőn megjelenő elemek vezérlésére a hitelesítő adatok szöveges bevitelén túl.</string>
+    <string name="accessibility_disclosure_start_up_text_1">Ez az értesítés szükséges ahhoz, hogy a Bitwarden akadálymentesítésen alapuló automatikus kitöltést kínálhasson.</string>
+    <string name="accessibility_disclosure_start_up_text_2">A Bitwarden opcionális automatikus kitöltési módszert kínál, amely az Android Kisegítő lehetőségek szolgáltatását használja a bejelentkezési mezők észlelésére. Ha engedélyezzük, a Bitwarden azonosítja a megfelelő mezőket és kitölti a hitelesítő adatokat, ha talál egyezést.</string>
+    <string name="accessibility_disclosure_start_up_text_3">Az akadálymentesítési szolgáltatás használata közben nem kerül tárolásra semmilyen információ arról, hogy mi van a képernyőn és nincs szabályozva semmilyen képernyőn megjelenő elem a hitelesítő adatokon kívül.</string>
+    <string name="i_understand">Megértettem</string>
     <string name="accept">Elfogadás</string>
     <string name="decline">Elutasítás</string>
     <string name="login_request_has_already_expired">A bejelentkezési kérés már lejárt.</string>
@@ -991,8 +995,7 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="do_you_really_want_to_delete_all_recorded_logs">Valóban törölni szeretnénk az összes rögzített naplót?</string>
     <string name="confirm_key_connector_domain">A Key Connector tartomány megerősítése</string>
     <string name="key_connector_domain">Key Connector tartomány:</string>
-    <string name="key_connector_organization">Szervezet:</string>
-    <string name="password_no_longer_required_confirm_domain">A következő szervezet tagjai számára már nincs szükség mesterjelszóra. Erősítsük meg az alábbi tartományt a szervezet adminisztrátorával.</string>
+    <string name="your_organization_no_longer_requires_a_master_password">A szervezet már nem igényel mesterjelszót a tagok számára. Ellenőrizzük az alábbi tartományt az adminisztrátorral és adjuk meg a mesterjelszót a folytatáshoz.</string>
     <string name="please_confirm_domain_with_admin">Erősítsük meg az alábbi tartományt a szervezet adminisztrátorával.\n\nKey Connector tartomány:\n%1$s</string>
     <string name="flight_recorder_banner_title">Adatrögzítő be</string>
     <string name="flight_recorder_banner_message">Az adatrögzítő aktív a következő időpontig: %1$s - %2$s. A kikapcsoláshoz térjünk vissza a beállításokhoz.</string>
@@ -1149,6 +1152,8 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="no_items_imported">Nem lett elem importálva.</string>
     <string name="no_items_received_from_the_selected_app">A kiválasztott alkalmazásból nem érkezett elem.</string>
     <string name="vault_sync_failed">A széf szinkronizálás sikertelen volt.</string>
+    <string name="vault_sync_unsuccessful">A szinkronizáció sikertelen volt.</string>
+    <string name="vault_sync_failed_description">Nem lehetett szinkronizálni a széfet a szerverrel. Előfordulhat, hogy a széf nem tükrözi a legújabb változtatásokat. Most újra próbálkozhatunk vagy később automatikusan szinkronizálódik.</string>
     <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">Az elemek sikeresen importálásra kerültek, de nem lehetett szinkronizálni a széfet. Az importált elemek a szinkronizálás végrehajtásáig nem lesznek láthatók a széfben.</string>
     <string name="there_was_a_problem_importing_your_items">Probléma volt az elemek importálásával. Próbáljuk újra. Ha a probléma továbbra is fennáll, forduljunk a támogatáshoz.</string>
     <string name="saving_items">Elemek mentése…</string>
@@ -1208,12 +1213,15 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="unarchiving">Visszavétel archivumból</string>
     <string name="item_moved_to_archived">Az elem bekerült az archívumba.</string>
     <string name="item_moved_to_vault">Az elem átkerült a széfbe.</string>
-    <string name="archive_unavailable">Az archívum nem elérhető.</string>
     <string name="archiving_items_is_a_premium_feature">Az elemek archiválása prémium funkció. A jelenlegi csomag nem tartalmazza a hozzáférést ehhez a funkcióhoz.</string>
+    <string name="totp_is_a_premium_feature">A hitelesítési kulcs (TOTP) egy prémium funkció. A jelenlegi csomag nem tartalmazza a hozzáférést ehhez a funkcióhoz.</string>
     <string name="upgrade_to_premium">Áttérés Prémium csomagra</string>
     <string name="plan">Csomag</string>
     <string name="to_manage_your_premium_subscription_youll_need_to_login_to_your_web_vault_on_a_computer">A Prémium előfizetés kezeléséhez jelentkezzünk be a webes széfbe a számítógépen.</string>
     <string name="unlock_advanced_security_features">Fejlett biztonsági funkciók feloldása</string>
+    <string name="your_subscription_needs_attention">Az előfizetés figyelmet igényel.</string>
+    <string name="check_your_plan_for_details">A részletekért tekintsük meg csomagot.</string>
+    <string name="view_plan">Csomag megtekintése</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">A Prémium előfizetés több eszközt biztosít a biztonság és az irányítás megőrzéséhez.</string>
     <string name="this_item_is_archived">Ez az elem archiválva van.</string>
     <string name="introducing_archive">Archívum bemutatása</string>
@@ -1267,13 +1275,13 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="upgrade_pending">Függő áttérés</string>
     <string name="upgrade_pending_message">Az áttérés feldolgozása folyamatban van. Az ingyenes csomag marad, amíg az be nem fejeződik. Szinkronizáljunk most az ellenőrzéshez vagy a folytatáshoz, és az áttérés automatikus.</string>
     <string name="unlock_premium_features">Fejlettebb funkciók feloldása Prémium csomaggal.</string>
-    <string name="per_month">/ hónap</string>
+    <string name="per_month_cancel_anytime">/ hónap · Bármikor lemondható</string>
+    <string name="per_month_cancel_anytime_content_description">%1$s havonta, bármikor lemondható</string>
     <string name="built_in_authenticator">Beépített hitelesítő</string>
     <string name="emergency_access">Sürgősségi hozzáférés</string>
     <string name="secure_file_storage">Biztonságos fájl tárolás</string>
     <string name="breach_monitoring">Adatszivárgás figyelés</string>
-    <string name="upgrade_now">Áttérés most</string>
-    <string name="youll_go_to_stripes_secure_checkout_to_complete_your_purchase">A vásárlás befejezéséhez keressük fel a Stripe biztonságos pénztárát.</string>
+    <string name="youll_complete_the_purchase_with_stripe_secure_checkout">A vásárlást a Stripe biztonságos pénztárral fejezzük be.</string>
     <string name="opening_checkout">Pénztár megnyitása…</string>
     <string name="secure_checkout_didnt_load">A biztonságos pénztár nem töltődött be.</string>
     <string name="trouble_opening_payment_page">Problémák adódtak a fizetési oldal megnyitásával, úgyhogy próbáljuk újra.</string>
@@ -1294,7 +1302,7 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="storage_cost">Tárolási költség</string>
     <string name="discount">Kedvezmény</string>
     <string name="estimated_tax">Becsült adó</string>
-    <string name="total">Total</string>
+    <string name="total">Összesen</string>
     <string name="billing_rate_per_year">%1$s / év</string>
     <string name="billing_rate_per_month">%1$s / hónap</string>
     <string name="manage_plan">Csomag kezelés</string>
@@ -1302,24 +1310,27 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="cancel_premium">Prémium lemondása</string>
     <string name="subscription_status_active">Bekapcsolva</string>
     <string name="subscription_status_canceled">Megszakítva</string>
+    <string name="subscription_status_expired">Lejárt</string>
     <string name="subscription_status_past_due">Határidőn túl</string>
     <string name="subscription_status_paused">Felfüggesztve</string>
+    <string name="subscription_status_unpaid">Nincs fizetve</string>
     <string name="subscription_status_update_payment">Fizetés frissítése</string>
-    <string name="subscription_status_pending_cancellation">Pending cancellation</string>
-    <string name="subscription_pending_cancellation_description">Your subscription is scheduled to cancel on <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. You can reinstate it anytime before then.</string>
+    <string name="subscription_status_pending_cancellation">Függőben lévő lemondás</string>
+    <string name="subscription_pending_cancellation_description">Az előfizetés lemondás időzítése: <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Ezt megelőzően bármikor visszaállíthatjuk.</string>
     <string name="premium_next_charge_summary">A következő %1$s USD díj esedékessége: %2$s.</string>
     <string name="subscription_canceled_description">Az előfizetés %1$s időponttal törlésre került. Iratkozzunk fel újra a prémium funkciók használatának folytatásához.</string>
+    <string name="subscription_unpaid_description">Az előfizetés felfüggesztésre került: &lt;annotation highcent=„bold“&gt;&lt;annotation arg=„0“&gt;%1$s&lt;/annotation&gt;&lt;/annotation&gt;. Az újra aktiváláshoz rendezzük a múltbeli esedékes számlákat.</string>
     <string name="subscription_update_payment_description">Nem lehetett feldolgozni a fizetést Frissítsük a fizetési módot, mielőtt az előfizetés lejár: <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>.</string>
     <plurals name="subscription_past_due_description">
         <item quantity="one">Az előfizetés lejárati dátumától számítva %1$d türelmi idő áll rendelkezésre. Rendezzük a múltbeli esedékes számlákat %2$s határidőig.</item>
         <item quantity="other">Az előfizetés lejárati dátumától számítva %1$d türelmi idő áll rendelkezésre. Rendezzük a múltbeli esedékes számlákat %2$s határidőig.</item>
     </plurals>
     <string name="subscription_paused_description">Az előfizetés szünetel. Összefoglaló a prémium funkciók használatának folytatásához.</string>
+    <string name="subscription_expired_description">Az előfizetés lejárt: <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>. Iratkozzunk fel újra a Prémium funkciók használatának folytatásához.</string>
     <string name="loading_subscription">Előfizetés betöltése…</string>
     <string name="loading_portal">Portál betöltése…</string>
     <string name="portal_error">Valami hiba lépett fel</string>
     <string name="trouble_loading_portal">Problémák adódtak a fizetési oldal megnyitásával, úgyhogy próbáljuk újra.</string>
-    <string name="subscription_error">Előfizetési hiba</string>
     <string name="trouble_loading_subscription">Nem lehetett betölteni az előfizetési adatokat. Próbáljuk újra.</string>
     <string name="view_bank_account">Bankszámla megtekintése</string>
     <string name="view_license">Licensz megtekintése</string>
@@ -1391,4 +1402,13 @@ Szeretnénk átváltani erre a fiókra?</string>
     <string name="your_request_was_interrupted_because_the_app_needs_local_network_access">A kérés megszakadt, mert az alkalmazásnak helyi hálózati hozzáférésre van szüksége. Ezt az eszköz beállításaiban engedélyezhetjük.</string>
     <string name="continue_to_stripe">Tovább a Stripe-hoz?</string>
     <string name="youll_be_taken_to_stripe_to_manage_your_subscription_cancellation">A Stripe-ba kerülünk át az előfizetés törlésének kezeléséhez.</string>
+    <string name="unlock_advanced_protection">Fejlett védelem feloldása</string>
+    <string name="breeze_through_2fa_with_built_in_codes">Könnyedén kezelhető a 2FA segítségével beépített kódokkal</string>
+    <string name="run_reports_to_find_risky_passwords">Jelentések futtatása a kockázatos jelszavak megtalálásához</string>
+    <string name="add_a_trusted_emergency_contact">Megbízható sürgősségi kapcsolat hozzáadása</string>
+    <string name="identify_unsecure_websites">Nem biztonságos webhelyek azonosítása</string>
+    <string name="flag_accounts_with_inactive_2fa">Fiókok megjelölése inaktív 2FA-val</string>
+    <string name="keep_documents_safe_and_encrypted">Dokumentumok biztonságban és titkosítva tartása</string>
+    <string name="share_files_securely_with_anyone_using_send">Fájlok biztonságos megosztása bárkivel, aki a Send elemet használja</string>
+    <string name="receive_24_7_priority_support">Kiemelt támogatás fogadása a teljes héten 24 órában</string>
 </resources>

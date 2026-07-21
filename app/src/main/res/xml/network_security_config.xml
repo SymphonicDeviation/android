@@ -18,6 +18,7 @@
         <!-- CRL Distribution Servers -->
         <domain includeSubdomains="true">c.lencr.org</domain>
         <domain includeSubdomains="true">c.pki.goog</domain>
+        <domain includeSubdomains="true">crls.certainly.com</domain>
 
         <!-- OCSP Responder Servers -->
         <domain includeSubdomains="true">o.pki.goog</domain>
@@ -28,6 +29,7 @@
         <domain includeSubdomains="true">bitwarden.com</domain>
         <domain includeSubdomains="true">bitwarden.eu</domain>
         <domain includeSubdomains="true">bitwarden.pw</domain>
+        <domain includeSubdomains="true">bitwarden-gov.com</domain>
         <trust-anchors>
             <!-- Only trust pre-installed CAs for Bitwarden domains and all subdomains -->
             <certificates src="system" />

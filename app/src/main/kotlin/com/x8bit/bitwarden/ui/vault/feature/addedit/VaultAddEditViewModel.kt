@@ -97,6 +97,7 @@ import com.x8bit.bitwarden.ui.vault.util.detectCardBrand
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -451,14 +452,6 @@ class VaultAddEditViewModel @Inject constructor(
 
     @Suppress("LongMethod")
     private fun handleSaveClick() = onContent { content ->
-        if (!content.type.isSdkSupported) {
-            sendEvent(
-                VaultAddEditEvent.ShowSnackbar(
-                    message = BitwardenString.an_error_has_occurred.asText(),
-                ),
-            )
-            return@onContent
-        }
         if (hasValidationErrors(content)) return@onContent
 
         mutableStateFlow.update {
@@ -675,10 +668,7 @@ class VaultAddEditViewModel @Inject constructor(
         if (premiumStateManager.isInAppUpgradeAvailable()) {
             sendEvent(VaultAddEditEvent.NavigateToPlanModal)
         } else {
-            val baseUrl = environmentRepository
-                .environment
-                .environmentUrlData
-                .baseWebVaultUrlOrDefault
+            val baseUrl = environmentRepository.environment.baseWebVaultUrlOrDefault
             sendEvent(
                 VaultAddEditEvent.NavigateToPremium(
                     uri = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium",
@@ -2172,26 +2162,29 @@ class VaultAddEditViewModel @Inject constructor(
     private fun handleVaultDataReceive(action: VaultAddEditAction.Internal.VaultDataReceive) {
         when (val vaultDataState = action.vaultData) {
             is DataState.Error -> {
-                mutableStateFlow.update {
-                    it.copy(
-                        viewState = VaultAddEditState.ViewState.Error(
-                            message = BitwardenString.generic_error_message.asText(),
-                        ),
-                    )
-                }
-            }
-
-            is DataState.Loaded -> {
-                viewModelScope.launch {
-                    sendAction(
-                        VaultAddEditAction.Internal.DetermineContentStateResultReceive(
-                            vaultAddEditState = state.determineContentState(
-                                vaultData = vaultDataState.data,
-                                userData = action.userData,
-                            ),
-                        ),
-                    )
-                }
+                vaultDataState
+                    .data?.let {
+                        viewModelScope.launch {
+                            sendAction(
+                                VaultAddEditAction.Internal.DetermineContentStateResultReceive(
+                                    vaultAddEditState = state.determineContentState(
+                                        vaultData = it,
+                                        userData = action.userData,
+                                    ),
+                                ),
+                            )
+                        }
+                    }
+                    ?: run {
+                        // No data to display, so let's just show the error state
+                        mutableStateFlow.update {
+                            it.copy(
+                                viewState = VaultAddEditState.ViewState.Error(
+                                    message = BitwardenString.generic_error_message.asText(),
+                                ),
+                            )
+                        }
+                    }
             }
 
             DataState.Loading -> {
@@ -2204,24 +2197,14 @@ class VaultAddEditViewModel @Inject constructor(
                 }
             }
 
-            is DataState.NoNetwork -> {
+            is DataState.NoNetwork,
+            is DataState.Pending,
+            is DataState.Loaded,
+                -> {
                 viewModelScope.launch {
                     sendAction(
                         VaultAddEditAction.Internal.DetermineContentStateResultReceive(
-                            state.determineContentState(
-                                vaultData = vaultDataState.data,
-                                userData = action.userData,
-                            ),
-                        ),
-                    )
-                }
-            }
-
-            is DataState.Pending -> {
-                viewModelScope.launch {
-                    sendAction(
-                        VaultAddEditAction.Internal.DetermineContentStateResultReceive(
-                            state.determineContentState(
+                            vaultAddEditState = state.determineContentState(
                                 vaultData = vaultDataState.data,
                                 userData = action.userData,
                             ),
@@ -2684,7 +2667,7 @@ class VaultAddEditViewModel @Inject constructor(
     private fun List<VaultAddEditState.Owner>.toUpdatedOwners(
         selectedOwnerId: String?,
         selectedCollectionId: String,
-    ): List<VaultAddEditState.Owner> =
+    ): ImmutableList<VaultAddEditState.Owner> =
         map { owner ->
             if (owner.id != selectedOwnerId) return@map owner
             owner.copy(
@@ -2693,6 +2676,7 @@ class VaultAddEditViewModel @Inject constructor(
                     .toUpdatedCollections(selectedCollectionId = selectedCollectionId),
             )
         }
+            .toImmutableList()
 
     private fun List<VaultCollection>.toUpdatedCollections(
         selectedCollectionId: String,
@@ -2944,7 +2928,7 @@ data class VaultAddEditState(
                 val selectedFolderId: String? = null,
                 val availableFolders: List<Folder> = emptyList(),
                 val selectedOwnerId: String? = null,
-                val availableOwners: List<Owner> = emptyList(),
+                val availableOwners: ImmutableList<Owner> = persistentListOf(),
                 val hasOrganizations: Boolean = false,
                 val canDelete: Boolean = true,
                 val canAssignToCollections: Boolean = true,
@@ -2982,11 +2966,6 @@ data class VaultAddEditState(
                  * A list of all the linked field types supported by this [ItemType].
                  */
                 abstract val vaultLinkedFieldTypes: ImmutableList<VaultLinkedFieldType>
-
-                /**
-                 * Whether this item type has SDK support for save operations.
-                 */
-                open val isSdkSupported: Boolean get() = true
 
                 /**
                  * Represents the login item information.
@@ -3218,8 +3197,6 @@ data class VaultAddEditState(
                     override val itemTypeOption: ItemTypeOption
                         get() = ItemTypeOption.LICENSE
 
-                    override val isSdkSupported: Boolean get() = false
-
                     override val vaultLinkedFieldTypes: ImmutableList<VaultLinkedFieldType>
                         get() = persistentListOf()
                 }
@@ -3337,7 +3314,7 @@ data class VaultAddEditState(
     @Parcelize
     data class Owner(
         val id: String?,
-        val name: String,
+        val name: Text,
         val collections: List<VaultCollection>,
     ) : Parcelable
 

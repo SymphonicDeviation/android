@@ -2,11 +2,14 @@
 
 package com.x8bit.bitwarden.ui.platform.feature.premium.plan
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -27,10 +31,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -50,8 +60,11 @@ import com.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.bitwarden.ui.platform.components.badge.BitwardenStatusBadge
 import com.bitwarden.ui.platform.components.button.BitwardenFilledButton
 import com.bitwarden.ui.platform.components.button.BitwardenOutlinedButton
+import com.bitwarden.ui.platform.components.button.model.BitwardenButtonData
 import com.bitwarden.ui.platform.components.card.BitwardenInfoCalloutCard
 import com.bitwarden.ui.platform.components.content.BitwardenContentBlock
+import com.bitwarden.ui.platform.components.content.BitwardenErrorContent
+import com.bitwarden.ui.platform.components.content.BitwardenLoadingContent
 import com.bitwarden.ui.platform.components.content.model.ContentBlockData
 import com.bitwarden.ui.platform.components.dialog.BitwardenLoadingDialog
 import com.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
@@ -67,14 +80,19 @@ import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenPlurals
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.platform.theme.BitwardenTheme
+import com.bitwarden.ui.util.Text
 import com.bitwarden.ui.util.asText
 import com.x8bit.bitwarden.data.billing.repository.model.PremiumSubscriptionStatus
 import com.x8bit.bitwarden.ui.platform.composition.LocalAuthTabLaunchers
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.PlanState.ViewState.Error.Type.PRICING_UNAVAILABLE
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.PlanState.ViewState.Error.Type.SUBSCRIPTION
 import com.x8bit.bitwarden.ui.platform.feature.premium.plan.handlers.PlanHandlers
 import com.x8bit.bitwarden.ui.platform.feature.premium.plan.util.badgeColors
 import com.x8bit.bitwarden.ui.platform.feature.premium.plan.util.labelRes
 import com.x8bit.bitwarden.ui.platform.feature.premium.plan.util.showsFeatureList
 import com.x8bit.bitwarden.ui.platform.model.AuthTabLaunchers
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 private const val PLACEHOLDER_TEXT: String = "--"
 
@@ -144,21 +162,45 @@ fun PlanScreen(
         },
     ) {
         when (val viewState = state.viewState) {
-            is PlanState.ViewState.Free.Cloud -> {
+            is PlanState.ViewState.Content.Free.Cloud -> {
                 FreeCloudContent(
                     viewState = viewState,
                     handlers = handlers,
                 )
             }
 
-            is PlanState.ViewState.Free.SelfHosted -> {
+            is PlanState.ViewState.Content.Free.SelfHosted -> {
                 FreeSelfHostedContent()
             }
 
-            is PlanState.ViewState.Premium -> {
+            is PlanState.ViewState.Content.Premium -> {
                 PremiumContent(
                     viewState = viewState,
                     handlers = handlers,
+                )
+            }
+
+            is PlanState.ViewState.Error -> {
+                BitwardenErrorContent(
+                    illustrationData = IconData.Local(iconRes = BitwardenDrawable.ill_file_error),
+                    message = viewState.message(),
+                    buttonData = BitwardenButtonData(
+                        label = BitwardenString.try_again.asText(),
+                        onClick = {
+                            when (viewState.type) {
+                                PRICING_UNAVAILABLE -> handlers.onRetryPricingClick()
+                                SUBSCRIPTION -> handlers.onRetrySubscriptionClick()
+                            }
+                        },
+                    ),
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            is PlanState.ViewState.Loading -> {
+                BitwardenLoadingContent(
+                    text = viewState.message(),
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }
@@ -181,18 +223,6 @@ private fun PlanDialogs(
                 onConfirmClick = handlers.onRetryClick,
                 onDismissClick = handlers.onDismissError,
                 onDismissRequest = handlers.onDismissError,
-            )
-        }
-
-        is PlanState.DialogState.GetPricingError -> {
-            BitwardenTwoButtonDialog(
-                title = dialogState.title(),
-                message = dialogState.message(),
-                confirmButtonText = stringResource(BitwardenString.try_again),
-                dismissButtonText = stringResource(BitwardenString.close),
-                onConfirmClick = handlers.onRetryPricingClick,
-                onDismissClick = handlers.onClosePricingErrorClick,
-                onDismissRequest = handlers.onClosePricingErrorClick,
             )
         }
 
@@ -250,18 +280,6 @@ private fun PlanDialogs(
             )
         }
 
-        is PlanState.DialogState.SubscriptionError -> {
-            BitwardenTwoButtonDialog(
-                title = dialogState.title(),
-                message = dialogState.message(),
-                confirmButtonText = stringResource(id = BitwardenString.try_again),
-                dismissButtonText = stringResource(id = BitwardenString.close),
-                onConfirmClick = handlers.onRetrySubscriptionClick,
-                onDismissClick = handlers.onBackClick,
-                onDismissRequest = handlers.onBackClick,
-            )
-        }
-
         PlanState.DialogState.LoadingPortal -> {
             BitwardenLoadingDialog(
                 text = stringResource(id = BitwardenString.loading_portal),
@@ -278,7 +296,7 @@ private fun PlanDialogs(
 
 @Composable
 private fun FreeCloudContent(
-    viewState: PlanState.ViewState.Free.Cloud,
+    viewState: PlanState.ViewState.Content.Free.Cloud,
     handlers: PlanHandlers,
     modifier: Modifier = Modifier,
 ) {
@@ -287,20 +305,19 @@ private fun FreeCloudContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         PremiumDetailsCard(
-            rate = viewState.rate,
-            frequency = stringResource(id = BitwardenString.per_month),
             modifier = Modifier.standardHorizontalMargin(),
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(height = 16.dp))
 
         // Hide the Upgrade Now CTA (and its Stripe footer copy) while a Stripe upgrade is
         // already in flight for the active user. CTAs reappear once the server flips the
         // user to Premium.
         if (!viewState.isPremiumUpgradePending) {
             UpgradeNowCallToAction(
+                viewState = viewState,
                 onUpgradeNowClick = handlers.onUpgradeNowClick,
             )
         }
@@ -310,10 +327,11 @@ private fun FreeCloudContent(
 
 @Composable
 private fun UpgradeNowCallToAction(
+    viewState: PlanState.ViewState.Content.Free.Cloud,
     onUpgradeNowClick: () -> Unit,
 ) {
     BitwardenFilledButton(
-        label = stringResource(id = BitwardenString.upgrade_now),
+        label = stringResource(id = BitwardenString.upgrade_to_premium),
         onClick = onUpgradeNowClick,
         icon = rememberVectorPainter(id = BitwardenDrawable.ic_external_link),
         modifier = Modifier
@@ -321,23 +339,65 @@ private fun UpgradeNowCallToAction(
             .fillMaxWidth()
             .testTag("UpgradeNowButton"),
     )
+    Spacer(modifier = Modifier.height(height = 12.dp))
 
-    Spacer(modifier = Modifier.height(12.dp))
+    PriceRow(
+        rate = viewState.rate,
+        modifier = Modifier
+            .fillMaxWidth()
+            .standardHorizontalMargin(),
+    )
+    Spacer(modifier = Modifier.height(height = 12.dp))
 
     Text(
         text = stringResource(
-            id = BitwardenString.youll_go_to_stripes_secure_checkout_to_complete_your_purchase,
+            id = BitwardenString.youll_complete_the_purchase_with_stripe_secure_checkout,
         ),
         style = BitwardenTheme.typography.bodyMedium,
-        color = BitwardenTheme.colorScheme.text.secondary,
+        color = BitwardenTheme.colorScheme.text.primary,
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth()
             .standardHorizontalMargin()
             .testTag("StripeFooterText"),
     )
+    Spacer(modifier = Modifier.height(height = 16.dp))
+}
 
-    Spacer(modifier = Modifier.height(16.dp))
+@Composable
+private fun PriceRow(
+    rate: String,
+    modifier: Modifier = Modifier,
+) {
+    val formattedContentDescription = stringResource(
+        id = BitwardenString.per_month_cancel_anytime_content_description,
+        formatArgs = arrayOf(rate),
+    )
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        modifier = modifier
+            .semantics(mergeDescendants = true) {
+                contentDescription = formattedContentDescription
+            },
+    ) {
+        Text(
+            text = rate,
+            style = BitwardenTheme.typography.labelMedium,
+            color = BitwardenTheme.colorScheme.text.primary,
+            modifier = Modifier
+                .semantics { hideFromAccessibility() }
+                .alignByBaseline(),
+        )
+        Spacer(modifier = Modifier.width(width = 4.dp))
+        Text(
+            text = stringResource(id = BitwardenString.per_month_cancel_anytime),
+            style = BitwardenTheme.typography.labelSmall,
+            color = BitwardenTheme.colorScheme.text.primary,
+            modifier = Modifier
+                .semantics { hideFromAccessibility() }
+                .alignByBaseline(),
+        )
+    }
 }
 
 @Suppress("MaxLineLength")
@@ -417,94 +477,96 @@ private fun ColumnScope.PremiumFeatureRows() {
             ),
             headerTextStyle = BitwardenTheme.typography.titleMedium,
             showDivider = index != features.lastIndex,
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier
+                .defaultMinSize(minHeight = 60.dp)
+                .padding(vertical = 8.dp),
         )
     }
 }
 
 @Composable
 private fun PremiumDetailsCard(
-    rate: String,
-    frequency: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .fillMaxWidth()
-            .cardStyle(
-                cardStyle = CardStyle.Full,
-                // Override bottom padding to account for custom
-                // `BitwardenContentBlock` vertical padding, below.
-                paddingBottom = 0.dp,
-            ),
+            .run {
+                if (BitwardenTheme.colorScheme.isDynamicTheme) {
+                    cardStyle(cardStyle = CardStyle.Full, paddingVertical = 0.dp)
+                } else {
+                    paint(
+                        painter = painterResource(id = BitwardenDrawable.bg_card_gradient),
+                        contentScale = ContentScale.FillBounds,
+                    )
+                }
+            },
     ) {
-        Column(
+        Spacer(modifier = Modifier.height(height = 8.dp))
+        Image(
+            painter = painterResource(id = BitwardenDrawable.img_premium),
+            contentDescription = null,
             modifier = Modifier
-                .padding(bottom = 16.dp)
-                .standardHorizontalMargin(),
-        ) {
-            PriceRow(
-                rate = rate,
-                frequency = frequency,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(
-                    id = BitwardenString.unlock_premium_features,
-                ),
-                style = BitwardenTheme.typography.bodyMedium,
-                color = BitwardenTheme.colorScheme.text.secondary,
-            )
-        }
-
-        BitwardenHorizontalDivider()
-
-        val features = listOf(
-            BitwardenString.built_in_authenticator,
-            BitwardenString.emergency_access,
-            BitwardenString.secure_file_storage,
-            BitwardenString.breach_monitoring,
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth(),
         )
-        features.forEachIndexed { index, featureStringRes ->
-            BitwardenContentBlock(
-                data = ContentBlockData(
-                    headerText = stringResource(id = featureStringRes),
-                    iconVectorResource = BitwardenDrawable.ic_check_mark,
-                ),
-                headerTextStyle = BitwardenTheme.typography.titleMedium,
-                showDivider = index != features.lastIndex,
-                modifier = Modifier.padding(vertical = 8.dp),
-            )
-        }
+        Spacer(modifier = Modifier.height(height = 8.dp))
+        Text(
+            text = stringResource(id = BitwardenString.unlock_advanced_protection),
+            style = BitwardenTheme.typography.headlineSmall,
+            color = BitwardenTheme.colorScheme.text.primary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .standardHorizontalMargin(),
+        )
+        Spacer(modifier = Modifier.height(height = 12.dp))
+        Benefits(modifier = Modifier.standardHorizontalMargin())
+        Spacer(modifier = Modifier.height(height = 4.dp))
     }
 }
 
 @Composable
-private fun PriceRow(
-    rate: String,
-    frequency: String,
+private fun Benefits(
     modifier: Modifier = Modifier,
+    benefits: ImmutableList<Text> = persistentListOf(
+        BitwardenString.breeze_through_2fa_with_built_in_codes.asText(),
+        BitwardenString.run_reports_to_find_risky_passwords.asText(),
+        BitwardenString.keep_documents_safe_and_encrypted.asText(),
+        BitwardenString.add_a_trusted_emergency_contact.asText(),
+        BitwardenString.identify_unsecure_websites.asText(),
+        BitwardenString.flag_accounts_with_inactive_2fa.asText(),
+        BitwardenString.share_files_securely_with_anyone_using_send.asText(),
+        BitwardenString.receive_24_7_priority_support.asText(),
+    ),
 ) {
-    Row(modifier = modifier) {
-        Text(
-            text = rate,
-            style = BitwardenTheme.typography.headlineMedium,
-            color = BitwardenTheme.colorScheme.text.primary,
-            modifier = Modifier.alignByBaseline(),
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = frequency,
-            style = BitwardenTheme.typography.bodyMedium,
-            color = BitwardenTheme.colorScheme.text.secondary,
-            modifier = Modifier.alignByBaseline(),
-        )
+    Column(modifier = Modifier.width(intrinsicSize = IntrinsicSize.Max)) {
+        benefits.forEach {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = modifier,
+            ) {
+                Icon(
+                    painter = rememberVectorPainter(id = BitwardenDrawable.ic_checkmark_small),
+                    contentDescription = null,
+                    tint = BitwardenTheme.colorScheme.icon.secondary,
+                )
+                Spacer(modifier = Modifier.width(width = 8.dp))
+                Text(
+                    text = it(),
+                    style = BitwardenTheme.typography.bodyMedium,
+                    color = BitwardenTheme.colorScheme.text.primary,
+                )
+            }
+            Spacer(modifier = Modifier.height(height = 12.dp))
+        }
     }
 }
 
 @Composable
 private fun PremiumContent(
-    viewState: PlanState.ViewState.Premium,
+    viewState: PlanState.ViewState.Content.Premium,
     handlers: PlanHandlers,
     modifier: Modifier = Modifier,
 ) {
@@ -571,7 +633,7 @@ private fun PremiumContent(
 
 @Composable
 private fun SubscriptionCard(
-    viewState: PlanState.ViewState.Premium,
+    viewState: PlanState.ViewState.Content.Premium,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -592,10 +654,9 @@ private fun SubscriptionCard(
             canceledDateText = viewState.canceledDateText,
             suspensionDateText = viewState.suspensionDateText,
             gracePeriodDays = viewState.gracePeriodDays,
-            modifier = Modifier
-                .padding(bottom = 16.dp)
-                .standardHorizontalMargin(),
+            modifier = Modifier.standardHorizontalMargin(),
         )
+        Spacer(modifier = Modifier.height(height = 16.dp))
 
         if (viewState.status?.showsFeatureList() == true) {
             PremiumFeatureRows()
@@ -606,20 +667,17 @@ private fun SubscriptionCard(
 }
 
 @Composable
-private fun SubscriptionLineItems(
-    viewState: PlanState.ViewState.Premium,
+private fun ColumnScope.SubscriptionLineItems(
+    viewState: PlanState.ViewState.Content.Premium,
 ) {
-    val rowModifier = Modifier
-        .fillMaxWidth()
-        .standardHorizontalMargin()
-
     BitwardenHorizontalDivider()
-
     SubscriptionLineItem(
         label = stringResource(id = BitwardenString.billing_amount),
         value = viewState.billingAmountText(),
         testTag = "BillingAmountRow",
-        modifier = rowModifier,
+        modifier = Modifier
+            .fillMaxWidth()
+            .standardHorizontalMargin(),
     )
 
     viewState.storageCostText?.let { storageCostText ->
@@ -628,7 +686,9 @@ private fun SubscriptionLineItems(
             label = stringResource(id = BitwardenString.storage_cost),
             value = storageCostText,
             testTag = "StorageCostRow",
-            modifier = rowModifier,
+            modifier = Modifier
+                .fillMaxWidth()
+                .standardHorizontalMargin(),
         )
     }
 
@@ -638,28 +698,32 @@ private fun SubscriptionLineItems(
             label = stringResource(id = BitwardenString.discount),
             value = discountAmountText,
             testTag = "DiscountRow",
-            modifier = rowModifier,
             valueColor = BitwardenTheme.colorScheme.statusBadge.success.text,
+            modifier = Modifier
+                .fillMaxWidth()
+                .standardHorizontalMargin(),
         )
     }
 
     BitwardenHorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-
     SubscriptionLineItem(
         label = stringResource(id = BitwardenString.estimated_tax),
         value = viewState.estimatedTaxText,
         testTag = "EstimatedTaxRow",
-        modifier = rowModifier,
+        modifier = Modifier
+            .fillMaxWidth()
+            .standardHorizontalMargin(),
     )
 
     BitwardenHorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-
     SubscriptionLineItem(
         label = stringResource(id = BitwardenString.total),
         value = viewState.totalText(),
         testTag = "TotalRow",
-        modifier = rowModifier,
         labelStyle = BitwardenTheme.typography.bodyLargeEmphasis,
+        modifier = Modifier
+            .fillMaxWidth()
+            .standardHorizontalMargin(),
     )
 }
 
@@ -704,7 +768,7 @@ private fun SubscriptionHeader(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = it,
-                style = BitwardenTheme.typography.bodyMedium,
+                style = BitwardenTheme.typography.labelLargeRegular,
                 color = BitwardenTheme.colorScheme.text.secondary,
             )
         }
@@ -724,11 +788,11 @@ private fun subscriptionDescriptionText(
 ): AnnotatedString? {
     val baseStyle = spanStyleOf(
         color = BitwardenTheme.colorScheme.text.secondary,
-        textStyle = BitwardenTheme.typography.bodyMedium,
+        textStyle = BitwardenTheme.typography.labelLargeRegular,
     )
     val emphasisStyle = spanStyleOf(
         color = BitwardenTheme.colorScheme.text.secondary,
-        textStyle = BitwardenTheme.typography.bodyMediumEmphasis,
+        textStyle = BitwardenTheme.typography.labelLargeEmphasis,
     )
     return when (status) {
         PremiumSubscriptionStatus.ACTIVE -> annotatedStringResource(
@@ -751,6 +815,13 @@ private fun subscriptionDescriptionText(
         PremiumSubscriptionStatus.PENDING_CANCELLATION -> annotatedStringResource(
             id = BitwardenString.subscription_pending_cancellation_description,
             args = arrayOf(cancelAtDateText ?: PLACEHOLDER_TEXT),
+            style = baseStyle,
+            emphasisHighlightStyle = emphasisStyle,
+        )
+
+        PremiumSubscriptionStatus.UNPAID -> annotatedStringResource(
+            id = BitwardenString.subscription_unpaid_description,
+            args = arrayOf(suspensionDateText ?: PLACEHOLDER_TEXT),
             style = baseStyle,
             emphasisHighlightStyle = emphasisStyle,
         )
@@ -797,15 +868,16 @@ private fun SubscriptionLineItem(
     modifier: Modifier = Modifier,
     labelStyle: TextStyle = BitwardenTheme.typography.bodyLarge,
     labelColor: Color = BitwardenTheme.colorScheme.text.secondary,
-    valueStyle: TextStyle = BitwardenTheme.typography.bodyLarge,
+    valueStyle: TextStyle = BitwardenTheme.typography.bodyMedium,
     valueColor: Color = BitwardenTheme.colorScheme.text.primary,
 ) {
     Row(
-        modifier = modifier
-            .padding(vertical = 16.dp)
-            .testTag(testTag),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .defaultMinSize(minHeight = 60.dp)
+            .padding(vertical = 16.dp)
+            .testTag(tag = testTag),
     ) {
         Text(
             text = label,
@@ -827,7 +899,7 @@ private fun PlanScreenFreeCloudAccount_preview() {
     BitwardenTheme {
         BitwardenScaffold {
             FreeCloudContent(
-                viewState = PlanState.ViewState.Free.Cloud(
+                viewState = PlanState.ViewState.Content.Free.Cloud(
                     rate = "$1.67",
                     checkoutUrl = null,
                     isAwaitingPremiumStatus = false,
@@ -875,7 +947,7 @@ private fun PlanScreenPremiumAccount_preview() {
     BitwardenTheme {
         BitwardenScaffold {
             PremiumContent(
-                viewState = PlanState.ViewState.Premium(
+                viewState = PlanState.ViewState.Content.Premium(
                     status = PremiumSubscriptionStatus.ACTIVE,
                     billingAmountText = BitwardenString.billing_rate_per_year.asText("$19.80"),
                     storageCostText = "$24.00",
@@ -917,7 +989,7 @@ private fun PlanScreenPremiumAccountZeroState_preview() {
     BitwardenTheme {
         BitwardenScaffold {
             PremiumContent(
-                viewState = PlanState.ViewState.Premium(
+                viewState = PlanState.ViewState.Content.Premium(
                     status = PremiumSubscriptionStatus.ACTIVE,
                     billingAmountText = BitwardenString.billing_rate_per_year.asText("$19.80"),
                     storageCostText = null,

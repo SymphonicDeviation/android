@@ -8,6 +8,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -151,30 +152,43 @@ class PlanScreenTest : BitwardenComposeTest() {
     fun `price and subtitle should render from state`() {
         composeTestRule
             .onNodeWithText("\$1.65")
+            .performScrollTo()
             .assertExists()
         composeTestRule
-            .onNodeWithText("/ month")
+            .onNodeWithText("/ month · Cancel anytime")
+            .performScrollTo()
             .assertExists()
         composeTestRule
-            .onNodeWithText(
-                "Unlock more advanced features with a Premium plan.",
-            )
+            .onNodeWithText("You’ll complete the purchase with Stripe secure checkout.")
+            .performScrollTo()
             .assertExists()
     }
 
     @Test
     fun `feature list items should render`() {
         composeTestRule
-            .onNodeWithText("Built-in authenticator")
+            .onNodeWithText("Breeze through 2FA with built-in codes")
             .assertExists()
         composeTestRule
-            .onNodeWithText("Emergency access")
+            .onNodeWithText("Run reports to find risky passwords")
             .assertExists()
         composeTestRule
-            .onNodeWithText("Secure file storage")
+            .onNodeWithText("Keep documents safe and encrypted")
             .assertExists()
         composeTestRule
-            .onNodeWithText("Breach monitoring")
+            .onNodeWithText("Add a trusted emergency contact")
+            .assertExists()
+        composeTestRule
+            .onNodeWithText("Identify unsecure websites")
+            .assertExists()
+        composeTestRule
+            .onNodeWithText("Flag accounts with inactive 2FA")
+            .assertExists()
+        composeTestRule
+            .onNodeWithText("Share files securely with anyone using Send")
+            .assertExists()
+        composeTestRule
+            .onNodeWithText("Receive 24/7 priority support")
             .assertExists()
     }
 
@@ -388,74 +402,95 @@ class PlanScreenTest : BitwardenComposeTest() {
 
     // endregion PendingUpgrade dialog tests
 
-    // region GetPricingError dialog tests
+    // region Loading and Error content
 
     @Test
-    fun `get pricing error dialog should render when dialogState is GetPricingError`() {
-        val title = "An error has occurred".asText()
-        val message = "Unable to retrieve pricing.".asText()
-
+    fun `loading content should render message when viewState is Loading`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = PlanState.ViewState.Loading(
+                    message = BitwardenString.loading_subscription.asText(),
+                ),
+            )
+        }
         composeTestRule
-            .onAllNodesWithText("An error has occurred")
-            .filterToOne(hasAnyAncestor(isDialog()))
+            .onNodeWithText("Loading subscription…")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `error content should render message and try again button when viewState is Error`() {
+        composeTestRule
+            .onNodeWithText("Pricing unavailable")
             .assertDoesNotExist()
 
         mutableStateFlow.update {
             it.copy(
-                dialogState = PlanState.DialogState.GetPricingError(
-                    title = title,
-                    message = message,
+                viewState = PlanState.ViewState.Error(
+                    message = BitwardenString.pricing_unavailable.asText(),
+                    type = PlanState.ViewState.Error.Type.PRICING_UNAVAILABLE,
                 ),
             )
         }
 
         composeTestRule
-            .onAllNodesWithText("An error has occurred")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertExists()
+            .onNodeWithText("Pricing unavailable")
+            .assertIsDisplayed()
         composeTestRule
-            .onAllNodesWithText("Unable to retrieve pricing.")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertExists()
+            .onNodeWithText("Try again")
+            .assertIsDisplayed()
     }
 
     @Test
-    fun `get pricing error dialog try again click should send RetryPricingClick action`() {
+    fun `error content try again click for PRICING_UNAVAILABLE should send RetryPricingClick`() {
         mutableStateFlow.update {
             it.copy(
-                dialogState = PlanState.DialogState.GetPricingError(
-                    title = "An error has occurred".asText(),
-                    message = "Unable to retrieve pricing.".asText(),
+                viewState = PlanState.ViewState.Error(
+                    message = BitwardenString.pricing_unavailable.asText(),
+                    type = PlanState.ViewState.Error.Type.PRICING_UNAVAILABLE,
                 ),
             )
         }
         composeTestRule
-            .onAllNodesWithText("Try again")
-            .filterToOne(hasAnyAncestor(isDialog()))
+            .onNodeWithText("Try again")
             .performClick()
         verify { viewModel.trySendAction(PlanAction.RetryPricingClick) }
     }
 
     @Test
-    fun `get pricing error dialog close click should send ClosePricingErrorClick action`() {
+    fun `error content should render subscription message when type is SUBSCRIPTION`() {
         mutableStateFlow.update {
             it.copy(
-                dialogState = PlanState.DialogState.GetPricingError(
-                    title = "An error has occurred".asText(),
-                    message = "Unable to retrieve pricing.".asText(),
+                viewState = PlanState.ViewState.Error(
+                    message = BitwardenString.trouble_loading_subscription.asText(),
+                    type = PlanState.ViewState.Error.Type.SUBSCRIPTION,
                 ),
             )
         }
         composeTestRule
-            .onAllNodesWithText("Close")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .performClick()
-        verify {
-            viewModel.trySendAction(PlanAction.ClosePricingErrorClick)
-        }
+            .onNodeWithText(
+                "We couldn’t load your subscription details. Please try again.",
+            )
+            .assertIsDisplayed()
     }
 
-    // endregion GetPricingError dialog tests
+    @Test
+    fun `error content try again click for SUBSCRIPTION should send RetrySubscriptionClick`() {
+        mutableStateFlow.update {
+            it.copy(
+                viewState = PlanState.ViewState.Error(
+                    message = BitwardenString.trouble_loading_subscription.asText(),
+                    type = PlanState.ViewState.Error.Type.SUBSCRIPTION,
+                ),
+            )
+        }
+        composeTestRule
+            .onNodeWithText("Try again")
+            .performClick()
+        verify { viewModel.trySendAction(PlanAction.RetrySubscriptionClick) }
+    }
+
+    // endregion Loading and Error content
 
     // region Premium content rendering
 
@@ -471,7 +506,9 @@ class PlanScreenTest : BitwardenComposeTest() {
     fun `premium plan name should render`() {
         mutableStateFlow.update { it.copy(viewState = DEFAULT_PREMIUM_VIEW_STATE) }
         composeTestRule
-            .onNodeWithText("Premium")
+            .onAllNodesWithText("Premium")
+            .filterToOne(hasAnyAncestor(hasScrollAction()))
+            .performScrollTo()
             .assertIsDisplayed()
     }
 
@@ -1068,80 +1105,6 @@ class PlanScreenTest : BitwardenComposeTest() {
     // region Premium-flow dialogs
 
     @Test
-    fun `subscription error dialog should render when dialogState is SubscriptionError`() {
-        val title = "An error has occurred".asText()
-        val message = "Unable to load subscription.".asText()
-
-        composeTestRule
-            .onAllNodesWithText("An error has occurred")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertDoesNotExist()
-
-        mutableStateFlow.update {
-            it.copy(
-                viewState = PlanState.ViewState.Premium(),
-                dialogState = PlanState.DialogState.SubscriptionError(
-                    title = title,
-                    message = message,
-                ),
-            )
-        }
-
-        composeTestRule
-            .onAllNodesWithText("An error has occurred")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertExists()
-        composeTestRule
-            .onAllNodesWithText("Unable to load subscription.")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertExists()
-        composeTestRule
-            .onAllNodesWithText("Try again")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertExists()
-        composeTestRule
-            .onAllNodesWithText("Close")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .assertExists()
-    }
-
-    @Test
-    fun `subscription error dialog try again click should send RetrySubscriptionClick action`() {
-        mutableStateFlow.update {
-            it.copy(
-                viewState = PlanState.ViewState.Premium(),
-                dialogState = PlanState.DialogState.SubscriptionError(
-                    title = "An error has occurred".asText(),
-                    message = "Unable to load subscription.".asText(),
-                ),
-            )
-        }
-        composeTestRule
-            .onAllNodesWithText("Try again")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .performClick()
-        verify { viewModel.trySendAction(PlanAction.RetrySubscriptionClick) }
-    }
-
-    @Test
-    fun `subscription error dialog close click should send BackClick action`() {
-        mutableStateFlow.update {
-            it.copy(
-                viewState = PlanState.ViewState.Premium(),
-                dialogState = PlanState.DialogState.SubscriptionError(
-                    title = "An error has occurred".asText(),
-                    message = "Unable to load subscription.".asText(),
-                ),
-            )
-        }
-        composeTestRule
-            .onAllNodesWithText("Close")
-            .filterToOne(hasAnyAncestor(isDialog()))
-            .performClick()
-        verify { viewModel.trySendAction(PlanAction.BackClick) }
-    }
-
-    @Test
     fun `loading portal dialog should render when dialogState is LoadingPortal`() {
         composeTestRule
             .onAllNodesWithText("Loading portal…")
@@ -1294,7 +1257,7 @@ class PlanScreenTest : BitwardenComposeTest() {
     @Test
     fun `manage subscription info callout should render when self-hosted free`() {
         mutableStateFlow.update {
-            it.copy(viewState = PlanState.ViewState.Free.SelfHosted)
+            it.copy(viewState = PlanState.ViewState.Content.Free.SelfHosted)
         }
         composeTestRule
             .onNodeWithText(
@@ -1310,7 +1273,7 @@ class PlanScreenTest : BitwardenComposeTest() {
     @Test
     fun `premium features header should render when self-hosted free`() {
         mutableStateFlow.update {
-            it.copy(viewState = PlanState.ViewState.Free.SelfHosted)
+            it.copy(viewState = PlanState.ViewState.Content.Free.SelfHosted)
         }
         composeTestRule
             .onNodeWithText("Unlock more advanced features with a Premium plan.")
@@ -1320,7 +1283,7 @@ class PlanScreenTest : BitwardenComposeTest() {
     @Test
     fun `premium feature list items should render when self-hosted free`() {
         mutableStateFlow.update {
-            it.copy(viewState = PlanState.ViewState.Free.SelfHosted)
+            it.copy(viewState = PlanState.ViewState.Content.Free.SelfHosted)
         }
         composeTestRule
             .onNodeWithText("Built-in authenticator")
@@ -1371,16 +1334,18 @@ class PlanScreenTest : BitwardenComposeTest() {
 
 private val DEFAULT_FREE_STATE = PlanState(
     planMode = PlanMode.Modal,
-    viewState = PlanState.ViewState.Free.Cloud(
+    viewState = PlanState.ViewState.Content.Free.Cloud(
         rate = "$1.65",
         checkoutUrl = null,
         isAwaitingPremiumStatus = false,
         isPremiumUpgradePending = false,
     ),
     dialogState = null,
+    showsPremiumView = false,
+    isSelfHosted = false,
 )
 
-private val DEFAULT_PREMIUM_VIEW_STATE = PlanState.ViewState.Premium(
+private val DEFAULT_PREMIUM_VIEW_STATE = PlanState.ViewState.Content.Premium(
     status = PremiumSubscriptionStatus.ACTIVE,
     billingAmountText = BitwardenString.billing_rate_per_year.asText("$19.80"),
     storageCostText = "$24.00",

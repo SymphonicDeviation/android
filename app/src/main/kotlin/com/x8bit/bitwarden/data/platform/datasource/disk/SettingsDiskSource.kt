@@ -41,6 +41,17 @@ interface SettingsDiskSource : FlightRecorderDiskSource {
     var initialAutofillDialogShown: Boolean?
 
     /**
+     * Indicates if the accessibility disclaimer has been displayed to the user.
+     */
+    var hasShownAccessibilityDisclaimer: Boolean?
+
+    /**
+     * Emits up-to-date values indicating if the accessibility disclaimer has been displayed to
+     * the user.
+     */
+    val hasShownAccessibilityDisclaimerFlow: Flow<Boolean?>
+
+    /**
      * The currently persisted app theme (or `null` if not set).
      */
     var appTheme: AppTheme
@@ -345,6 +356,22 @@ interface SettingsDiskSource : FlightRecorderDiskSource {
      * Stores the given [isInlineAutofillEnabled] value for the given [userId].
      */
     fun storeInlineAutofillEnabled(userId: String, isInlineAutofillEnabled: Boolean?)
+
+    /**
+     * Gets the value determining if fill assist is enabled for the given [userId].
+     */
+    fun getFillAssistEnabled(userId: String): Boolean?
+
+    /**
+     * Emits updates that track [getFillAssistEnabled] for the given [userId]. This will replay
+     * the last known value, if any.
+     */
+    fun getFillAssistEnabledFlow(userId: String): Flow<Boolean?>
+
+    /**
+     * Stores the given [isFillAssistEnabled] value for the given [userId].
+     */
+    fun storeFillAssistEnabled(userId: String, isFillAssistEnabled: Boolean?)
 
     /**
      * Gets a list of blocked autofill URI's for the given [userId].

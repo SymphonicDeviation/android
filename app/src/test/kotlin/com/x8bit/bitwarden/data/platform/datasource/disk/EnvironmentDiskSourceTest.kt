@@ -63,7 +63,7 @@ class EnvironmentDiskSourceTest {
 
     @Test
     fun `getPreAuthEnvironmentUrlDataForEmail should pull from SharedPreferences`() {
-        val mockUrls = Environment.Us.environmentUrlData
+        val mockUrls = Environment.Prod.Us.environmentUrlData
         fakeSharedPreferences
             .edit {
                 putString(
@@ -81,7 +81,7 @@ class EnvironmentDiskSourceTest {
 
     @Test
     fun `storePreAuthEnvironmentUrlDataForEmail should update SharedPreferences`() {
-        val mockUrls = Environment.Us.environmentUrlData
+        val mockUrls = Environment.Prod.Us.environmentUrlData
         environmentDiskSource.storePreAuthEnvironmentUrlDataForEmail(
             userEmail = EMAIL,
             urls = mockUrls,
@@ -95,11 +95,26 @@ class EnvironmentDiskSourceTest {
             json.parseToJsonElement(requireNotNull(actual)),
         )
     }
+    @Test
+    fun `fillAssistRulesUrl should pull from and update SharedPreferences`() {
+        assertNull(environmentDiskSource.fillAssistRulesUrl)
+        assertNull(fakeSharedPreferences.getString(FILL_ASSIST_RULES_URL_KEY, null))
+
+        environmentDiskSource.fillAssistRulesUrl = "https://fill-assist.example.com/"
+        assertEquals(
+            "https://fill-assist.example.com/",
+            fakeSharedPreferences.getString(FILL_ASSIST_RULES_URL_KEY, null),
+        )
+
+        environmentDiskSource.fillAssistRulesUrl = null
+        assertNull(fakeSharedPreferences.getString(FILL_ASSIST_RULES_URL_KEY, null))
+    }
 }
 
 private const val EMAIL = "email@example.com"
 private const val EMAIL_VERIFICATION_URLS_KEY = "bwPreferencesStorage:emailVerificationUrls"
 private const val PRE_AUTH_URLS_KEY = "bwPreferencesStorage:preAuthEnvironmentUrls"
+private const val FILL_ASSIST_RULES_URL_KEY = "bwPreferencesStorage:fillAssistRulesUrl"
 
 private const val ENVIRONMENT_URL_DATA_JSON = """
     {

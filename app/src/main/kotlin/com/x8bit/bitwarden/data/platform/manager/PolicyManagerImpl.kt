@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
@@ -95,15 +96,15 @@ class PolicyManagerImpl(
             },
         featureFlagManager.getFeatureFlagFlow(key = FlagKey.PoliciesInAcceptedState),
     ) { policies, organizations, isEnabled ->
-        this
-            .filterPolicies(
-                type = type,
-                policies = policies,
-                organizations = organizations,
-                isPoliciesInAcceptedStateEnabled = isEnabled,
-            )
-            .orEmpty()
+        filterPolicies(
+            type = type,
+            policies = policies,
+            organizations = organizations,
+            isPoliciesInAcceptedStateEnabled = isEnabled,
+        )
     }
+        // We do not have any policies yet if it is null, so do not emit at all.
+        .filterNotNull()
 
     private fun filterPolicies(
         type: PolicyType,
@@ -132,7 +133,8 @@ class PolicyManagerImpl(
                     ?.filter {
                         @Suppress("MaxLineLength")
                         it.organizationUserPolicyContext.usePolicies &&
-                            it.organizationUserPolicyContext.status >= OrganizationUserStatusType.ACCEPTED &&
+                            (it.organizationUserPolicyContext.status == OrganizationUserStatusType.ACCEPTED ||
+                                it.organizationUserPolicyContext.status == OrganizationUserStatusType.CONFIRMED) &&
                             !it.isOrganizationExemptFromPolicies(policyType = type)
                     }
                     ?.map { it.organizationUserPolicyContext.id }
@@ -156,6 +158,7 @@ class PolicyManagerImpl(
                 this.organizationUserPolicyContext.role == OrganizationUserType.OWNER
             }
 
+            PolicyType.MASTER_PASSWORD,
             PolicyType.PASSWORD_GENERATOR,
             PolicyType.REMOVE_UNLOCK_WITH_PIN,
             PolicyType.RESTRICTED_ITEM_TYPES,

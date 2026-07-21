@@ -21,6 +21,7 @@ private const val APP_LANGUAGE_KEY = "appLocale"
 private const val APP_THEME_KEY = "theme"
 private const val PULL_TO_REFRESH_KEY = "syncOnRefresh"
 private const val INLINE_AUTOFILL_ENABLED_KEY = "inlineAutofillEnabled"
+private const val FILL_ASSIST_ENABLED_KEY = "fillAssistEnabled"
 private const val BLOCKED_AUTOFILL_URIS_KEY = "autofillBlacklistedUris"
 private const val VAULT_LAST_SYNC_TIME = "vaultLastSyncTime"
 private const val VAULT_TIMEOUT_ACTION_KEY = "vaultTimeoutAction"
@@ -35,6 +36,7 @@ private const val ACCOUNT_BIOMETRIC_INTEGRITY_VALID_KEY = "accountBiometricInteg
 private const val CRASH_LOGGING_ENABLED_KEY = "crashLoggingEnabled"
 private const val CLEAR_CLIPBOARD_INTERVAL_KEY = "clearClipboard"
 private const val INITIAL_AUTOFILL_DIALOG_SHOWN = "addSitePromptShown"
+private const val HAS_SHOWN_ACCESSIBILITY_DISCLAIMER_KEY = "hasShownAccessibilityDisclaimer"
 private const val HAS_USER_LOGGED_IN_OR_CREATED_AN_ACCOUNT_KEY = "hasUserLoggedInOrCreatedAccount"
 private const val SHOW_AUTOFILL_SETTING_BADGE = "showAutofillSettingBadge"
 private const val SHOW_BROWSER_AUTOFILL_SETTING_BADGE = "showBrowserAutofillSettingBadge"
@@ -85,6 +87,9 @@ class SettingsDiskSourceImpl(
     private val mutablePullToRefreshEnabledFlowMap =
         mutableMapOf<String, MutableSharedFlow<Boolean?>>()
 
+    private val mutableFillAssistEnabledFlowMap =
+        mutableMapOf<String, MutableSharedFlow<Boolean?>>()
+
     private val mutableShowBrowserAutofillSettingBadgeFlowMap =
         mutableMapOf<String, MutableSharedFlow<Boolean?>>()
 
@@ -128,6 +133,8 @@ class SettingsDiskSourceImpl(
 
     private val mutableIsDynamicColorsEnabledFlow = bufferedMutableSharedFlow<Boolean?>()
 
+    private val mutableHasShownAccessibilityDisclaimerFlow = bufferedMutableSharedFlow<Boolean?>()
+
     init {
         migrateScreenCaptureSetting()
     }
@@ -166,6 +173,17 @@ class SettingsDiskSourceImpl(
                 value = value,
             )
         }
+
+    override var hasShownAccessibilityDisclaimer: Boolean?
+        set(value) {
+            putBoolean(HAS_SHOWN_ACCESSIBILITY_DISCLAIMER_KEY, value)
+            mutableHasShownAccessibilityDisclaimerFlow.tryEmit(value)
+        }
+        get() = getBoolean(HAS_SHOWN_ACCESSIBILITY_DISCLAIMER_KEY)
+
+    override val hasShownAccessibilityDisclaimerFlow: Flow<Boolean?>
+        get() = mutableHasShownAccessibilityDisclaimerFlow
+            .onSubscription { emit(hasShownAccessibilityDisclaimer) }
 
     override var systemBiometricIntegritySource: String?
         get() = getString(key = SYSTEM_BIOMETRIC_INTEGRITY_SOURCE_KEY)
@@ -252,6 +270,7 @@ class SettingsDiskSourceImpl(
         storeAutofillSavePromptDisabled(userId = userId, isAutofillSavePromptDisabled = null)
         storePullToRefreshEnabled(userId = userId, isPullToRefreshEnabled = null)
         storeInlineAutofillEnabled(userId = userId, isInlineAutofillEnabled = null)
+        storeFillAssistEnabled(userId = userId, isFillAssistEnabled = null)
         storeBlockedAutofillUris(userId = userId, blockedAutofillUris = null)
         storeLastSyncTime(userId = userId, lastSyncTime = null)
         storeClearClipboardFrequencySeconds(userId = userId, frequency = null)
@@ -270,6 +289,7 @@ class SettingsDiskSourceImpl(
         // - Upgraded to Premium action card consumed
         // - Upgraded to Premium action card pending
         // - Premium upgrade pending
+        // - Has shown accessibility disclaimer dialog
     }
 
     override fun getIntroducingArchiveActionCardDismissed(userId: String): Boolean? =
@@ -528,6 +548,21 @@ class SettingsDiskSourceImpl(
         )
     }
 
+    override fun getFillAssistEnabled(userId: String): Boolean? =
+        getBoolean(key = FILL_ASSIST_ENABLED_KEY.appendIdentifier(userId))
+
+    override fun getFillAssistEnabledFlow(userId: String): Flow<Boolean?> =
+        getMutableFillAssistEnabledFlow(userId = userId)
+            .onSubscription { emit(getFillAssistEnabled(userId = userId)) }
+
+    override fun storeFillAssistEnabled(userId: String, isFillAssistEnabled: Boolean?) {
+        putBoolean(
+            key = FILL_ASSIST_ENABLED_KEY.appendIdentifier(userId),
+            value = isFillAssistEnabled,
+        )
+        getMutableFillAssistEnabledFlow(userId = userId).tryEmit(isFillAssistEnabled)
+    }
+
     override fun getBlockedAutofillUris(userId: String): List<String>? =
         getString(key = BLOCKED_AUTOFILL_URIS_KEY.appendIdentifier(userId))?.let {
             json.decodeFromStringOrNull(it)
@@ -769,6 +804,13 @@ class SettingsDiskSourceImpl(
         userId: String,
     ): MutableSharedFlow<Boolean?> =
         mutablePullToRefreshEnabledFlowMap.getOrPut(userId) {
+            bufferedMutableSharedFlow(replay = 1)
+        }
+
+    private fun getMutableFillAssistEnabledFlow(
+        userId: String,
+    ): MutableSharedFlow<Boolean?> =
+        mutableFillAssistEnabledFlowMap.getOrPut(userId) {
             bufferedMutableSharedFlow(replay = 1)
         }
 

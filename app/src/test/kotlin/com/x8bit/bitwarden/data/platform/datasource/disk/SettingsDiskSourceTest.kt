@@ -474,6 +474,42 @@ class SettingsDiskSourceTest {
     }
 
     @Test
+    fun `hasShownAccessibilityDisclaimer should pull from and update SharedPreferences`() {
+        val hasShownAccessibilityDisclaimerKey =
+            "bwPreferencesStorage:hasShownAccessibilityDisclaimer"
+        val expected = true
+
+        assertNull(settingsDiskSource.hasShownAccessibilityDisclaimer)
+
+        fakeSharedPreferences.edit {
+            putBoolean(hasShownAccessibilityDisclaimerKey, expected)
+        }
+
+        assertEquals(
+            expected,
+            settingsDiskSource.hasShownAccessibilityDisclaimer,
+        )
+
+        settingsDiskSource.hasShownAccessibilityDisclaimer = false
+        assertFalse(fakeSharedPreferences.getBoolean(hasShownAccessibilityDisclaimerKey, true))
+    }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `hasShownAccessibilityDisclaimerFlow should react to changes in hasShownAccessibilityDisclaimer`() =
+        runTest {
+            settingsDiskSource.hasShownAccessibilityDisclaimerFlow.test {
+                // The initial values of the Flow and the property are in sync
+                assertNull(settingsDiskSource.hasShownAccessibilityDisclaimer)
+                assertNull(awaitItem())
+                settingsDiskSource.hasShownAccessibilityDisclaimer = true
+                assertEquals(true, awaitItem())
+                settingsDiskSource.hasShownAccessibilityDisclaimer = false
+                assertEquals(false, awaitItem())
+            }
+        }
+
+    @Test
     fun `getVaultTimeoutInMinutes when values are present should pull from SharedPreferences`() {
         val vaultTimeoutBaseKey = "bwPreferencesStorage:vaultTimeout"
         val mockUserId = "mockUserId"
@@ -809,6 +845,30 @@ class SettingsDiskSourceTest {
                 settingsDiskSource.storePullToRefreshEnabled(
                     userId = mockUserId,
                     isPullToRefreshEnabled = true,
+                )
+                assertEquals(true, awaitItem())
+            }
+        }
+
+    @Test
+    fun `getFillAssistEnabled when values are absent should return null`() {
+        val mockUserId = "mockUserId"
+        assertNull(settingsDiskSource.getFillAssistEnabled(userId = mockUserId))
+    }
+
+    @Test
+    fun `getFillAssistEnabledFlow should react to changes in getFillAssistEnabled`() =
+        runTest {
+            val mockUserId = "mockUserId"
+            settingsDiskSource.getFillAssistEnabledFlow(userId = mockUserId).test {
+                // The initial values of the Flow and the property are in sync
+                assertNull(settingsDiskSource.getFillAssistEnabled(userId = mockUserId))
+                assertNull(awaitItem())
+
+                // Updating the disk source updates shared preferences
+                settingsDiskSource.storeFillAssistEnabled(
+                    userId = mockUserId,
+                    isFillAssistEnabled = true,
                 )
                 assertEquals(true, awaitItem())
             }

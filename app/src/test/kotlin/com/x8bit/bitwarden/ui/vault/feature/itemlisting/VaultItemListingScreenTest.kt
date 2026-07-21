@@ -372,7 +372,7 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
         val activeAccountSummary = ACTIVE_ACCOUNT_SUMMARY.copy(isLoggedIn = false)
         mutableStateFlow.update {
             it.copy(
-                accountSummaries = listOf(activeAccountSummary),
+                accountSummaries = persistentListOf(activeAccountSummary),
                 autofillSelectionData = AUTOFILL_SELECTION_DATA,
             )
         }
@@ -391,7 +391,7 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
         val activeAccountSummary = ACTIVE_ACCOUNT_SUMMARY.copy(isLoggedIn = false)
         mutableStateFlow.update {
             it.copy(
-                accountSummaries = listOf(activeAccountSummary),
+                accountSummaries = persistentListOf(activeAccountSummary),
                 autofillSelectionData = AUTOFILL_SELECTION_DATA,
             )
         }
@@ -2579,7 +2579,7 @@ class VaultItemListingScreenTest : BitwardenComposeTest() {
         }
 
         composeTestRule
-            .onNodeWithText(text = "Archive unavailable")
+            .onNodeWithText(text = "Premium subscription required")
             .assert(hasAnyAncestor(isDialog()))
             .assertIsDisplayed()
         composeTestRule
@@ -2651,7 +2651,7 @@ private val LOCKED_ACCOUNT_SUMMARY = AccountSummary(
     isVaultUnlocked = false,
 )
 
-private val ACCOUNT_SUMMARIES = listOf(
+private val ACCOUNT_SUMMARIES = persistentListOf(
     ACTIVE_ACCOUNT_SUMMARY,
     LOCKED_ACCOUNT_SUMMARY,
 )
@@ -2669,9 +2669,9 @@ private val DEFAULT_STATE = VaultItemListingState(
     accountSummaries = ACCOUNT_SUMMARIES,
     viewState = VaultItemListingState.ViewState.Loading,
     vaultFilterType = VaultFilterType.AllVaults,
-    baseWebSendUrl = Environment.Us.environmentUrlData.baseWebSendUrl,
+    baseWebSendUrl = Environment.Prod.Us.baseWebSendUrl,
     isIconLoadingDisabled = false,
-    baseIconUrl = Environment.Us.environmentUrlData.baseIconUrl,
+    baseIconUrl = Environment.Prod.Us.baseIconUrl,
     isPullToRefreshSettingEnabled = false,
     dialogState = null,
     policyDisablesSend = false,

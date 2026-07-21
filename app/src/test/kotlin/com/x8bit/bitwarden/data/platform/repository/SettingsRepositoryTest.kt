@@ -4,6 +4,7 @@ import android.view.autofill.AutofillManager
 import app.cash.turbine.test
 import com.bitwarden.authenticatorbridge.util.generateSecretKey
 import com.bitwarden.core.EnrollPinResponse
+import com.bitwarden.core.data.manager.BuildInfoManager
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.core.data.util.asFailure
@@ -75,6 +76,9 @@ class SettingsRepositoryTest {
         } returns mutableActivePolicyFlow
     }
     private val flightRecorderManager = mockk<FlightRecorderManager>()
+    private val buildInfoManager: BuildInfoManager = mockk {
+        every { isFdroid } returns false
+    }
 
     private val settingsRepository = SettingsRepositoryImpl(
         autofillManager = autofillManager,
@@ -86,6 +90,7 @@ class SettingsRepositoryTest {
         dispatcherManager = FakeDispatcherManager(),
         policyManager = policyManager,
         flightRecorderManager = flightRecorderManager,
+        buildInfoManager = buildInfoManager,
     )
 
     @BeforeEach
@@ -679,6 +684,36 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `isFillAssistEnabled should pull from and update SettingsDiskSource`() {
+        fakeAuthDiskSource.userState = MOCK_USER_STATE
+        assertFalse(settingsRepository.isFillAssistEnabled)
+
+        // Updates to the disk source change the repository value.
+        fakeSettingsDiskSource.storeFillAssistEnabled(
+            userId = USER_ID,
+            isFillAssistEnabled = true,
+        )
+        assertTrue(settingsRepository.isFillAssistEnabled)
+
+        // Updates to the repository change the disk source value
+        settingsRepository.isFillAssistEnabled = false
+        assertFalse(fakeSettingsDiskSource.getFillAssistEnabled(userId = USER_ID)!!)
+    }
+
+    @Test
+    fun `isFillAssistEnabledFlow should react to changes in SettingsDiskSource`() = runTest {
+        fakeAuthDiskSource.userState = MOCK_USER_STATE
+        settingsRepository.isFillAssistEnabledFlow.test {
+            assertFalse(awaitItem())
+            fakeSettingsDiskSource.storeFillAssistEnabled(
+                userId = USER_ID,
+                isFillAssistEnabled = true,
+            )
+            assertTrue(awaitItem())
+        }
+    }
+
+    @Test
     fun `isAutoCopyTotpDisabled should pull from and update SettingsDiskSource`() {
         fakeAuthDiskSource.userState = MOCK_USER_STATE
         assertFalse(settingsRepository.isAutoCopyTotpDisabled)
@@ -1118,6 +1153,48 @@ class SettingsRepositoryTest {
                 assertEquals(false, fakeSettingsDiskSource.screenCaptureAllowed)
             }
         }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `hasShownAccessibilityDisclaimerFlow should emit changes from SettingsDiskSource when fdroid is false`() =
+        runTest {
+            fakeSettingsDiskSource.hasShownAccessibilityDisclaimer = null
+            settingsRepository.hasShownAccessibilityDisclaimerFlow.test {
+                assertFalse(awaitItem())
+
+                fakeSettingsDiskSource.hasShownAccessibilityDisclaimer = true
+                assertTrue(awaitItem())
+
+                fakeSettingsDiskSource.hasShownAccessibilityDisclaimer = false
+                assertFalse(awaitItem())
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `hasShownAccessibilityDisclaimerFlow should emit changes from SettingsDiskSource when fdroid is true`() =
+        runTest {
+            every { buildInfoManager.isFdroid } returns true
+            fakeSettingsDiskSource.hasShownAccessibilityDisclaimer = null
+            settingsRepository.hasShownAccessibilityDisclaimerFlow.test {
+                assertTrue(awaitItem())
+
+                fakeSettingsDiskSource.hasShownAccessibilityDisclaimer = true
+                expectNoEvents()
+
+                fakeSettingsDiskSource.hasShownAccessibilityDisclaimer = false
+                expectNoEvents()
+            }
+        }
+
+    @Test
+    fun `accessibilityDisclaimerHasBeenShown should update SettingsDiskSource`() {
+        assertNull(fakeSettingsDiskSource.hasShownAccessibilityDisclaimer)
+
+        settingsRepository.accessibilityDisclaimerHasBeenShown()
+
+        assertTrue(fakeSettingsDiskSource.hasShownAccessibilityDisclaimer == true)
+    }
 
     @Test
     fun `clearClipboardFrequency should pull from and update SettingsDiskSource`() = runTest {

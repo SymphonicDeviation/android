@@ -14,6 +14,24 @@ plugins {
     alias(libs.plugins.sonarqube) apply true
 }
 
+buildscript {
+    dependencyLocking {
+        lockAllConfigurations()
+        lockMode.set(LockMode.STRICT)
+    }
+}
+
+dependencyLocking {
+    lockAllConfigurations()
+    lockMode.set(LockMode.STRICT)
+}
+
+configurations.configureEach {
+    resolutionStrategy {
+        force(libs.kotlin.metadata)
+    }
+}
+
 dependencies {
     detektPlugins(libs.detekt.detekt.formatting)
     detektPlugins(libs.detekt.detekt.rules)

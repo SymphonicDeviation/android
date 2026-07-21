@@ -60,7 +60,7 @@ class TwoFactorLoginViewModelTest : BaseViewModelTest() {
         } returns LoginResult.Success
     }
     private val environmentRepository: EnvironmentRepository = mockk {
-        every { environment } returns Environment.Us
+        every { environment } returns Environment.Prod.Us
     }
     private val resourceManager: ResourceManager = mockk()
 
@@ -430,9 +430,9 @@ class TwoFactorLoginViewModelTest : BaseViewModelTest() {
                 assertEquals(
                     TwoFactorLoginEvent.NavigateToDuo(
                         uri = mockkUri,
-                        authTabData = AuthTabData.CustomScheme(
-                            callbackUrl = "bitwarden://duo-callback",
-                            callbackScheme = "bitwarden",
+                        authTabData = AuthTabData.HttpsScheme(
+                            host = "bitwarden.com",
+                            path = "duo-callback",
                         ),
                     ),
                     awaitItem(),
@@ -503,8 +503,8 @@ class TwoFactorLoginViewModelTest : BaseViewModelTest() {
             every { authRepository.twoFactorResponse } returns response
             every {
                 generateUriForWebAuth(
-                    baseUrl = Environment.Us.environmentUrlData.baseWebVaultUrlOrDefault,
-                    authTabData = Environment.Us.environmentUrlData.webAuthnAuthTabData,
+                    baseUrl = Environment.Prod.Us.baseWebVaultUrlOrDefault,
+                    authTabData = Environment.Prod.Us.webAuthnAuthTabData,
                     data = data,
                     headerText = headerText,
                     buttonText = buttonText,
@@ -519,9 +519,9 @@ class TwoFactorLoginViewModelTest : BaseViewModelTest() {
                 assertEquals(
                     TwoFactorLoginEvent.NavigateToWebAuth(
                         uri = mockkUri,
-                        authTabData = AuthTabData.CustomScheme(
-                            callbackUrl = "bitwarden://webauthn-callback",
-                            callbackScheme = "bitwarden",
+                        authTabData = AuthTabData.HttpsScheme(
+                            host = "bitwarden.com",
+                            path = "webauthn-callback",
                         ),
                     ),
                     awaitItem(),
@@ -569,7 +569,7 @@ class TwoFactorLoginViewModelTest : BaseViewModelTest() {
                 ),
                 orgIdentifier = DEFAULT_ORG_IDENTIFIER,
             )
-        } returns LoginResult.Error(errorMessage = null, error = error)
+        } returns LoginResult.Error(error = error)
 
         val viewModel = createViewModel()
         viewModel.stateFlow.test {

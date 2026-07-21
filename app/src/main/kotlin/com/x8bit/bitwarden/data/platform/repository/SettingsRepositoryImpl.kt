@@ -2,6 +2,7 @@ package com.x8bit.bitwarden.data.platform.repository
 
 import android.view.autofill.AutofillManager
 import com.bitwarden.authenticatorbridge.util.generateSecretKey
+import com.bitwarden.core.data.manager.BuildInfoManager
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.data.manager.flightrecorder.FlightRecorderManager
 import com.bitwarden.policies.PolicyType
@@ -46,11 +47,12 @@ private val DEFAULT_IS_SCREEN_CAPTURE_ALLOWED = BuildConfig.DEBUG
 /**
  * Primary implementation of [SettingsRepository].
  */
-@Suppress("TooManyFunctions", "LongParameterList")
+@Suppress("LargeClass", "LongParameterList", "TooManyFunctions")
 class SettingsRepositoryImpl(
     private val autofillManager: AutofillManager,
     private val autofillEnabledManager: AutofillEnabledManager,
     private val authDiskSource: AuthDiskSource,
+    private val buildInfoManager: BuildInfoManager,
     private val settingsDiskSource: SettingsDiskSource,
     private val vaultSdkSource: VaultSdkSource,
     flightRecorderManager: FlightRecorderManager,
@@ -314,6 +316,27 @@ class SettingsRepositoryImpl(
             )
         }
 
+    override var isFillAssistEnabled: Boolean
+        get() = activeUserId
+            ?.let { settingsDiskSource.getFillAssistEnabled(userId = it) }
+            ?: false
+        set(value) {
+            val userId = activeUserId ?: return
+            settingsDiskSource.storeFillAssistEnabled(
+                userId = userId,
+                isFillAssistEnabled = value,
+            )
+        }
+
+    override val isFillAssistEnabledFlow: Flow<Boolean>
+        get() = activeUserId
+            ?.let { userId ->
+                settingsDiskSource
+                    .getFillAssistEnabledFlow(userId = userId)
+                    .map { it ?: false }
+            }
+            ?: flowOf(false)
+
     override var isAutoCopyTotpDisabled: Boolean
         get() = activeUserId
             ?.let { settingsDiskSource.getAutoCopyTotpDisabled(userId = it) }
@@ -372,11 +395,26 @@ class SettingsRepositoryImpl(
                 initialValue = isScreenCaptureAllowed,
             )
 
+    override val hasShownAccessibilityDisclaimerFlow: StateFlow<Boolean>
+        get() = settingsDiskSource
+            .hasShownAccessibilityDisclaimerFlow
+            .map { buildInfoManager.isFdroid || it ?: false }
+            .stateIn(
+                scope = unconfinedScope,
+                started = SharingStarted.Lazily,
+                initialValue = buildInfoManager.isFdroid ||
+                    settingsDiskSource.hasShownAccessibilityDisclaimer ?: false,
+            )
+
     init {
         policyManager
             .getActivePoliciesFlow(type = PolicyType.MAXIMUM_VAULT_TIMEOUT)
             .onEach { updateVaultUnlockSettingsIfNecessary(it) }
             .launchIn(unconfinedScope)
+    }
+
+    override fun accessibilityDisclaimerHasBeenShown() {
+        settingsDiskSource.hasShownAccessibilityDisclaimer = true
     }
 
     override fun disableAutofill() {

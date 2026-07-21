@@ -2,8 +2,12 @@ package com.x8bit.bitwarden.ui.auth.feature.landing
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
+import com.bitwarden.data.datasource.disk.model.ServerConfig
+import com.bitwarden.data.repository.ServerConfigRepository
 import com.bitwarden.data.repository.model.Environment
+import com.bitwarden.network.model.ConfigResponseJson
 import com.bitwarden.ui.platform.base.BaseViewModelTest
 import com.bitwarden.ui.platform.components.account.model.AccountSummary
 import com.bitwarden.ui.platform.components.snackbar.model.BitwardenSnackbarData
@@ -15,6 +19,7 @@ import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.auth.repository.model.VaultUnlockType
+import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.model.FirstTimeState
 import com.x8bit.bitwarden.data.platform.repository.util.FakeEnvironmentRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
@@ -26,6 +31,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -41,11 +47,22 @@ class LandingViewModelTest : BaseViewModelTest() {
         every { lockVault(any(), any()) } just runs
     }
     private val fakeEnvironmentRepository = FakeEnvironmentRepository()
+    private val mutableServerConfigFlow = MutableStateFlow<ServerConfig?>(null)
+    private val serverConfigRepository: ServerConfigRepository = mockk {
+        every { serverConfigStateFlow } returns mutableServerConfigFlow
+    }
     private val mutableSnackbarSharedFlow = bufferedMutableSharedFlow<BitwardenSnackbarData>()
     private val snackbarRelayManager = mockk<SnackbarRelayManager<SnackbarRelay>> {
         every {
             getSnackbarDataFlow(SnackbarRelay.ENVIRONMENT_SAVED)
         } returns mutableSnackbarSharedFlow
+    }
+    private val mutableFedRampFlagStateFlow = MutableStateFlow(true)
+    private val featureFlagManager: FeatureFlagManager = mockk {
+        every { getFeatureFlagFlow(key = FlagKey.FedRamp) } returns mutableFedRampFlagStateFlow
+        every {
+            getFeatureFlag(key = FlagKey.FedRamp)
+        } answers { mutableFedRampFlagStateFlow.value }
     }
 
     @Test
@@ -82,7 +99,7 @@ class LandingViewModelTest : BaseViewModelTest() {
                     name = "name",
                     email = "email",
                     avatarColorHex = "avatarColorHex",
-                    environment = Environment.Us,
+                    environment = Environment.Prod.Us,
                     isPremium = true,
                     isPremiumFromSelf = true,
                     isLoggedIn = true,
@@ -121,6 +138,45 @@ class LandingViewModelTest : BaseViewModelTest() {
         val viewModel = createViewModel(savedStateHandle = handle)
         viewModel.stateFlow.test {
             assertEquals(expectedState, awaitItem())
+        }
+    }
+
+    @Test
+    fun `initial state should be correct when user registration is disabled`() = runTest {
+        mutableServerConfigFlow.value = createServerConfig(disableUserRegistration = true)
+        val viewModel = createViewModel()
+        viewModel.stateFlow.test {
+            assertEquals(DEFAULT_STATE.copy(disableCreateAccount = true), awaitItem())
+        }
+    }
+
+    @Test
+    fun `server config changes should update state`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.stateFlow.test {
+            assertEquals(DEFAULT_STATE, awaitItem())
+            mutableServerConfigFlow.value = createServerConfig(disableUserRegistration = true)
+            assertEquals(DEFAULT_STATE.copy(disableCreateAccount = true), awaitItem())
+            mutableServerConfigFlow.value = createServerConfig(disableUserRegistration = false)
+            assertEquals(DEFAULT_STATE.copy(disableCreateAccount = false), awaitItem())
+            mutableServerConfigFlow.value = createServerConfig(disableUserRegistration = true)
+            assertEquals(DEFAULT_STATE.copy(disableCreateAccount = true), awaitItem())
+            mutableServerConfigFlow.value = null
+            assertEquals(DEFAULT_STATE.copy(disableCreateAccount = false), awaitItem())
+        }
+    }
+
+    @Test
+    fun `FedRAMP flag changes should update state`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.stateFlow.test {
+            assertEquals(DEFAULT_STATE, awaitItem())
+            mutableFedRampFlagStateFlow.value = false
+            assertEquals(DEFAULT_STATE.copy(isFedRampEnabled = false), awaitItem())
+            mutableFedRampFlagStateFlow.value = true
+            assertEquals(DEFAULT_STATE.copy(isFedRampEnabled = true), awaitItem())
         }
     }
 
@@ -237,7 +293,7 @@ class LandingViewModelTest : BaseViewModelTest() {
             name = "name",
             email = rememberedEmail,
             avatarColorHex = "avatarColorHex",
-            environment = Environment.Us,
+            environment = Environment.Prod.Us,
             isPremium = true,
             isPremiumFromSelf = true,
             isLoggedIn = true,
@@ -297,7 +353,7 @@ class LandingViewModelTest : BaseViewModelTest() {
                 name = "name",
                 email = rememberedEmail,
                 avatarColorHex = "avatarColorHex",
-                environment = Environment.Us,
+                environment = Environment.Prod.Us,
                 isPremium = true,
                 isPremiumFromSelf = true,
                 isLoggedIn = true,
@@ -335,11 +391,13 @@ class LandingViewModelTest : BaseViewModelTest() {
             )
 
             viewModel.eventFlow.test {
-                viewModel.trySendAction(LandingAction.EnvironmentTypeSelect(Environment.Eu.type))
+                viewModel.trySendAction(
+                    LandingAction.EnvironmentTypeSelect(Environment.Prod.Eu.type),
+                )
                 assertEquals(
                     initialState.copy(
-                        selectedEnvironmentLabel = Environment.Eu.label,
-                        selectedEnvironmentType = Environment.Eu.type,
+                        selectedEnvironmentLabel = Environment.Prod.Eu.label,
+                        selectedEnvironmentType = Environment.Prod.Eu.type,
                     ),
                     viewModel.stateFlow.value,
                 )
@@ -361,7 +419,7 @@ class LandingViewModelTest : BaseViewModelTest() {
                 name = "name",
                 email = rememberedEmail,
                 avatarColorHex = "avatarColorHex",
-                environment = Environment.Us,
+                environment = Environment.Prod.Us,
                 isPremium = true,
                 isPremiumFromSelf = true,
                 isLoggedIn = false,
@@ -496,7 +554,7 @@ class LandingViewModelTest : BaseViewModelTest() {
             assertEquals(
                 DEFAULT_STATE.copy(
                     selectedEnvironmentType = Environment.Type.EU,
-                    selectedEnvironmentLabel = Environment.Eu.label,
+                    selectedEnvironmentLabel = Environment.Prod.Eu.label,
                 ),
                 awaitItem(),
             )
@@ -526,7 +584,7 @@ class LandingViewModelTest : BaseViewModelTest() {
             name = null,
             email = expectedEmail,
             avatarColorHex = "lorem",
-            environment = Environment.Us,
+            environment = Environment.Prod.Us,
             isPremium = false,
             isPremiumFromSelf = false,
             isLoggedIn = false,
@@ -565,7 +623,7 @@ class LandingViewModelTest : BaseViewModelTest() {
             name = null,
             email = expectedEmail,
             avatarColorHex = "lorem",
-            environment = Environment.Us,
+            environment = Environment.Prod.Us,
             isPremium = false,
             isPremiumFromSelf = false,
             isLoggedIn = false,
@@ -622,7 +680,9 @@ class LandingViewModelTest : BaseViewModelTest() {
         },
         vaultRepository = vaultRepository,
         environmentRepository = fakeEnvironmentRepository,
+        serverConfigRepository = serverConfigRepository,
         snackbarRelayManager = snackbarRelayManager,
+        featureFlagManager = featureFlagManager,
         savedStateHandle = savedStateHandle,
     )
 
@@ -634,7 +694,27 @@ private val DEFAULT_STATE = LandingState(
     isContinueButtonEnabled = false,
     isRememberEmailEnabled = false,
     selectedEnvironmentType = Environment.Type.US,
-    selectedEnvironmentLabel = Environment.Us.label,
+    selectedEnvironmentLabel = Environment.Prod.Us.label,
     dialog = null,
-    accountSummaries = emptyList(),
+    accountSummaries = persistentListOf(),
+    isFedRampEnabled = true,
+    disableCreateAccount = false,
+)
+
+private fun createServerConfig(
+    disableUserRegistration: Boolean,
+): ServerConfig = ServerConfig(
+    lastSync = 0L,
+    serverData = ConfigResponseJson(
+        type = null,
+        version = null,
+        gitHash = null,
+        server = null,
+        environment = null,
+        featureStates = null,
+        communication = null,
+        settings = ConfigResponseJson.SettingJson(
+            disableUserRegistration = disableUserRegistration,
+        ),
+    ),
 )

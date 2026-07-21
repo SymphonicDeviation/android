@@ -62,6 +62,7 @@ class ServerCommunicationConfigRepositoryTest {
                     identityUrl = null,
                     notificationsUrl = null,
                     ssoUrl = null,
+                    fillAssistRulesUrl = null,
                 ),
                 featureStates = null,
                 communication = ConfigResponseJson.CommunicationJson(
@@ -72,6 +73,7 @@ class ServerCommunicationConfigRepositoryTest {
                         cookieDomain = cookieDomain,
                     ),
                 ),
+                settings = null,
             ),
         )
         val cookieData = CookieConfigurationData(
@@ -125,6 +127,7 @@ class ServerCommunicationConfigRepositoryTest {
                         cookieDomain = null,
                     ),
                 ),
+                settings = null,
             ),
         )
 

@@ -4,6 +4,7 @@ import com.bitwarden.data.repository.model.Environment
 import com.x8bit.bitwarden.data.platform.datasource.disk.FakeEnvironmentDiskSource
 import com.x8bit.bitwarden.data.platform.provider.BaseUrlsProviderImpl
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class BaseUrlsProviderTest {
@@ -15,7 +16,7 @@ class BaseUrlsProviderTest {
 
     @Test
     fun `getBaseApiUrl should return correct api URL when preAuthEnvironmentUrlData is set`() {
-        fakeEnvironmentDiskSource.preAuthEnvironmentUrlData = Environment.Eu.environmentUrlData
+        fakeEnvironmentDiskSource.preAuthEnvironmentUrlData = Environment.Prod.Eu.environmentUrlData
         assertEquals(
             "https://api.bitwarden.eu",
             baseUrlsManager.getBaseApiUrl(),
@@ -33,7 +34,7 @@ class BaseUrlsProviderTest {
 
     @Test
     fun `getBaseIdentityUrl should return correct api URL when preAuthEnvironmentUrlData is set`() {
-        fakeEnvironmentDiskSource.preAuthEnvironmentUrlData = Environment.Eu.environmentUrlData
+        fakeEnvironmentDiskSource.preAuthEnvironmentUrlData = Environment.Prod.Eu.environmentUrlData
         assertEquals(
             "https://identity.bitwarden.eu",
             baseUrlsManager.getBaseIdentityUrl(),
@@ -51,7 +52,7 @@ class BaseUrlsProviderTest {
 
     @Test
     fun `getBaseEventsUrl should return correct api URL when preAuthEnvironmentUrlData is set`() {
-        fakeEnvironmentDiskSource.preAuthEnvironmentUrlData = Environment.Eu.environmentUrlData
+        fakeEnvironmentDiskSource.preAuthEnvironmentUrlData = Environment.Prod.Eu.environmentUrlData
         assertEquals(
             "https://events.bitwarden.eu",
             baseUrlsManager.getBaseEventsUrl(),
@@ -65,5 +66,17 @@ class BaseUrlsProviderTest {
             "https://events.bitwarden.com",
             baseUrlsManager.getBaseEventsUrl(),
         )
+    }
+
+    @Test
+    fun `getBaseFillAssistUrl should return url from disk source when present`() {
+        fakeEnvironmentDiskSource.fillAssistRulesUrl = "https://example.com/"
+        assertEquals("https://example.com/", baseUrlsManager.getBaseFillAssistUrl())
+    }
+
+    @Test
+    fun `getBaseFillAssistUrl should return null when not set`() {
+        fakeEnvironmentDiskSource.fillAssistRulesUrl = null
+        assertNull(baseUrlsManager.getBaseFillAssistUrl())
     }
 }

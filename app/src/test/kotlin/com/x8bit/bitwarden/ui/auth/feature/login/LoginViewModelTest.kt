@@ -27,6 +27,7 @@ import io.mockk.mockkStatic
 import io.mockk.runs
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
@@ -119,7 +120,7 @@ class LoginViewModelTest : BaseViewModelTest() {
                     name = "name",
                     email = "email",
                     avatarColorHex = "avatarColorHex",
-                    environment = Environment.Us,
+                    environment = Environment.Prod.Us,
                     isPremium = true,
                     isPremiumFromSelf = true,
                     isLoggedIn = true,
@@ -719,9 +720,9 @@ class LoginViewModelTest : BaseViewModelTest() {
             emailAddress = EMAIL,
             passwordInput = "",
             isLoginButtonEnabled = false,
-            environmentLabel = Environment.Us.label,
+            environmentLabel = Environment.Prod.Us.label,
             dialogState = null,
-            accountSummaries = emptyList(),
+            accountSummaries = persistentListOf(),
             shouldShowLoginWithDevice = false,
         )
     }

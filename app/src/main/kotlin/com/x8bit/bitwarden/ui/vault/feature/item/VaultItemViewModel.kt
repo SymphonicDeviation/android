@@ -92,7 +92,7 @@ class VaultItemViewModel @Inject constructor(
             cipherType = args.cipherType,
             viewState = VaultItemState.ViewState.Loading,
             dialog = null,
-            baseIconUrl = environmentRepository.environment.environmentUrlData.baseIconUrl,
+            baseIconUrl = environmentRepository.environment.baseIconUrl,
             isIconLoadingDisabled = settingsRepository.isIconLoadingDisabled,
             hasPremium = authRepository.userStateFlow.value?.activeAccount?.isPremium == true,
         )
@@ -303,6 +303,7 @@ class VaultItemViewModel @Inject constructor(
             is VaultItemAction.Common.PasswordHistoryClick -> handlePasswordHistoryClick()
             VaultItemAction.Common.ArchiveClick -> handleArchiveClick()
             VaultItemAction.Common.UnarchiveClick -> handleUnarchiveClick()
+            VaultItemAction.Common.PremiumRequiredClick -> handlePremiumRequiredClick()
             VaultItemAction.Common.UpgradeToPremiumClick -> handleUpgradeToPremiumClick()
         }
     }
@@ -690,7 +691,11 @@ class VaultItemViewModel @Inject constructor(
     private fun handleArchiveClick() {
         if (!state.hasPremium) {
             mutableStateFlow.update {
-                it.copy(dialog = VaultItemState.DialogState.ArchiveRequiresPremium)
+                it.copy(
+                    dialog = VaultItemState.DialogState.RequiresPremium(
+                        message = BitwardenString.archiving_items_is_a_premium_feature.asText(),
+                    ),
+                )
             }
             return
         }
@@ -741,15 +746,22 @@ class VaultItemViewModel @Inject constructor(
         }
     }
 
+    private fun handlePremiumRequiredClick() {
+        mutableStateFlow.update {
+            it.copy(
+                dialog = VaultItemState.DialogState.RequiresPremium(
+                    message = BitwardenString.totp_is_a_premium_feature.asText(),
+                ),
+            )
+        }
+    }
+
     private fun handleUpgradeToPremiumClick() {
         updateDialogState(dialog = null)
         if (premiumStateManager.isInAppUpgradeAvailable()) {
             sendEvent(VaultItemEvent.NavigateToPlanModal)
         } else {
-            val baseUrl = environmentRepository
-                .environment
-                .environmentUrlData
-                .baseWebVaultUrlOrDefault
+            val baseUrl = environmentRepository.environment.baseWebVaultUrlOrDefault
             val uri = "$baseUrl/#/settings/subscription/premium?callToAction=upgradeToPremium"
             sendEvent(VaultItemEvent.NavigateToUri(uri = uri))
         }
@@ -1480,7 +1492,7 @@ class VaultItemViewModel @Inject constructor(
             canRestore = this.data?.canRestore == true,
             canAssignToCollections = this.data?.canAssociateToCollections == true,
             canEdit = this.data?.canEdit == true,
-            baseIconUrl = environmentRepository.environment.environmentUrlData.baseIconUrl,
+            baseIconUrl = environmentRepository.environment.baseIconUrl,
             isIconLoadingDisabled = settingsRepository.isIconLoadingDisabled,
             relatedLocations = this.data?.relatedLocations.orEmpty().toImmutableList(),
             hasOrganizations = this.data?.hasOrganizations == true,
@@ -2335,10 +2347,13 @@ data class VaultItemState(
     sealed class DialogState : Parcelable {
 
         /**
-         * Displays a dialog to the user indicating that archiving requires a Premium account.
+         * Displays a dialog to the user indicating that the feature they are interacting with
+         * requires a Premium account.
          */
         @Parcelize
-        data object ArchiveRequiresPremium : DialogState()
+        data class RequiresPremium(
+            val message: Text,
+        ) : DialogState()
 
         /**
          * Displays a generic dialog to the user.
@@ -2499,6 +2514,11 @@ sealed class VaultItemAction {
          * The user has clicked the unarchive button.
          */
         data object UnarchiveClick : Common()
+
+        /**
+         * The user has clicked the Premium subscription required button.
+         */
+        data object PremiumRequiredClick : Common()
 
         /**
          * The user has clicked the upgrade to Premium button.

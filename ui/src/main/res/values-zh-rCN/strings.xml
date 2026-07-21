@@ -78,6 +78,7 @@
     <string name="bitwarden_autofill_service">Bitwarden 自动填充服务</string>
     <string name="change_master_password">更改主密码</string>
     <string name="close">关闭</string>
+    <string name="close_app">关闭 App</string>
     <string name="continue_text">继续</string>
     <string name="create_account">创建账户</string>
     <string name="create_an_account">创建账户</string>
@@ -199,7 +200,6 @@
     <string name="copy_totp_automatically">自动复制 TOTP</string>
     <string name="premium_required">需要高级版成员资格才能使用此功能。</string>
     <string name="attachment_deleted">附件已删除</string>
-    <string name="attachments_unavailable">附件功能不可用</string>
     <string name="attachments_are_a_premium_feature">附件是高级版功能。您的当前方案不包含对此功能的访问权限。</string>
     <string name="choose_file">选择文件</string>
     <string name="file">文件</string>
@@ -227,8 +227,8 @@
     <string name="number">号码</string>
     <string name="security_code">安全码</string>
     <string name="scan_card">扫描支付卡</string>
-    <string name="scan_card_instruction">将您的卡片置于取景框内进行扫描。</string>
-    <string name="hold_steady_and_ensure_all_card_details_are_visible">保持稳定并确保所有卡片细节清晰可见</string>
+    <string name="scan_card_instruction">将您的支付卡置于取景框内进行扫描。</string>
+    <string name="hold_steady_and_ensure_all_card_details_are_visible">保持稳定并确保支付卡的所有细节清晰可见</string>
     <string name="type_card">支付卡</string>
     <string name="type_identity">身份</string>
     <string name="type_login">登录</string>
@@ -240,7 +240,7 @@
     <string name="august">八月</string>
     <string name="brand">品牌</string>
     <string name="card_details">支付卡详细信息</string>
-    <string name="card_scanned">卡片已扫描</string>
+    <string name="card_scanned">支付卡已扫描</string>
     <string name="cardholder_name">持卡人姓名</string>
     <string name="city_town">市 / 镇</string>
     <string name="company">公司</string>
@@ -271,7 +271,7 @@
     <string name="september">九月</string>
     <string name="ssn">社会保障号码</string>
     <string name="state_province">州 / 省</string>
-    <string name="title">称呼</string>
+    <string name="title">称谓</string>
     <string name="zip_postal_code">ZIP / 邮政编码</string>
     <string name="address">地址</string>
     <string name="expiration">有效期</string>
@@ -309,7 +309,7 @@
     <string name="try_again">重试</string>
     <string name="created">创建于：%1$s</string>
     <string name="password_updated">密码更新于：%1$s</string>
-    <string name="last_edited">上次编辑：%1$s</string>
+    <string name="last_edited">最后编辑于：%1$s</string>
     <string name="invalid_email">无效的电子邮箱地址。</string>
     <string name="cards">支付卡</string>
     <string name="identities">身份</string>
@@ -417,8 +417,8 @@
     <string name="account_biometric_invalidated">在验证主密码之前，此账户的生物识别解锁将禁用。</string>
     <string name="enable_sync_on_refresh">启用刷新时同步</string>
     <string name="enable_sync_on_refresh_description">使用下拉手势同步密码库。</string>
-    <string name="log_in_sso">企业单点登录</string>
-    <string name="log_in_sso_summary">使用您组织的单点登录门户快速登录。请输入您组织的标识符以开始。</string>
+    <string name="log_in_sso">企业单点登录 (SSO)</string>
+    <string name="log_in_sso_summary">使用您组织的单点登录 (SSO) 门户快速登录。请输入您组织的标识符以开始。</string>
     <string name="org_identifier">组织标识符</string>
     <string name="login_sso_error">当前无法使用 SSO 登录</string>
     <string name="set_master_password">设置主密码</string>
@@ -447,9 +447,9 @@
     <string name="all_sends">所有的 Send</string>
     <string name="text">文本</string>
     <string name="text_to_share">要分享的文本</string>
-    <string name="type_text">文本</string>
+    <string name="type_text">文本 Send</string>
     <string name="hide_text_by_default">访问此 Send 时，默认隐藏文本内容</string>
-    <string name="type_file">文件</string>
+    <string name="type_file">文件 Send</string>
     <string name="deletion_date">删除日期</string>
     <string name="deletion_time">删除时间</string>
     <string name="deletion_date_info">此 Send 将在指定的日期和时间后被永久删除。</string>
@@ -500,7 +500,7 @@
     <string name="send_options_policy_in_effect">一个或多个组织策略正在影响您的 Send 设置。</string>
     <string name="send_file_premium_required">免费账户仅限于共享文本。需要高级版成员资格才能使用文件 Send。</string>
     <string name="sharing_with_specific_people_is_a_premium_feature">与指定人员共享是高级版功能。您的当前方案不包含对此功能的访问权限。</string>
-    <string name="password_prompt">主密码重新提示</string>
+    <string name="password_prompt">主密码二次验证</string>
     <string name="password_confirmation">确认主密码</string>
     <string name="password_confirmation_desc">此操作受到保护，要继续，请重新输入主密码以验证您的身份。</string>
     <string name="update_master_password">更新主密码</string>
@@ -569,7 +569,7 @@
     <string name="set_up_authenticator_key">设置验证器密钥</string>
     <string name="once_the_key_is_successfully_entered">成功输入密钥后，
 选择「添加 TOTP」以安全地存储此密钥</string>
-    <string name="never_lock_warning">将锁定选项设置为「从不」可让任何能够访问您的设备的人都可以使用您的密码库。如果您使用此选项，则应确保您的设备得到妥善的保护。</string>
+    <string name="never_lock_warning">将锁定选项设置为「从不」会让任何能够访问您的设备的人都可以使用您的密码库。如果使用此选项，您应确保您的设备已受到妥善保护。</string>
     <string name="environment_page_urls_error">输入的一个或多个 URL 无效。请修改后再次尝试保存。</string>
     <string name="generic_error_message">我们无法处理您的请求。请重试或联系我们。</string>
     <string name="allow_screen_capture">允许屏幕截图</string>
@@ -608,6 +608,10 @@
     <string name="forwarded_email_description">使用外部转发服务生成电子邮箱别名。</string>
     <string name="accessibility_service_disclosure">无障碍服务声明</string>
     <string name="accessibility_disclosure_text">Bitwarden 使用无障碍服务在 App 和网站中搜索登录字段，当找到与 App 或网站相匹配的用户名 &amp; 密码时，建立适当的字段 ID 以输入它们。我们不会通过此服务存储提供给我们的任何信息，也不会尝试控制除凭据文本输入之外的任何屏幕元素。</string>
+    <string name="accessibility_disclosure_start_up_text_1">在 Bitwarden 提供基于无障碍的自动填充之前，必须先展示此声明。</string>
+    <string name="accessibility_disclosure_start_up_text_2">Bitwarden 提供一种可选的自动填充方式，即使用 Android 的无障碍服务来检测登录字段。启用后，当找到匹配字段时，Bitwarden 将识别相应的字段并填充您的凭据。</string>
+    <string name="accessibility_disclosure_start_up_text_3">在您使用无障碍服务时，我们不会存储屏幕上的任何信息，也不会控制除凭据输入之外的任何屏幕元素。</string>
+    <string name="i_understand">我明白</string>
     <string name="accept">接受</string>
     <string name="decline">拒绝</string>
     <string name="login_request_has_already_expired">登录请求已过期。</string>
@@ -640,7 +644,7 @@
     <string name="check_known_data_breaches_for_this_password">检查已知的数据泄露是否包含此密码</string>
     <string name="exposed_master_password">已暴露的主密码</string>
     <string name="password_found_in_a_data_breach_alert_description">密码在数据泄露中被发现。请使用一个唯一的密码以保护您的账户。确定要使用已暴露的密码吗？</string>
-    <string name="weak_and_exposed_master_password">主密码弱且曾经暴露</string>
+    <string name="weak_and_exposed_master_password">弱且已暴露的主密码</string>
     <string name="weak_password_identified_and_found_in_a_data_breach_alert_description">识别到弱密码且其出现在数据泄露中。请使用一个强大且唯一的密码以保护您的账户。确定要使用这个密码吗？</string>
     <string name="there_are_no_items_that_match_the_search">没有匹配搜索条件的项目</string>
     <string name="self_hosted">自托管</string>
@@ -655,7 +659,7 @@
     <string name="passkey">通行密钥</string>
     <string name="passkey_will_not_be_copied">通行密钥不会被复制</string>
     <string name="the_passkey_will_not_be_copied_to_the_cloned_item_do_you_want_to_continue_cloning_this_item">通行密钥将不会被复制到克隆的项目。要继续克隆这个项目吗？</string>
-    <string name="master_password_re_prompt_help">主密码重新提示帮助</string>
+    <string name="master_password_re_prompt_help">主密码二次验证帮助</string>
     <string name="admin_approval_requested">已请求管理员批准</string>
     <string name="your_request_has_been_sent_to_your_admin">您的请求已发送给您的管理员。</string>
     <string name="you_will_be_notified_once_approved">批准后，您将收到通知。</string>
@@ -986,9 +990,8 @@
     <string name="delete_logs">删除日志</string>
     <string name="do_you_really_want_to_delete_all_recorded_logs">确定要删除所有记录的日志吗？</string>
     <string name="confirm_key_connector_domain">确认 Key Connector 域名</string>
-    <string name="key_connector_domain">Key Connector 域名：</string>
-    <string name="key_connector_organization">组织：</string>
-    <string name="password_no_longer_required_confirm_domain">以下组织的成员不再需要主密码。请与您的组织管理员确认下面的域名。</string>
+    <string name="key_connector_domain">Key Connector 域名</string>
+    <string name="your_organization_no_longer_requires_a_master_password">您的组织不再要求其成员的主密码。请与您的组织管理员验证下面的域名，然后输入您的主密码以继续。</string>
     <string name="please_confirm_domain_with_admin">请与您的组织管理员确认下面的域名。\n\nKey Connector 域名：\n%1$s</string>
     <string name="flight_recorder_banner_title">Flight Recorder 已开启</string>
     <string name="flight_recorder_banner_message">Flight Recorder 将持续激活至 %1$s %2$s。现在返回设置以将其停用。</string>
@@ -1001,7 +1004,7 @@
     <string name="replace_certificate">替换证书</string>
     <string name="unable_to_read_certificate">无法读取证书。</string>
     <string name="cannot_delete_your_account">无法删除您的账户</string>
-    <string name="cannot_delete_your_account_explanation">此操作无法完成，因为您的账户归组织所有。请联系您的组织管理员获取详细信息。</string>
+    <string name="cannot_delete_your_account_explanation">由于您的账户由某个组织拥有，此操作无法完成。请联系您的组织管理员以获取更多详细信息。</string>
     <string name="this_account_will_soon_be_deleted_log_in_at_x_to_continue_using_bitwarden">此账户即将被删除。请在 %1$s 前登录以继续使用 Bitwarden。</string>
     <string name="view_file_send">查看文件 Send</string>
     <string name="view_text_send">查看文本 Send</string>
@@ -1114,10 +1117,10 @@
     <string name="file_could_not_be_processed_message">文件无法处理。请确保它是有效的 JSON 文件然后重试。需要帮助吗？请访问 bitwarden.com/help</string>
     <string name="get_help">获取帮助</string>
     <string name="expand_advanced_options">展开高级选项</string>
-    <string name="local_items_are_expanded_click_to_collapse">本地项目被展开，点击以折叠。</string>
-    <string name="local_items_are_collapsed_click_to_expand">本地项目被折叠，点击以展开。</string>
-    <string name="items_expanded_click_to_collapse">项目被展开，点击以折叠。</string>
-    <string name="items_are_collapsed_click_to_expand">项目被折叠，点击以展开。</string>
+    <string name="local_items_are_expanded_click_to_collapse">本地项目已展开，点击折叠。</string>
+    <string name="local_items_are_collapsed_click_to_expand">本地项目已折叠，点击展开。</string>
+    <string name="items_expanded_click_to_collapse">项目已展开，点击折叠。</string>
+    <string name="items_are_collapsed_click_to_expand">项目已折叠，点击展开。</string>
     <string name="error_cannot_decrypt">[错误：无法解密]</string>
     <string name="copy_error_report">复制错误报告</string>
     <string name="bitwarden_could_not_decrypt_this_vault_item_description_long">Bitwarden 无法解密此密码库项目。复制此错误报告并将其分享给客户成功团队，以避免进一步的数据丢失。</string>
@@ -1143,6 +1146,8 @@
     <string name="no_items_imported">未导入任何项目</string>
     <string name="no_items_received_from_the_selected_app">没有从所选 App 接收到任何项目。</string>
     <string name="vault_sync_failed">密码库同步失败</string>
+    <string name="vault_sync_unsuccessful">同步失败</string>
+    <string name="vault_sync_failed_description">我们无法将您的密码库与服务器同步。您的密码库可能无法反映您的最新更改。您可以现在重试，或稍后它将自动同步。</string>
     <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">您的项目已成功导入，但在执行同步之前，它们不会显示在您的密码库中。</string>
     <string name="there_was_a_problem_importing_your_items">导入您的项目时出现问题。请重试。如果问题仍然存在，请联系支持。</string>
     <string name="saving_items">正在保存项目…</string>
@@ -1201,12 +1206,15 @@
     <string name="unarchiving">正在取消存档</string>
     <string name="item_moved_to_archived">项目已移动到归档</string>
     <string name="item_moved_to_vault">项目已移动到密码库</string>
-    <string name="archive_unavailable">归档功能不可用</string>
     <string name="archiving_items_is_a_premium_feature">归档项目是高级版功能。您的当前方案不包含对此功能的访问权限。</string>
+    <string name="totp_is_a_premium_feature">验证器密钥 (TOTP) 是高级版功能。您的当前方案不包含对此功能的访问权限。</string>
     <string name="upgrade_to_premium">升级到高级版</string>
     <string name="plan">方案</string>
     <string name="to_manage_your_premium_subscription_youll_need_to_login_to_your_web_vault_on_a_computer">要管理您的高级版订阅，您需要在计算机上登录到您的网页密码库。</string>
     <string name="unlock_advanced_security_features">解锁高级安全功能</string>
+    <string name="your_subscription_needs_attention">您的订阅需要关注</string>
+    <string name="check_your_plan_for_details">检查您的方案以了解详细信息。</string>
+    <string name="view_plan">查看方案</string>
     <string name="a_premium_plan_gives_you_more_tools_to_stay_secure_and_in_control">高级版方案为您提供更多工具，助您保持安全并掌控一切。</string>
     <string name="this_item_is_archived">此项目已归档。</string>
     <string name="introducing_archive">归档介绍</string>
@@ -1231,7 +1239,7 @@
     <string name="devices">设备</string>
     <string name="mobile_platform">移动端 - %1$s</string>
     <string name="extension_platform">扩展 - %1$s</string>
-    <string name="web_platform">网页版 - %1$s</string>
+    <string name="web_platform">网页 - %1$s</string>
     <string name="desktop_platform">桌面端 - %1$s</string>
     <string name="cli_platform">CLI - %1$s</string>
     <string name="sdk">SDK</string>
@@ -1241,9 +1249,9 @@
     <string name="current_session">当前会话</string>
     <string name="pending_request">待处理的请求</string>
     <string name="today">今天</string>
-    <string name="past_seven_days">最近 7 天</string>
-    <string name="past_fourteen_days">最近 14 天</string>
-    <string name="past_thirty_days">最近 30 天</string>
+    <string name="past_seven_days">过去 7 天</string>
+    <string name="past_fourteen_days">过去 14 天</string>
+    <string name="past_thirty_days">过去 30 天</string>
     <string name="over_thirty_days_ago">30 天以前</string>
     <string name="recently_active"><annotation emphasis="bold">最近活动：</annotation><annotation arg="0">%1$s</annotation></string>
     <string name="trusted">已信任</string>
@@ -1260,13 +1268,13 @@
     <string name="upgrade_pending">升级待处理</string>
     <string name="upgrade_pending_message">您的升级正在处理中。完成之前，您将继续使用免费版方案。立即同步以检查升级进度，或继续操作，它将自动更新。</string>
     <string name="unlock_premium_features">使用高级版方案解锁更多高级功能。</string>
-    <string name="per_month">/月</string>
+    <string name="per_month_cancel_anytime">/月 · 随时取消</string>
+    <string name="per_month_cancel_anytime_content_description">%1$s /月，随时取消</string>
     <string name="built_in_authenticator">内置身份验证器</string>
     <string name="emergency_access">紧急访问</string>
     <string name="secure_file_storage">安全文件存储</string>
     <string name="breach_monitoring">数据泄露监测</string>
-    <string name="upgrade_now">立即升级</string>
-    <string name="youll_go_to_stripes_secure_checkout_to_complete_your_purchase">您将前往 Stripe 的安全结账页面完成购买。</string>
+    <string name="youll_complete_the_purchase_with_stripe_secure_checkout">您将通过 Stripe 的安全结账页面完成购买。</string>
     <string name="opening_checkout">正在打开结账页面…</string>
     <string name="secure_checkout_didnt_load">安全结账页面未能加载</string>
     <string name="trouble_opening_payment_page">打开付款页面时出现问题，请重试。</string>
@@ -1279,7 +1287,7 @@
     <string name="see_upcoming_codes_in_the_list">查看列表中的后续代码</string>
     <string name="next_code_x">下一个代码，%1$s</string>
     <string name="archive_item">归档项目</string>
-    <string name="once_archived_this_item_will_be_excluded">归档后，此项目将被排除在一般搜索结果和自动填充建议之外。</string>
+    <string name="once_archived_this_item_will_be_excluded">归档后，此项目将被排除在搜索结果和自动填充建议之外。</string>
     <string name="pricing_unavailable">定价不可用</string>
     <string name="current_plan">当前方案</string>
     <string name="premium_plan_name">高级版</string>
@@ -1293,25 +1301,28 @@
     <string name="manage_plan">管理方案</string>
     <string name="manage_your_subscription_plan_in_the_bitwarden_web_app">在 Bitwarden 网页 App 中管理您的订阅方案。</string>
     <string name="cancel_premium">取消高级版</string>
-    <string name="subscription_status_active">启用</string>
+    <string name="subscription_status_active">激活</string>
     <string name="subscription_status_canceled">已取消</string>
+    <string name="subscription_status_expired">已过期</string>
     <string name="subscription_status_past_due">逾期未支付</string>
     <string name="subscription_status_paused">已暂停</string>
+    <string name="subscription_status_unpaid">未支付</string>
     <string name="subscription_status_update_payment">更新付款信息</string>
     <string name="subscription_status_pending_cancellation">待取消</string>
     <string name="subscription_pending_cancellation_description">您的订阅将于 <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> 取消。在此日期之前，您可以随时恢复订阅。</string>
     <string name="premium_next_charge_summary">您的下一笔费用为 <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> USD，到期日期为 <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation>。</string>
     <string name="subscription_canceled_description">您的订阅被取消于 <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>。重新订阅以继续使用高级版功能。</string>
+    <string name="subscription_unpaid_description">您的订阅被暂停于 <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>。要重新激活，请处理逾期未支付的账单。</string>
     <string name="subscription_update_payment_description">我们无法处理您的付款。请在 <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation> 您的订阅结束前更新您的付款方式。</string>
     <plurals name="subscription_past_due_description">
         <item quantity="other">从您的订阅到期之日起，您有 <annotation arg="0">%1$d</annotation> 天的宽限期。请在 <annotation emphasis="bold"><annotation arg="1">%2$s</annotation></annotation> 之前处理逾期未支付的款项。</item>
     </plurals>
     <string name="subscription_paused_description">您的订阅已暂停。恢复订阅以继续使用高级版功能。</string>
+    <string name="subscription_expired_description">您的订阅到期于 <annotation emphasis="bold"><annotation arg="0">%1$s</annotation></annotation>。重新订阅以继续使用高级版功能。</string>
     <string name="loading_subscription">正在加载订阅…</string>
     <string name="loading_portal">正在加载门户…</string>
     <string name="portal_error">出错了</string>
     <string name="trouble_loading_portal">加载管理门户时出现问题，请重试。</string>
-    <string name="subscription_error">订阅错误</string>
     <string name="trouble_loading_subscription">我们无法加载您的订阅详细信息。请重试。</string>
     <string name="view_bank_account">查看银行账户</string>
     <string name="view_license">查看驾驶证</string>
@@ -1323,7 +1334,7 @@
     <string name="edit_license">编辑驾驶证</string>
     <string name="edit_passport">编辑护照</string>
     <string name="type_bank_account">银行账户</string>
-    <string name="type_license">许可证</string>
+    <string name="type_license">驾驶证</string>
     <string name="type_passport">护照</string>
     <string name="bank_accounts">银行账户</string>
     <string name="passports">护照</string>
@@ -1352,7 +1363,7 @@
     <string name="money_market">货币市场</string>
     <string name="issuing_country">签发国家 / 地区</string>
     <string name="issuing_state">签发州 / 省</string>
-    <string name="license_class">许可证等级</string>
+    <string name="license_class">驾驶证类别</string>
     <string name="surname">姓氏</string>
     <string name="given_name">名字</string>
     <string name="date_of_birth">出生日期</string>
@@ -1366,7 +1377,7 @@
     <string name="no_bank_accounts">您的密码库中没有银行账户。</string>
     <string name="license_details">驾驶证详细信息</string>
     <string name="licenses">驾驶证</string>
-    <string name="no_licenses">您的密码库中没有许可证。</string>
+    <string name="no_licenses">您的密码库中没有驾驶证。</string>
     <string name="no_passports">您的密码库中没有护照。</string>
     <string name="your_request_was_interrupted_because_the_app_needed_to_reauthenticate">由于 App 需要重新验证身份，您的请求被中断。请重试。</string>
     <string name="passport_details">护照详细信息</string>
@@ -1383,4 +1394,13 @@
     <string name="your_request_was_interrupted_because_the_app_needs_local_network_access">由于 App 需要本地网络访问权限，您的请求已中断。您可以在您的设备设置中启用该权限。</string>
     <string name="continue_to_stripe">前往 Stripe 吗？</string>
     <string name="youll_be_taken_to_stripe_to_manage_your_subscription_cancellation">您将被引导至 Stripe 以管理您的订阅取消操作。</string>
+    <string name="unlock_advanced_protection">解锁高级保护</string>
+    <string name="breeze_through_2fa_with_built_in_codes">使用内置验证码，轻松完成 2FA</string>
+    <string name="run_reports_to_find_risky_passwords">运行报告以查找存在风险的密码</string>
+    <string name="add_a_trusted_emergency_contact">添加信任的紧急联系人</string>
+    <string name="identify_unsecure_websites">识别不安全的网站</string>
+    <string name="flag_accounts_with_inactive_2fa">标记未激活 2FA 的账户</string>
+    <string name="keep_documents_safe_and_encrypted">保持文档安全和加密</string>
+    <string name="share_files_securely_with_anyone_using_send">使用 Send，与任何人安全地分享文件</string>
+    <string name="receive_24_7_priority_support">享受 7×24 小时优先支持</string>
 </resources>
