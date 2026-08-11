@@ -46,8 +46,10 @@ sealed class FlagKey<out T : Any> {
                 FillAssistTargetingRules,
                 PoliciesInAcceptedState,
                 FedRamp,
+                Vfo1Foundation,
                 SendControls,
                 SendControlsExistingSends,
+                IdentityAutofill,
             )
         }
     }
@@ -182,6 +184,15 @@ sealed class FlagKey<out T : Any> {
     }
 
     /**
+     * Data object holding the feature flag key for gating the VFO-1 naming (terminology rename)
+     * work.
+     */
+    data object Vfo1Foundation : FlagKey<Boolean>() {
+        override val keyName: String = "vfo1-foundation"
+        override val defaultValue: Boolean = false
+    }
+
+    /**
      * Debug-only flag that, when enabled, makes self-hosted environments behave as cloud
      * environments for premium-upgrade gating. Used by QA to test the premium upgrade flow
      * against internal self-hosted environments.
@@ -205,6 +216,15 @@ sealed class FlagKey<out T : Any> {
      */
     data object SendControlsExistingSends : FlagKey<Boolean>() {
         override val keyName: String = "pm-31885-send-controls-existing-sends"
+        override val defaultValue: Boolean = false
+    }
+
+    /**
+     * Data object holding the feature flag key for gating identity autofill (offering saved
+     * Identity items as autofill suggestions).
+     */
+    data object IdentityAutofill : FlagKey<Boolean>() {
+        override val keyName: String = "pm-38138-mobile-identity-autofill"
         override val defaultValue: Boolean = false
     }
 
