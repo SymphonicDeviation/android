@@ -24,8 +24,8 @@
     <string name="folder_created">Nuwe vouer geskep.</string>
     <string name="folder_deleted">Vouer geskrap.</string>
     <string name="folder_none">Geen vouer</string>
-    <string name="folders">Vouers</string>
     <string name="folder_updated">Vouer bygewerk.</string>
+    <string name="folders">Vouers</string>
     <string name="hide">Versteek</string>
     <string name="internet_connection_required_message">Koppel asb. aan die internet voor u voortgaan.</string>
     <string name="internet_connection_required_title">Internetverbinding word vereis</string>
@@ -44,6 +44,8 @@
     <string name="master_password_required">Hoofwagwoord (vereis)</string>
     <string name="new_master_password_required">Nuwe hoofwagwoord (vereis)</string>
     <string name="more_options">Meer opsies</string>
+    <string name="my_folder">My folder</string>
+    <string name="my_folders">My folders</string>
     <string name="my_vault">My kluis</string>
     <string name="name">Naam</string>
     <string name="item_name_required">Itemnaam (vereis)</string>
@@ -283,7 +285,9 @@ Skandering gebeur outomaties.</string>
     <string name="vault_is_locked">Kluis is vergrendel</string>
     <string name="go_to_my_vault">Gaan na my kluis</string>
     <string name="collections">Versamelings</string>
+    <string name="shared_folders">Shared folders</string>
     <string name="no_items_collection">There are no items in this collection.</string>
+    <string name="there_are_no_items_in_this_shared_folder">There are no items in this shared folder.</string>
     <string name="no_items_folder">Daar is geen items in hierdie vouer.</string>
     <string name="no_items_trash">Daar is geen items in die asblik.</string>
     <string name="autofill_accessibility_summary">Help met die invul van gebruikersnaam- en wagwoordvelde in ander toeps en op die web.</string>
@@ -338,10 +342,14 @@ Skandering gebeur outomaties.</string>
     <string name="move_up">Skuif op</string>
     <string name="owner">Eienaar</string>
     <string name="no_collections_to_list">Daar is geen versamelings om te lys nie.</string>
+    <string name="there_are_no_shared_folders_to_list">There are no shared folders to list.</string>
     <string name="moved_item_to_org">%1$s geskuif na %2$s.</string>
     <string name="select_one_collection">U moet ten minste een versameling kies.</string>
+    <string name="you_must_select_at_least_one_shared_folder">You must select at least one shared folder.</string>
     <string name="share">Deel</string>
-    <string name="move_to_vault">Move to vault</string>
+    <string name="move_to_organization">Skuif na organisasie</string>
+    <string name="no_orgs_to_list">Geen organisasies om te lys nie.</string>
+    <string name="move_to_org_desc">Kies ’n organisasie waarheen u hierdie item wil skuif. Deur te skuif kry die organisasie die einaarskap van die item. U is dan nie meer die direkte eienaar van die item wanneer dit geskuif is nie.</string>
     <string name="no_vaults_to_list">No vaults to list.</string>
     <string name="move_to_vault_desc">Choose a vault that you wish to move this item to. Moving to another vault transfers ownership of the item to that organization. You will no longer be the direct owner of this item once it has been moved.</string>
     <string name="number_of_words">Aantal woorde</string>
@@ -457,6 +465,7 @@ Skandering gebeur outomaties.</string>
     <string name="deletion_date">Skrapdatum</string>
     <string name="deletion_time">Skraptyd</string>
     <string name="deletion_date_info">Die Send sal outomaties op die aangewese datum en tyd geskrap word.</string>
+    <string name="this_date_is_enforced_by_your_organization">This date is enforced by your organization</string>
     <string name="who_can_view">Wie kan sien</string>
     <string name="anyone_with_the_link">Enigiemand met die skakel</string>
     <string name="anyone_with_link_can_view_send">Enigiemand met hierdie skakel kan hierdie Send bekyk</string>
@@ -494,6 +503,7 @@ Skandering gebeur outomaties.</string>
     <string name="two_days">2 dae</string>
     <string name="three_days">3 dae</string>
     <string name="seven_days">7 dae</string>
+    <string name="fourteen_days">14 days</string>
     <string name="thirty_days">30 dae</string>
     <string name="custom">Pasgemaak</string>
     <string name="custom_timeout">Pasgemaakte uittelling</string>
@@ -502,6 +512,11 @@ Skandering gebeur outomaties.</string>
     <string name="about_send">Oor Send</string>
     <string name="hide_email">Versteek my e-posadres vir ontvangers.</string>
     <string name="send_options_policy_in_effect">Een of meer organisasiebeleide beïnvloed u Send-opsies.</string>
+    <string name="organization_policy_restriction">Organization policy restriction</string>
+    <string name="this_send_is_not_compliant_with_your_organizations_send_policy">This Send is not compliant with your organization’s Send policy and will automatically expire at the set deletion date.</string>
+    <string name="text_sends_are_not_allowed_for_your_organization">Text Sends are not allowed for your organization and this Send will automatically expire at the set deletion date.</string>
+    <string name="to_edit_this_send_make_a_copy">To edit this Send, make a copy. If this Send can expire at the set deletion date, no action is needed.</string>
+    <string name="make_a_copy">Make a copy</string>
     <string name="send_file_premium_required">Met gratis rekeninge kan u slegs teks deel. ’n Premie-lidmaatskap word vereis om lêers met Send te gebruik.</string>
     <string name="sharing_with_specific_people_is_a_premium_feature">Deel met spesifieke mense is \'n Premium-funksie. U huidige plan sluit nie toegang tot hierdie funksie in nie.</string>
     <string name="password_prompt">Vra weer vir hoofwagwoord</string>
@@ -687,6 +702,7 @@ Wil u na die rekening omskakel?</string>
     <string name="logging_in_on">Teken aan op</string>
     <string name="logging_in_on_with_colon">Teken aan op:</string>
     <string name="vault">Kluis</string>
+    <string name="select_vault">Select vault</string>
     <string name="appearance">Voorkoms</string>
     <string name="account_security">Rekeningsekuriteit</string>
     <string name="bitwarden_help_center">Bitwarden Help Center</string>
@@ -1244,6 +1260,7 @@ Die vervanging van die sertifikaat kan u verbinding met omgewings wat dit tans g
     <string name="invalid_email_addresses">Ongeldige e-posadresse</string>
     <string name="one_or_more_email_addresses_are_incorrect">Een of meer e-posadresse is verkeerd. Hersien asseblief en probeer weer.</string>
     <string name="no_email_addresses_entered">Geen e-posadresse ingevoer nie</string>
+    <string name="only_include_the_following_domains_x_please_review_and_try_again">Only include the following domains: %1$s. Please review and try again.</string>
     <string name="enter_at_least_one_valid_email_address_to_share_this_send">Voer ten minste een geldige e-posadres in om hierdie Send te deel.</string>
     <string name="sync_with_browser">Sinchroniseer met blaaier</string>
     <string name="sync_with_browser_description">Om aan %1$s te koppel, sinchroniseer u verstekblaaier met die Bitwarden-mobiele toep. Wanneer u blaaier oopmaak, voltooi aanmelding indien gevra.
