@@ -40,6 +40,7 @@ import com.bitwarden.network.model.GetTokenResponseJson
 import com.bitwarden.network.model.IdentityTokenAuthModel
 import com.bitwarden.network.model.KdfJson
 import com.bitwarden.network.model.KdfTypeJson
+import com.bitwarden.network.model.KeysJson
 import com.bitwarden.network.model.MasterPasswordPolicyOptionsJson
 import com.bitwarden.network.model.MasterPasswordUnlockDataJson
 import com.bitwarden.network.model.OrganizationAutoEnrollStatusResponseJson
@@ -66,7 +67,6 @@ import com.bitwarden.network.model.VerifyEmailTokenRequestJson
 import com.bitwarden.network.model.VerifyEmailTokenResponseJson
 import com.bitwarden.network.model.createMockAccountKeysJson
 import com.bitwarden.network.model.createMockAccountKeysJsonWithNullFields
-import com.bitwarden.network.model.createMockOrganizationNetwork
 import com.bitwarden.network.service.AccountsService
 import com.bitwarden.network.service.DevicesService
 import com.bitwarden.network.service.HaveIBeenPwnedService
@@ -83,8 +83,10 @@ import com.x8bit.bitwarden.data.auth.datasource.disk.util.FakeAuthDiskSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.AuthSdkSource
 import com.x8bit.bitwarden.data.auth.datasource.sdk.util.toKdfRequestModel
 import com.x8bit.bitwarden.data.auth.manager.AuthRequestManager
+import com.x8bit.bitwarden.data.auth.manager.AuthStateManager
 import com.x8bit.bitwarden.data.auth.manager.KdfManager
 import com.x8bit.bitwarden.data.auth.manager.KeyConnectorManager
+import com.x8bit.bitwarden.data.auth.manager.OrganizationManager
 import com.x8bit.bitwarden.data.auth.manager.TrustedDeviceManager
 import com.x8bit.bitwarden.data.auth.manager.UserLogoutManager
 import com.x8bit.bitwarden.data.auth.manager.UserStateManager
@@ -92,18 +94,15 @@ import com.x8bit.bitwarden.data.auth.manager.model.AuthRequest
 import com.x8bit.bitwarden.data.auth.manager.model.MigrateExistingUserToKeyConnectorResult
 import com.x8bit.bitwarden.data.auth.manager.model.MigrateNewUserToKeyConnectorResult
 import com.x8bit.bitwarden.data.auth.repository.AuthRepositoryTest.Companion.MASTER_PASSWORD_POLICY_OPTIONS
-import com.x8bit.bitwarden.data.auth.repository.model.AuthState
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.DeleteAccountResult
 import com.x8bit.bitwarden.data.auth.repository.model.DeviceInfo
 import com.x8bit.bitwarden.data.auth.repository.model.EmailTokenResult
 import com.x8bit.bitwarden.data.auth.repository.model.GetDevicesResult
 import com.x8bit.bitwarden.data.auth.repository.model.KnownDeviceResult
-import com.x8bit.bitwarden.data.auth.repository.model.LeaveOrganizationResult
 import com.x8bit.bitwarden.data.auth.repository.model.LoginResult
 import com.x8bit.bitwarden.data.auth.repository.model.LogoutReason
 import com.x8bit.bitwarden.data.auth.repository.model.NewSsoUserResult
-import com.x8bit.bitwarden.data.auth.repository.model.Organization
 import com.x8bit.bitwarden.data.auth.repository.model.PasswordHintResult
 import com.x8bit.bitwarden.data.auth.repository.model.PolicyInformation
 import com.x8bit.bitwarden.data.auth.repository.model.PrevalidateSsoResult
@@ -126,6 +125,7 @@ import com.x8bit.bitwarden.data.auth.repository.util.CookieCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.DuoCallbackTokenResult
 import com.x8bit.bitwarden.data.auth.repository.util.SsoCallbackResult
 import com.x8bit.bitwarden.data.auth.repository.util.WebAuthResult
+import com.x8bit.bitwarden.data.auth.repository.util.toKdfRequestModel
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.auth.repository.util.toUserState
 import com.x8bit.bitwarden.data.auth.repository.util.updateMasterPasswordUnlock
@@ -284,6 +284,8 @@ class AuthRepositoryTest {
         every { getFeatureFlag(FlagKey.V2EncryptionTde) } returns true
         every { getFeatureFlag(FlagKey.V2EncryptionPassword) } returns true
     }
+    private val authStateManager: AuthStateManager = mockk()
+    private val organizationManager: OrganizationManager = mockk()
 
     private val repository: AuthRepository = AuthRepositoryImpl(
         clock = FIXED_CLOCK,
@@ -313,6 +315,8 @@ class AuthRepositoryTest {
         kdfManager = kdfManager,
         toastManager = toastManager,
         featureFlagManager = featureFlagManager,
+        organizationManager = organizationManager,
+        authStateManager = authStateManager,
     )
 
     @BeforeEach
@@ -343,52 +347,6 @@ class AuthRepositoryTest {
             NoActiveUserException::class,
             MissingPropertyException::class,
         )
-    }
-
-    @Test
-    fun `authStateFlow should react to user state changes and account token changes`() = runTest {
-        repository.authStateFlow.test {
-            assertEquals(AuthState.Unauthenticated, awaitItem())
-
-            // Store the tokens, nothing happens yet since there is technically no active user yet
-            fakeAuthDiskSource.storeAccountTokens(
-                userId = USER_ID_1,
-                accountTokens = ACCOUNT_TOKENS_1,
-            )
-            expectNoEvents()
-            // Update the active user, we are now authenticated
-            fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), awaitItem())
-
-            // Adding a tokens for the non-active user does not update the state
-            fakeAuthDiskSource.storeAccountTokens(
-                userId = USER_ID_2,
-                accountTokens = ACCOUNT_TOKENS_2,
-            )
-            expectNoEvents()
-            // Adding a non-active user does not update the state
-            fakeAuthDiskSource.userState = MULTI_USER_STATE
-            expectNoEvents()
-
-            // Changing the active users tokens causes an update
-            val newAccessToken = "new_access_token"
-            fakeAuthDiskSource.storeAccountTokens(
-                userId = USER_ID_1,
-                accountTokens = ACCOUNT_TOKENS_1.copy(accessToken = newAccessToken),
-            )
-            assertEquals(AuthState.Authenticated(newAccessToken), awaitItem())
-
-            // Change the active user causes an update
-            fakeAuthDiskSource.userState = MULTI_USER_STATE.copy(activeUserId = USER_ID_2)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN_2), awaitItem())
-
-            // Clearing the tokens of the active state results in the Unauthenticated state
-            fakeAuthDiskSource.storeAccountTokens(
-                userId = USER_ID_2,
-                accountTokens = null,
-            )
-            assertEquals(AuthState.Unauthenticated, awaitItem())
-        }
     }
 
     @Test
@@ -447,21 +405,6 @@ class AuthRepositoryTest {
         // Updating AuthDiskSource updates the repository
         fakeAuthDiskSource.storeShouldTrustDevice(userId = USER_ID_1, shouldTrustDevice = false)
         assertEquals(false, repository.shouldTrustDevice)
-    }
-
-    @Test
-    fun `organizations should return an empty list when there is no active user`() = runTest {
-        assertEquals(emptyList<Organization>(), repository.organizations)
-    }
-
-    @Test
-    fun `organizations should pull from the organizations in the AuthDiskSource`() = runTest {
-        fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
-        fakeAuthDiskSource.storeOrganizations(
-            userId = USER_ID_1,
-            organizations = listOf(createMockOrganizationNetwork(number = 0)),
-        )
-        assertEquals(listOf(createMockOrganization(number = 0)), repository.organizations)
     }
 
     @Test
@@ -1692,7 +1635,6 @@ class AuthRepositoryTest {
         } returns error.asFailure()
         val result = repository.login(email = EMAIL, password = PASSWORD)
         assertEquals(LoginResult.Error(error = error), result)
-        assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         coVerify { identityService.preLogin(email = EMAIL) }
     }
 
@@ -1717,7 +1659,6 @@ class AuthRepositoryTest {
             } returns error.asFailure()
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.Error(error = error), result)
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             coVerify {
                 identityService.getToken(
@@ -1753,7 +1694,6 @@ class AuthRepositoryTest {
             } returns RuntimeException().asFailure()
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.UnofficialServerError, result)
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
         }
 
@@ -1777,7 +1717,6 @@ class AuthRepositoryTest {
             } returns SSLHandshakeException("error").asFailure()
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.CertificateError, result)
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
         }
 
@@ -1789,7 +1728,6 @@ class AuthRepositoryTest {
             } returns SSLHandshakeException("error").asFailure()
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.CertificateError, result)
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
         }
 
@@ -1818,7 +1756,6 @@ class AuthRepositoryTest {
 
         val result = repository.login(email = EMAIL, password = PASSWORD)
         assertEquals(LoginResult.Error(errorMessage = "mock_error_message", error = null), result)
-        assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         coVerify { identityService.preLogin(email = EMAIL) }
         coVerify {
             identityService.getToken(
@@ -1863,7 +1800,6 @@ class AuthRepositoryTest {
                 LoginResult.NewDeviceVerification(errorMessage = "new device verification required"),
                 result,
             )
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         }
 
     @Test
@@ -1908,7 +1844,6 @@ class AuthRepositoryTest {
             } returns SINGLE_USER_STATE_1
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
@@ -2228,7 +2163,6 @@ class AuthRepositoryTest {
             } returns SINGLE_USER_STATE_1
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
@@ -2322,7 +2256,6 @@ class AuthRepositoryTest {
                 LoginResult.Error(errorMessage = expectedErrorMessage, error = error),
                 result,
             )
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
@@ -2409,7 +2342,6 @@ class AuthRepositoryTest {
                 password = PASSWORD,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertMasterPasswordHash(
                 userId = USER_ID_1,
@@ -2509,7 +2441,6 @@ class AuthRepositoryTest {
             val result = repository.login(email = EMAIL, password = PASSWORD)
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
@@ -2581,7 +2512,6 @@ class AuthRepositoryTest {
                 ssoToken = null,
             ),
         )
-        assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         coVerify { identityService.preLogin(email = EMAIL) }
         coVerify {
             identityService.getToken(
@@ -2833,7 +2763,6 @@ class AuthRepositoryTest {
         } returns SINGLE_USER_STATE_1
         val result = repository.login(email = EMAIL, password = PASSWORD)
         assertEquals(LoginResult.Success, result)
-        assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
         coVerify { identityService.preLogin(email = EMAIL) }
         fakeAuthDiskSource.assertAccountCryptographicState(
             userId = USER_ID_1,
@@ -2914,7 +2843,6 @@ class AuthRepositoryTest {
 
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.EncryptionKeyMigrationRequired, result)
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify {
                 identityService.preLogin(email = EMAIL)
                 identityService.getToken(
@@ -2953,7 +2881,6 @@ class AuthRepositoryTest {
             masterPasswordHash = PASSWORD_HASH,
         )
         assertEquals(LoginResult.Error(error = error), result)
-        assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         coVerify {
             identityService.getToken(
                 email = EMAIL,
@@ -3002,7 +2929,6 @@ class AuthRepositoryTest {
                 LoginResult.Error(errorMessage = "mock_error_message", error = null),
                 result,
             )
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify {
                 identityService.getToken(
                     email = EMAIL,
@@ -3067,7 +2993,6 @@ class AuthRepositoryTest {
                 masterPasswordHash = PASSWORD_HASH,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -3160,7 +3085,6 @@ class AuthRepositoryTest {
                 masterPasswordHash = PASSWORD_HASH,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -3240,7 +3164,6 @@ class AuthRepositoryTest {
                     ssoToken = null,
                 ),
             )
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify {
                 identityService.getToken(
                     email = EMAIL,
@@ -3380,7 +3303,6 @@ class AuthRepositoryTest {
             organizationIdentifier = ORGANIZATION_IDENTIFIER,
         )
         assertEquals(LoginResult.Error(error = error), result)
-        assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         coVerify {
             identityService.getToken(
                 email = EMAIL,
@@ -3424,7 +3346,6 @@ class AuthRepositoryTest {
             organizationIdentifier = ORGANIZATION_IDENTIFIER,
         )
         assertEquals(LoginResult.Error(errorMessage = "mock_error_message", error = null), result)
-        assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
         coVerify {
             identityService.getToken(
                 email = EMAIL,
@@ -3472,7 +3393,6 @@ class AuthRepositoryTest {
                 organizationIdentifier = ORGANIZATION_IDENTIFIER,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -3541,7 +3461,6 @@ class AuthRepositoryTest {
                 organizationIdentifier = ORGANIZATION_IDENTIFIER,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -3706,7 +3625,6 @@ class AuthRepositoryTest {
             )
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = accountCryptographicState,
@@ -3800,7 +3718,6 @@ class AuthRepositoryTest {
             )
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = accountCryptographicState,
@@ -4013,7 +3930,6 @@ class AuthRepositoryTest {
                 email = EMAIL,
             )
             assertEquals(LoginResult.Success, continueResult)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = keyConnectorResult.accountCryptographicState,
@@ -4192,7 +4108,6 @@ class AuthRepositoryTest {
                 email = EMAIL,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = keyConnectorResult.accountCryptographicState,
@@ -4266,7 +4181,6 @@ class AuthRepositoryTest {
                 masterPasswordHash = null,
             )
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -4347,7 +4261,6 @@ class AuthRepositoryTest {
             )
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -4434,8 +4347,6 @@ class AuthRepositoryTest {
             )
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
-
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -4538,7 +4449,6 @@ class AuthRepositoryTest {
             )
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -4614,7 +4524,6 @@ class AuthRepositoryTest {
             )
 
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             fakeAuthDiskSource.storeAccountCryptographicState(
                 userId = USER_ID_1,
                 accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -4681,7 +4590,6 @@ class AuthRepositoryTest {
                     twoFactorProviders = null,
                 ),
             )
-            assertEquals(AuthState.Unauthenticated, repository.authStateFlow.value)
             coVerify {
                 identityService.getToken(
                     email = EMAIL,
@@ -4820,7 +4728,6 @@ class AuthRepositoryTest {
             organizationIdentifier = ORGANIZATION_IDENTIFIER,
         )
         assertEquals(LoginResult.Success, result)
-        assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
         fakeAuthDiskSource.storeAccountCryptographicState(
             userId = USER_ID_1,
             accountCryptographicState = ACCOUNT_CRYPTOGRAPHIC_STATE_V2,
@@ -4944,16 +4851,21 @@ class AuthRepositoryTest {
             identityService.registerFinish(
                 body = RegisterFinishRequestJson(
                     email = EMAIL,
-                    masterPasswordHash = PASSWORD_HASH,
-                    masterPasswordHint = null,
                     emailVerificationToken = EMAIL_VERIFICATION_TOKEN,
-                    userSymmetricKey = ENCRYPTED_USER_KEY,
-                    userAsymmetricKeys = RegisterFinishRequestJson.Keys(
+                    masterPasswordHint = null,
+                    userAsymmetricKeys = KeysJson(
                         publicKey = PUBLIC_KEY,
                         encryptedPrivateKey = PRIVATE_KEY,
                     ),
-                    kdfType = KdfTypeJson.PBKDF2_SHA256,
-                    kdfIterations = DEFAULT_KDF_ITERATIONS.toUInt(),
+                    kdf = KdfJson(
+                        kdfType = KdfTypeJson.PBKDF2_SHA256,
+                        iterations = DEFAULT_KDF_ITERATIONS,
+                        memory = null,
+                        parallelism = null,
+                    ),
+                    salt = EMAIL,
+                    masterPasswordAuthenticationHash = PASSWORD_HASH,
+                    masterKeyWrappedUserKey = ENCRYPTED_USER_KEY,
                 ),
             )
         } returns RegisterResponseJson.Success.asSuccess()
@@ -5000,14 +4912,14 @@ class AuthRepositoryTest {
     fun `removePassword with no keyConnectorUrl should return error`() = runTest {
         fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
         val organizations = listOf(
-            createMockOrganizationNetwork(
+            createMockOrganization(
                 number = 1,
-                isKeyConnectorEnabled = true,
-                type = OrganizationType.USER,
+                shouldUseKeyConnector = true,
+                role = OrganizationType.USER,
                 keyConnectorUrl = null,
             ),
         )
-        fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+        every { organizationManager.organizations } returns organizations
 
         val result = repository.removePassword(masterPassword = PASSWORD)
 
@@ -5024,14 +4936,14 @@ class AuthRepositoryTest {
             val url = "www.example.com"
             val error = Throwable("Fail!")
             val organizations = listOf(
-                createMockOrganizationNetwork(
+                createMockOrganization(
                     number = 1,
-                    isKeyConnectorEnabled = true,
-                    type = OrganizationType.USER,
+                    shouldUseKeyConnector = true,
+                    role = OrganizationType.USER,
                     keyConnectorUrl = url,
                 ),
             )
-            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            every { organizationManager.organizations } returns organizations
             coEvery {
                 keyConnectorManager.migrateExistingUserToKeyConnector(
                     userId = USER_ID_1,
@@ -5056,14 +4968,14 @@ class AuthRepositoryTest {
             val error = Throwable("Fail!")
             val expectedResult = MigrateExistingUserToKeyConnectorResult.Error(error)
             val organizations = listOf(
-                createMockOrganizationNetwork(
+                createMockOrganization(
                     number = 1,
-                    isKeyConnectorEnabled = true,
-                    type = OrganizationType.USER,
+                    shouldUseKeyConnector = true,
+                    role = OrganizationType.USER,
                     keyConnectorUrl = url,
                 ),
             )
-            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            every { organizationManager.organizations } returns organizations
             coEvery {
                 keyConnectorManager.migrateExistingUserToKeyConnector(
                     userId = USER_ID_1,
@@ -5091,14 +5003,14 @@ class AuthRepositoryTest {
             val url = "www.example.com"
             val expectedResult = MigrateExistingUserToKeyConnectorResult.WrongPasswordError
             val organizations = listOf(
-                createMockOrganizationNetwork(
+                createMockOrganization(
                     number = 1,
-                    isKeyConnectorEnabled = true,
-                    type = OrganizationType.USER,
+                    shouldUseKeyConnector = true,
+                    role = OrganizationType.USER,
                     keyConnectorUrl = url,
                 ),
             )
-            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            every { organizationManager.organizations } returns organizations
             coEvery {
                 keyConnectorManager.migrateExistingUserToKeyConnector(
                     userId = USER_ID_1,
@@ -5125,14 +5037,14 @@ class AuthRepositoryTest {
             fakeAuthDiskSource.userState = SINGLE_USER_STATE_1
             val url = "www.example.com"
             val organizations = listOf(
-                createMockOrganizationNetwork(
+                createMockOrganization(
                     number = 1,
-                    isKeyConnectorEnabled = true,
-                    type = OrganizationType.USER,
+                    shouldUseKeyConnector = true,
+                    role = OrganizationType.USER,
                     keyConnectorUrl = url,
                 ),
             )
-            fakeAuthDiskSource.storeOrganizations(userId = USER_ID_1, organizations = organizations)
+            every { organizationManager.organizations } returns organizations
             coEvery {
                 keyConnectorManager.migrateExistingUserToKeyConnector(
                     userId = USER_ID_1,
@@ -5194,11 +5106,13 @@ class AuthRepositoryTest {
             .asSuccess()
         coEvery {
             accountsService.resetPassword(
-                body = ResetPasswordRequestJson.V1(
+                body = ResetPasswordRequestJson(
                     currentPasswordHash = currentPasswordHash,
-                    newPasswordHash = newPasswordHash,
                     passwordHint = null,
-                    key = newKey,
+                    kdf = ACCOUNT_1.profile.toKdfRequestModel(),
+                    salt = email,
+                    masterPasswordAuthenticationHash = newPasswordHash,
+                    masterKeyWrappedUserKey = newKey,
                 ),
             )
         } returns Unit.asSuccess()
@@ -5233,11 +5147,13 @@ class AuthRepositoryTest {
                 newPassword = newPassword,
             )
             accountsService.resetPassword(
-                body = ResetPasswordRequestJson.V1(
+                body = ResetPasswordRequestJson(
                     currentPasswordHash = currentPasswordHash,
-                    newPasswordHash = newPasswordHash,
                     passwordHint = null,
-                    key = newKey,
+                    kdf = ACCOUNT_1.profile.toKdfRequestModel(),
+                    salt = email,
+                    masterPasswordAuthenticationHash = newPasswordHash,
+                    masterKeyWrappedUserKey = newKey,
                 ),
             )
         }
@@ -5693,16 +5609,14 @@ class AuthRepositoryTest {
                 encryptedUserKey = encryptedUserKey,
                 keys = RsaKeyPair(public = publicRsaKey, private = privateRsaKey),
             )
-            val setPasswordRequestJson = SetPasswordRequestJson.V1(
-                passwordHash = passwordHash,
-                passwordHint = passwordHint,
+            val setPasswordRequestJson = SetPasswordRequestJson(
                 organizationIdentifier = organizationId,
-                kdfIterations = profile.kdfIterations,
-                kdfMemory = profile.kdfMemory,
-                kdfParallelism = profile.kdfParallelism,
-                kdfType = profile.kdfType,
-                key = encryptedUserKey,
-                keys = SetPasswordRequestJson.V1.Keys(
+                passwordHint = passwordHint,
+                kdf = profile.toKdfRequestModel(),
+                salt = profile.email,
+                masterPasswordAuthenticationHash = passwordHash,
+                masterKeyWrappedUserKey = encryptedUserKey,
+                keys = KeysJson(
                     publicKey = publicRsaKey,
                     encryptedPrivateKey = privateRsaKey,
                 ),
@@ -5751,16 +5665,14 @@ class AuthRepositoryTest {
                 encryptedUserKey = encryptedUserKey,
                 keys = RsaKeyPair(public = publicRsaKey, private = privateRsaKey),
             )
-            val setPasswordRequestJson = SetPasswordRequestJson.V1(
-                passwordHash = passwordHash,
-                passwordHint = passwordHint,
+            val setPasswordRequestJson = SetPasswordRequestJson(
                 organizationIdentifier = organizationIdentifier,
-                kdfIterations = profile.kdfIterations,
-                kdfMemory = profile.kdfMemory,
-                kdfParallelism = profile.kdfParallelism,
-                kdfType = profile.kdfType,
-                key = encryptedUserKey,
-                keys = SetPasswordRequestJson.V1.Keys(
+                passwordHint = passwordHint,
+                kdf = profile.toKdfRequestModel(),
+                salt = profile.email,
+                masterPasswordAuthenticationHash = passwordHash,
+                masterKeyWrappedUserKey = encryptedUserKey,
+                keys = KeysJson(
                     publicKey = publicRsaKey,
                     encryptedPrivateKey = privateRsaKey,
                 ),
@@ -5860,15 +5772,13 @@ class AuthRepositoryTest {
             passwordHash = passwordHash,
             newKey = encryptedUserKey,
         )
-        val setPasswordRequestJson = SetPasswordRequestJson.V1(
-            passwordHint = passwordHint,
+        val setPasswordRequestJson = SetPasswordRequestJson(
             organizationIdentifier = organizationIdentifier,
-            kdfType = profile.kdfType,
-            kdfIterations = profile.kdfIterations,
-            kdfMemory = profile.kdfMemory,
-            kdfParallelism = profile.kdfParallelism,
-            passwordHash = passwordHash,
-            key = encryptedUserKey,
+            passwordHint = passwordHint,
+            kdf = profile.toKdfRequestModel(),
+            salt = profile.email,
+            masterPasswordAuthenticationHash = passwordHash,
+            masterKeyWrappedUserKey = encryptedUserKey,
             keys = null,
         )
         fakeAuthDiskSource.userState = userState
@@ -5960,16 +5870,14 @@ class AuthRepositoryTest {
                 encryptedUserKey = encryptedUserKey,
                 keys = RsaKeyPair(public = publicRsaKey, private = privateRsaKey),
             )
-            val setPasswordRequestJson = SetPasswordRequestJson.V1(
-                passwordHash = passwordHash,
-                passwordHint = passwordHint,
+            val setPasswordRequestJson = SetPasswordRequestJson(
                 organizationIdentifier = organizationIdentifier,
-                kdfIterations = profile.kdfIterations,
-                kdfMemory = profile.kdfMemory,
-                kdfParallelism = profile.kdfParallelism,
-                kdfType = profile.kdfType,
-                key = encryptedUserKey,
-                keys = SetPasswordRequestJson.V1.Keys(
+                passwordHint = passwordHint,
+                kdf = profile.toKdfRequestModel(),
+                salt = profile.email,
+                masterPasswordAuthenticationHash = passwordHash,
+                masterKeyWrappedUserKey = encryptedUserKey,
+                keys = KeysJson(
                     publicKey = publicRsaKey,
                     encryptedPrivateKey = privateRsaKey,
                 ),
@@ -7185,7 +7093,6 @@ class AuthRepositoryTest {
             every { settingsRepository.getUserHasLoggedInValue(USER_ID_1) } returns false
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
@@ -7244,7 +7151,6 @@ class AuthRepositoryTest {
             every { settingsRepository.getUserHasLoggedInValue(USER_ID_1) } returns true
             val result = repository.login(email = EMAIL, password = PASSWORD)
             assertEquals(LoginResult.Success, result)
-            assertEquals(AuthState.Authenticated(ACCESS_TOKEN), repository.authStateFlow.value)
             coVerify { identityService.preLogin(email = EMAIL) }
             fakeAuthDiskSource.assertAccountCryptographicState(
                 userId = USER_ID_1,
@@ -7276,41 +7182,6 @@ class AuthRepositoryTest {
             )
             assertEquals(
                 LoginResult.Error(error = MissingPropertyException("Key Connector Response")),
-                continueResult,
-            )
-        }
-
-    @Test
-    @Suppress("MaxLineLength")
-    fun `leaveOrganization should return success when organizationService leaveOrganization succeeds`() =
-        runTest {
-            coEvery {
-                organizationService.leaveOrganization(any())
-            } returns Unit.asSuccess()
-
-            val continueResult = repository.leaveOrganization("mockId-1")
-            coVerify {
-                organizationService.leaveOrganization(any())
-            }
-            assertEquals(
-                LeaveOrganizationResult.Success, continueResult,
-            )
-        }
-
-    @Test
-    fun `leaveOrganization should return error when organizationService leaveOrganization fails`() =
-        runTest {
-            val error = Throwable("Fail")
-            coEvery {
-                organizationService.leaveOrganization(any())
-            } returns error.asFailure()
-
-            val continueResult = repository.leaveOrganization("mockId-1")
-            coVerify {
-                organizationService.leaveOrganization(any())
-            }
-            assertEquals(
-                LeaveOrganizationResult.Error(error = error),
                 continueResult,
             )
         }

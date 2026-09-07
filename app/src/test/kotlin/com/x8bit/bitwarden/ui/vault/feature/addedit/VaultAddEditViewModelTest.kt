@@ -961,7 +961,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
             }
             verify(exactly = 1) {
                 snackbarRelayManager.sendSnackbarData(
-                    data = BitwardenSnackbarData(BitwardenString.new_item_created.asText()),
+                    data = BitwardenSnackbarData(BitwardenString.login_saved.asText()),
                     relay = SnackbarRelay.CIPHER_CREATED,
                 )
             }
@@ -1131,7 +1131,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
             assertNotNull(specialCircumstanceManager.specialCircumstance)
             verify(exactly = 1) {
                 snackbarRelayManager.sendSnackbarData(
-                    data = BitwardenSnackbarData(BitwardenString.new_item_created.asText()),
+                    data = BitwardenSnackbarData(BitwardenString.login_saved.asText()),
                     relay = SnackbarRelay.CIPHER_CREATED,
                 )
             }
@@ -1514,8 +1514,84 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
             }
             verify(exactly = 1) {
                 snackbarRelayManager.sendSnackbarData(
-                    data = BitwardenSnackbarData(BitwardenString.new_item_created.asText()),
+                    data = BitwardenSnackbarData(BitwardenString.login_saved.asText()),
                     relay = SnackbarRelay.CIPHER_CREATED,
+                )
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `in add mode with a card, createCipherInOrganization success should send the card saved snackbar`() =
+        runTest {
+            val stateWithName = createVaultAddItemState(
+                vaultItemCipherType = VaultItemCipherType.CARD,
+                commonContentViewState = createCommonContentViewState(
+                    name = "mockName-1",
+                ),
+                typeContentViewState = VaultAddEditState.ViewState.Content.ItemType.Card(),
+            )
+
+            mutableVaultDataFlow.value = DataState.Loaded(createVaultData())
+
+            val viewModel = createAddVaultItemViewModel(
+                createSavedStateHandleWithState(
+                    state = stateWithName,
+                    vaultAddEditType = VaultAddEditType.AddItem,
+                    vaultItemCipherType = VaultItemCipherType.CARD,
+                ),
+            )
+
+            coEvery {
+                vaultRepository.createCipherInOrganization(any(), any())
+            } returns CreateCipherResult.Success
+            viewModel.eventFlow.test {
+                viewModel.trySendAction(VaultAddEditAction.Common.SaveClick)
+                assertEquals(VaultAddEditEvent.NavigateBack, awaitItem())
+            }
+            verify(exactly = 1) {
+                snackbarRelayManager.sendSnackbarData(
+                    data = BitwardenSnackbarData(BitwardenString.card_saved.asText()),
+                    relay = SnackbarRelay.CIPHER_CREATED,
+                )
+            }
+        }
+
+    @Test
+    fun `in edit mode with a card, updateCipher success should send the card saved snackbar`() =
+        runTest {
+            val cipherView = createMockCipherListView(1)
+            val stateWithName = createVaultAddItemState(
+                vaultAddEditType = VaultAddEditType.EditItem(DEFAULT_EDIT_ITEM_ID),
+                vaultItemCipherType = VaultItemCipherType.CARD,
+                commonContentViewState = createCommonContentViewState(
+                    name = "mockName-1",
+                ),
+                typeContentViewState = VaultAddEditState.ViewState.Content.ItemType.Card(),
+            )
+
+            mutableVaultDataFlow.value =
+                DataState.Loaded(createVaultData(cipherListView = cipherView))
+
+            val viewModel = createAddVaultItemViewModel(
+                createSavedStateHandleWithState(
+                    state = stateWithName,
+                    vaultAddEditType = VaultAddEditType.EditItem(DEFAULT_EDIT_ITEM_ID),
+                    vaultItemCipherType = VaultItemCipherType.CARD,
+                ),
+            )
+
+            coEvery {
+                vaultRepository.updateCipher(any(), any())
+            } returns UpdateCipherResult.Success
+            viewModel.eventFlow.test {
+                viewModel.trySendAction(VaultAddEditAction.Common.SaveClick)
+                assertEquals(VaultAddEditEvent.NavigateBack, awaitItem())
+            }
+            verify(exactly = 1) {
+                snackbarRelayManager.sendSnackbarData(
+                    data = BitwardenSnackbarData(BitwardenString.card_saved.asText()),
+                    relay = SnackbarRelay.CIPHER_UPDATED,
                 )
             }
         }
@@ -1855,7 +1931,7 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
             }
             verify(exactly = 1) {
                 snackbarRelayManager.sendSnackbarData(
-                    data = BitwardenSnackbarData(BitwardenString.item_updated.asText()),
+                    data = BitwardenSnackbarData(BitwardenString.login_saved.asText()),
                     relay = SnackbarRelay.CIPHER_UPDATED,
                 )
             }
@@ -4624,6 +4700,13 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
 
     @Nested
     inner class VaultAddEditCommonActions {
+        private val createdFolderId: String = "123"
+        private val newFolderName: String = "folderName"
+        private val createdFolderView: FolderView = FolderView(
+            id = createdFolderId,
+            name = newFolderName,
+            revisionDate = fixedClock.instant(),
+        )
         private lateinit var viewModel: VaultAddEditViewModel
         private lateinit var vaultAddItemInitialState: VaultAddEditState
         private lateinit var secureNotesInitialSavedStateHandle: SavedStateHandle
@@ -4721,20 +4804,14 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
 
         @Test
         fun `AddNewFolder action calls create folder from vault repository`() = runTest {
-            val folderName = "folderName"
-            val expectedFolderResult = FolderView(
-                id = "123",
-                name = folderName,
-                revisionDate = fixedClock.instant(),
-            )
             coEvery {
                 vaultRepository.createFolder(any())
-            } returns CreateFolderResult.Success(expectedFolderResult)
-            viewModel.trySendAction(VaultAddEditAction.Common.AddNewFolder(folderName))
+            } returns CreateFolderResult.Success(createdFolderView)
+            viewModel.trySendAction(VaultAddEditAction.Common.AddNewFolder(newFolderName))
             coVerify {
                 vaultRepository.createFolder(
                     FolderView(
-                        name = folderName,
+                        name = newFolderName,
                         id = null,
                         revisionDate = fixedClock.instant(),
                     ),
@@ -4744,20 +4821,13 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
 
         @Test
         fun `AddNewFolder updates dialog states and selected folder id on success`() = runTest {
-            val folderId = "123"
-            val folderName = "folderName"
-            val expectedFolderResult = FolderView(
-                id = folderId,
-                name = folderName,
-                revisionDate = fixedClock.instant(),
-            )
             coEvery {
                 vaultRepository.createFolder(any())
-            } returns CreateFolderResult.Success(expectedFolderResult)
+            } returns CreateFolderResult.Success(createdFolderView)
 
             viewModel.stateFlow.test {
                 awaitItem() // initial state.
-                viewModel.trySendAction(VaultAddEditAction.Common.AddNewFolder(folderName))
+                viewModel.trySendAction(VaultAddEditAction.Common.AddNewFolder(newFolderName))
                 assertEquals(
                     vaultAddItemInitialState.copy(
                         dialog = VaultAddEditState.DialogState.Loading(
@@ -4770,11 +4840,35 @@ class VaultAddEditViewModelTest : BaseViewModelTest() {
                     createVaultAddItemState(
                         dialogState = null,
                         commonContentViewState = createCommonContentViewState(
-                            selectedFolderId = folderId,
+                            selectedFolderId = createdFolderId,
                         ),
                     ),
                     awaitItem(),
                 )
+            }
+        }
+
+        @Test
+        fun `AddNewFolder does not show the folder created snackbar on success`() = runTest {
+            coEvery {
+                vaultRepository.createFolder(any())
+            } returns CreateFolderResult.Success(createdFolderView)
+
+            viewModel.eventFlow.test {
+                viewModel.trySendAction(VaultAddEditAction.Common.AddNewFolder(newFolderName))
+                expectNoEvents()
+            }
+        }
+
+        @Test
+        fun `AddNewFolder does not show the folder created snackbar on error`() = runTest {
+            coEvery {
+                vaultRepository.createFolder(any())
+            } returns CreateFolderResult.Error(error = Throwable("Fail"))
+
+            viewModel.eventFlow.test {
+                viewModel.trySendAction(VaultAddEditAction.Common.AddNewFolder(newFolderName))
+                expectNoEvents()
             }
         }
 

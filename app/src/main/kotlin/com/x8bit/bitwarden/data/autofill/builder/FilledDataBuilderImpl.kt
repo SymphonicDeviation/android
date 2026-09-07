@@ -91,6 +91,12 @@ class FilledDataBuilderImpl(
                     }
                     .orEmpty()
             }
+
+            is AutofillPartition.Identity -> {
+                // Filling an identity partition is wired up in a later phase; this is a no-op
+                // today since an identity partition is never constructed yet.
+                emptyList()
+            }
         }
 
         // Use getOrLastOrNull so if the list has run dry take the last spec.
