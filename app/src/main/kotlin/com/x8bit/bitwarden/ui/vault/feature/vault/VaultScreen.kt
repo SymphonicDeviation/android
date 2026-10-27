@@ -131,7 +131,7 @@ fun VaultScreen(
             is VaultEvent.NavigateToAddItemScreen -> {
                 onNavigateToVaultAddItemScreen(
                     VaultAddEditArgs(
-                        vaultAddEditType = VaultAddEditType.AddItem,
+                        vaultAddEditType = VaultAddEditType.AddItem(),
                         vaultItemCipherType = event.type,
                     ),
                 )
@@ -330,6 +330,7 @@ private fun VaultScreenScaffold(
                 is VaultState.ViewState.Content -> VaultContent(
                     state = viewState,
                     actionCardState = state.actionCard,
+                    collapsedSections = state.collapsedSections,
                     vaultHandlers = vaultHandlers,
                     modifier = Modifier.fillMaxSize(),
                 )

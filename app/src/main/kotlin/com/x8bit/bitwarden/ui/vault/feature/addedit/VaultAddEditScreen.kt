@@ -97,6 +97,7 @@ import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditLoginTy
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditSshKeyTypeHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.VaultAddEditUserVerificationHandlers
 import com.x8bit.bitwarden.ui.vault.feature.addedit.handlers.rememberVaultAddEditPassportTypeHandlers
+import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
@@ -123,6 +124,7 @@ fun VaultAddEditScreen(
     onNavigateToAttachments: (cipherId: String) -> Unit,
     onNavigateToMoveToOrganization: (cipherId: String, showOnlyCollections: Boolean) -> Unit,
     onNavigateToPlan: () -> Unit,
+    onCloseAndNavigateToVaultItem: (cipherId: String, cipherType: VaultItemCipherType) -> Unit,
 ) {
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     val userVerificationHandlers = remember(viewModel) {
@@ -156,6 +158,10 @@ fun VaultAddEditScreen(
             }
 
             is VaultAddEditEvent.NavigateToAttachments -> onNavigateToAttachments(event.cipherId)
+            is VaultAddEditEvent.CloseAndNavigateToVaultItem -> {
+                onCloseAndNavigateToVaultItem(event.cipherId, event.cipherType)
+            }
+
             is VaultAddEditEvent.NavigateToMoveToOrganization -> {
                 onNavigateToMoveToOrganization(event.cipherId, false)
             }
@@ -763,6 +769,11 @@ private fun FolderSelectionBottomSheetContent(
                 mutableStateOf("")
             }
             val cardStyle = if (options.isEmpty()) CardStyle.Full else CardStyle.Bottom
+            val shape = if (options.isEmpty()) {
+                BitwardenTheme.shapes.content
+            } else {
+                BitwardenTheme.shapes.contentBottom
+            }
             if (inEditMode) {
                 BitwardenTextField(
                     label = stringResource(BitwardenString.add_folder),
@@ -794,7 +805,7 @@ private fun FolderSelectionBottomSheetContent(
                     leadingIcon = painterResource(id = BitwardenDrawable.ic_plus_small),
                     style = BitwardenTheme.typography.labelMedium,
                     innerPadding = PaddingValues(all = 16.dp),
-                    cornerSize = 0.dp,
+                    shape = shape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .cardStyle(cardStyle = cardStyle, paddingVertical = 0.dp),

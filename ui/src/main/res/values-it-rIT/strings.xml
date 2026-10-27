@@ -574,8 +574,8 @@ Tutte le sessioni attive verranno terminate entro un\'ora.</string>
     <string name="resend_code">Reinvia il codice</string>
     <string name="a_verification_code_was_sent_to_your_email">Codice di verifica inviato all\'indirizzo email</string>
     <string name="submit_crash_logs">Segnalazione degli arresti anomali</string>
-    <string name="options_expanded">Opzioni mostrate, tocca per nasconderle.</string>
-    <string name="options_collapsed">Opzioni nascoste, tocca per mostrarle.</string>
+    <string name="expand">expand</string>
+    <string name="collapse">collapse</string>
     <string name="uppercase_ato_z">Maiuscole (A-Z)</string>
     <string name="lowercase_ato_z">Minuscole (a-z)</string>
     <string name="numbers_zero_to_nine">Numeri (0-9)</string>
@@ -1147,11 +1147,6 @@ Vuoi passare a questo account?</string>
     <string name="file_could_not_be_processed">Il file non può essere elaborato</string>
     <string name="file_could_not_be_processed_message">Il file non può essere elaborato. Assicurati che sia compatibile con JSON e riprova. Hai bisogno di aiuto? Visita bitwarden.com/help</string>
     <string name="get_help">Ottieni aiuto</string>
-    <string name="expand_advanced_options">Espandi le opzioni avanzate</string>
-    <string name="local_items_are_expanded_click_to_collapse">Elementi locali visibili; tocca per comprimere la lista.</string>
-    <string name="local_items_are_collapsed_click_to_expand">Elementi locali nascosti; tocca per espandere la lista.</string>
-    <string name="items_expanded_click_to_collapse">Elementi visibili; tocca per nascondere.</string>
-    <string name="items_are_collapsed_click_to_expand">Elementi nascosti; tocca per mostrarli.</string>
     <string name="error_cannot_decrypt">[error: cannot decrypt]</string>
     <string name="copy_error_report">Copia il testo della segnalazione</string>
     <string name="bitwarden_could_not_decrypt_this_vault_item_description_long">Bitwarden non riesce a decriptare questo elemento. Copia questa segnalazione di errore e inviala all\'assistenza tecnica per evitare ulteriori perdite di dati.</string>
@@ -1160,6 +1155,7 @@ Vuoi passare a questo account?</string>
         <item quantity="other">Impossibile decrittare %1$d elementi. Segnala l\'errore all\'assistenza tecnica per evitare il rischio di perdita di dati.</item>
     </plurals>
     <string name="select_a_card_for_x">Seleziona una carta per %s</string>
+    <string name="choose_an_identity">Choose an identity</string>
     <string name="advanced_options">Opzioni avanzate</string>
     <string name="more_about_match_detection"><annotation link="moreAboutMatchDetection">Ulteriori informazioni sulla corrispondenza degli URL</annotation></string>
     <string name="keep_your_credential_secure">Mantieni le tue credenziali sicure</string>
@@ -1442,4 +1438,13 @@ Vuoi passare a questo account?</string>
     <string name="only_allows_invited_users_to_create_accounts">%1$s consente solo agli utenti invitati di creare account.</string>
     <string name="stepper_decrement_format" comment="Used to announce the value that will be decremented when a button is pressed">Decrease %1$s</string>
     <string name="stepper_increment_format" comment="Used to announce the value that will be incremented when a button is pressed">Increase %1$s</string>
+    <string name="use_this_passphrase">Usa questa passphrase</string>
+    <string name="use_this_password">Usa questa password</string>
+    <string name="use_this_username">Usa questo nome utente</string>
+    <string name="create_login">Crea login</string>
+    <string name="keep_unlocking_with_biometrics">Keep unlocking with biometrics</string>
+    <string name="weve_made_a_security_update">Abbiamo fatto un aggiornamento di sicurezza. Conferma nuovamente i tuoi dati biometrici per continuare a utilizzarli per sbloccare Bitwarden.</string>
+    <string name="turn_off">Disattiva</string>
+    <string name="turn_off_biometric_question">Turn off biometrics?</string>
+    <string name="unlocking_will_require_your_master_password">Lo sblocco richiederà la tua password principale. Puoi riattivare la biometria nelle Impostazioni.</string>
 </resources>

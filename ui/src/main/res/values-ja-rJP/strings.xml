@@ -106,7 +106,7 @@
     <string name="four_hours">4 時間</string>
     <string name="immediately">即時</string>
     <string name="vault_timeout_log_out_confirmation_title">セッションタイムアウトを「ログアウト」に設定しますか？</string>
-    <string name="vault_timeout_log_out_confirmation_message">タイムアウト期間が経過すると、ログアウトされます。再びログインしてボールトにアクセスするには、インターネットに接続している必要があります。このデバイスに保存されている設定とPINは変更されません。</string>
+    <string name="vault_timeout_log_out_confirmation_message">タイムアウト期間が経過すると、ログアウトされます。再度ログインして保管庫にアクセスするには、インターネットに接続している必要があります。このデバイスに保存されている設定と PIN は変更されません。</string>
     <string name="logging_in">ログイン中…</string>
     <string name="login_to_bitwarden">Bitwarden にログイン</string>
     <string name="master_password_confirmation_val_message">パスワードの確認が正しくありません。</string>
@@ -119,16 +119,16 @@
     <string name="min_numbers">数字の最小個数</string>
     <string name="min_special">最低限必要な記号の個数</string>
     <string name="never">なし</string>
-    <string name="no_cards">保管庫にカードがありません</string>
+    <string name="no_cards">保管庫にカードがありません。</string>
     <string name="add_card">カードを追加</string>
-    <string name="no_logins">保管庫にログイン情報がありません</string>
-    <string name="no_identities">保管庫に身分証はありません</string>
+    <string name="no_logins">保管庫にログイン情報がありません。</string>
+    <string name="no_identities">保管庫に身分証明書がありません。</string>
     <string name="add_identity">ID を追加</string>
-    <string name="no_notes">保管庫にメモがありません</string>
+    <string name="no_notes">保管庫にメモがありません。</string>
     <string name="add_note">メモを追加</string>
     <string name="add_ssh_key">SSH 鍵を追加</string>
-    <string name="no_text_sends">保管庫にテキスト入のSendはありません</string>
-    <string name="no_file_sends">保管庫にファイル入のSendはありません</string>
+    <string name="no_text_sends">保管庫にテキストが添付された Send はありません。</string>
+    <string name="no_file_sends">保管庫にファイルが添付された Send はありません。</string>
     <string name="no_ssh_keys">保管庫に SSH 鍵がありません。</string>
     <string name="no_archives_title">アーカイブは空です</string>
     <string name="no_archives_message">検索結果やオートフィルの候補に表示したくないが、いつか必要になるかもしれないアイテムをアーカイブに保管します。</string>
@@ -191,7 +191,7 @@
     <string name="send_verification_code_again">確認コードをメールで再送</string>
     <string name="verification_email_not_sent">確認メールを送信できませんでした。やり直してください。</string>
     <string name="verification_email_sent">確認メールを送信しました。</string>
-    <string name="yubi_key_instruction">続行するには、Yubicoセキュリティキーをデバイスの背面にかざすか、デバイスのUSBポートに挿入し、ボタンをタッチしてください。</string>
+    <string name="yubi_key_instruction">続行するには、Yubico セキュリティ キーをデバイスの背面にかざすか、デバイスの USB ポートに挿入してから、ボタンをタップしてください。</string>
     <string name="yubi_key_title">Yubico セキュリティキー</string>
     <string name="add_new_attachment">添付ファイルを追加</string>
     <string name="attachments">添付ファイル</string>
@@ -385,14 +385,14 @@
     <string name="clear_clipboard">クリップボードの消去</string>
     <string name="clear_clipboard_description">コピー内容をクリップボードから自動的に消去します。</string>
     <string name="default_uri_match_detection">デフォルトの URI 一致検出方法</string>
-    <string name="default_uri_match_detection_description">URI一致検出は、Bitwardenがオートフィルの候補をどのように識別するかを制御します。</string>
+    <string name="default_uri_match_detection_description">URI 一致検出は、Bitwarden がオートフィルの候補をどのように識別するかを制御します。</string>
     <string name="theme">テーマ</string>
     <string name="theme_description">アプリケーションのカラーテーマを変更</string>
     <string name="copy_notes">メモをコピー</string>
     <string name="require_master_password_on_app_restart">アプリの再起動時にマスターパスワードを必要としますか？</string>
     <string name="pin_require_master_password_restart">アプリを再起動したときにマスターパスワードでのロック解除を必須としますか？</string>
     <string name="ask_to_add_item">アイテムの追加を確認する</string>
-    <string name="ask_to_add_item_description">ボールトにアイテムが見つからない場合、追加するか確認します。</string>
+    <string name="ask_to_add_item_description">保管庫にアイテムが見つからない場合は、追加するか確認します。</string>
     <string name="turn_on_fill_assist">入力アシストをオンにする</string>
     <string name="fill_assist_improves_autofill_accuracy_on_supported_sites">入力アシストは、サイト固有のルールを使用して対応サイトの自動入力の精度を向上させます。</string>
     <string name="on_restart">アプリ再起動時</string>
@@ -422,7 +422,7 @@
     <string name="unable_to_save_attachment">添付ファイルの保存時に問題が発生しました。問題が続くようであれば、ウェブ保管庫から保存してください。</string>
     <string name="save_attachment_success">添付ファイルを保存しました</string>
     <string name="autofill_tile_accessibility_required">自動入力タイルを使用するには、Bitwarden の設定で「自動入力のユーザー補助」を有効にしてください。</string>
-    <string name="autofill_tile_uri_not_found">パスワードフィールドが見つかりませんでした</string>
+    <string name="autofill_tile_uri_not_found">パスワード フィールドが見つかりませんでした</string>
     <string name="soft_deleting">ごみ箱に入れています…</string>
     <string name="item_soft_deleted">アイテムをごみ箱に入れました。</string>
     <string name="restore">リストア</string>
@@ -570,8 +570,8 @@
     <string name="resend_code">コードを再送信</string>
     <string name="a_verification_code_was_sent_to_your_email">確認コードをあなたのメールアドレスに送信しました</string>
     <string name="submit_crash_logs">クラッシュログを送信</string>
-    <string name="options_expanded">オプションを展開しました。タップして折りたたみます。</string>
-    <string name="options_collapsed">オプションが折りたたまれています。タップすると展開します。</string>
+    <string name="expand">展開</string>
+    <string name="collapse">折りたたむ</string>
     <string name="uppercase_ato_z">大文字（A～Z）</string>
     <string name="lowercase_ato_z">小文字（a～z）</string>
     <string name="numbers_zero_to_nine">数値 (0～9)</string>
@@ -740,7 +740,7 @@
     <string name="follow_the_steps_from_duo_to_finish_logging_in">Duo の手順に従ってログインを完了してください。</string>
     <string name="launch_duo">Duo を起動</string>
     <string name="your_passkey_will_be_saved_to_your_bitwarden_vault_for_x">あなたのパスキーは %1$s の Bitwarden 保管庫に保存されます。</string>
-    <string name="your_password_will_be_saved_to_your_bitwarden_vault_for_x">パスワードは %1$s のBitwardenボールトに保存されます</string>
+    <string name="your_password_will_be_saved_to_your_bitwarden_vault_for_x">パスワードは %1$s の Bitwarden 保管庫に保存されます</string>
     <string name="passkeys_not_supported_for_this_app">このアプリではパスキーに対応していません</string>
     <string name="passkey_operation_failed_because_browser_is_not_privileged">ブラウザに特権がないため、パスキーの操作に失敗しました</string>
     <string name="passkey_operation_failed_because_browser_signature_does_not_match">ブラウザの署名が一致しないため、パスキーの操作に失敗しました</string>
@@ -787,7 +787,7 @@
     <string name="confirm">確認</string>
     <string name="set_up_biometrics_or_choose_a_pin_code_to_quickly_access_your_vault_and_autofill_your_logins">生体認証を設定するか、PIN コードを選択して保管庫にすばやくアクセスし、ログインを自動入力します。</string>
     <string name="never_lose_access_to_your_vault">保管庫へのアクセスを失うことはありません</string>
-    <string name="the_best_way_to_make_sure_you_can_always_access_your_vault">常にアカウントにアクセスできるようにするための最善の方法は、最初から安全対策を設定することです。</string>
+    <string name="the_best_way_to_make_sure_you_can_always_access_your_vault">常に自分の保管庫にアクセスできるようにするための最善の方法は、最初から安全対策を講じておくことです。</string>
     <string name="one_of_the_best_ways_to_create_a_secure_and_memorable_password">安全で覚えやすいパスワードを作成する最善の方法の1つは、パスフレーズを使用することです。使用方法：</string>
     <string name="create_a_hint">ヒントを作成</string>
     <string name="your_hint_will_be_send_to_you_via_email_when_you_request_it">ヒントをリクエストするとメールで送信されます。</string>
@@ -866,7 +866,7 @@
     <string name="import_logins_to_bitwarden">Bitwarden にログイン情報をインポート</string>
     <string name="in_the_bitwarden_navigation_find_the_tools_option_and_select_import_data">Bitwardenのナビゲーションで、<annotation emphasis="bold">「ツール」オプションを見つけ</annotation>、<annotation emphasis="bold">「データをインポート」を選択します。</annotation></string>
     <string name="fill_out_the_form_and_import_your_saved_password_file">フォームに入力し、<annotation emphasis="bold">保存したパスワードファイルをインポートします。</annotation></string>
-    <string name="for_your_security_be_sure_to_delete_your_saved_password_file">セキュリティのため、必ず<annotation emphasis="bold">保存したパスワードファイルを削除してください。</annotation></string>
+    <string name="for_your_security_be_sure_to_delete_your_saved_password_file">セキュリティのため、必ず<annotation emphasis="bold">保存したパスワード ファイル</annotation>を削除してください。</string>
     <string name="need_help_check_out_import_help">ヘルプが必要ですか？ <annotation link="importHelp">インポートのヘルプ</annotation>をご覧ください。</string>
     <string name="import_help">インポートのヘルプ</string>
     <string name="save_the_exported_file_somewhere_on_your_computer_you_can_find_easily"><annotation emphasis="bold">エクスポートしたファイルを</annotation>コンピューター上の見つけやすい場所に保存します。</string>
@@ -962,7 +962,7 @@
     <string name="invalid_certificate_chain">無効な証明書チェーンです</string>
     <string name="system_certificates_are_not_as_secure_as_importing_certificates_to_bitwarden">システム証明書を使用することは、Bitwardenに証明書を保存するよりも安全性が低くなります。続行すると、インストールされている場合は利用可能なシステム証明書のリストが表示されます。</string>
     <string name="link">リンク</string>
-    <string name="passkey_operation_failed_because_host_url_is_not_present_in_request">リクエストにホストURLが含まれていないため、パスキー操作に失敗しました。</string>
+    <string name="passkey_operation_failed_because_host_url_is_not_present_in_request">リクエストにホスト URL が含まれていないため、パスキー操作に失敗しました。</string>
     <string name="passkey_operation_failed_because_app_signature_is_invalid">アプリの署名が無効なため、パスキー操作に失敗しました。</string>
     <string name="passkey_registration_failed_due_to_an_internal_error">内部エラーのため、パスキー登録に失敗しました。</string>
     <string name="passkey_operation_failed_because_relying_party_cannot_be_identified">証明書利用者を識別できないため、パスキー操作に失敗しました。</string>
@@ -1034,7 +1034,7 @@
     <string name="view_file_send">ファイルSendを表示</string>
     <string name="view_text_send">テキストSendを表示</string>
     <string name="delete_send">Send を削除</string>
-    <string name="missing_send_resync_your_vault">Sendが見つかりません。ボールトを再同期してください</string>
+    <string name="missing_send_resync_your_vault">Send が見つかりません。保管庫を再同期してください</string>
     <string name="use_dynamic_colors">ダイナミックカラーを使用</string>
     <string name="use_dynamic_colors_question">ダイナミックカラーを使用しますか?</string>
     <string name="dynamic_colors_may_not_adhere_to_accessibility_guidelines">このカラースキームは、現在の壁紙に基づいてシステムカラーをBitwardenに自動的に適用します。これらの色はすべてのアクセシビリティガイドラインを満たしていない場合があります。</string>
@@ -1141,11 +1141,6 @@
     <string name="file_could_not_be_processed">ファイルを処理できませんでした</string>
     <string name="file_could_not_be_processed_message">ファイルを処理できませんでした。有効な JSON であることを確認し、再度お試しください。ヘルプが必要な場合は bitwarden.com/help をご覧ください</string>
     <string name="get_help">ヘルプを参照する</string>
-    <string name="expand_advanced_options">高度なオプションを展開</string>
-    <string name="local_items_are_expanded_click_to_collapse">ローカルアイテムが展開されています。クリックして折りたたみます。</string>
-    <string name="local_items_are_collapsed_click_to_expand">ローカルアイテムが折りたたまれています。クリックして展開します。</string>
-    <string name="items_expanded_click_to_collapse">アイテムが展開されています。クリックして折りたたみます。</string>
-    <string name="items_are_collapsed_click_to_expand">アイテムが折りたたまれています。クリックして展開します。</string>
     <string name="error_cannot_decrypt">[エラー: 復号できません]</string>
     <string name="copy_error_report">エラーレポートをコピー</string>
     <string name="bitwarden_could_not_decrypt_this_vault_item_description_long">Bitwardenはこのボールトアイテムを復号化できませんでした。このエラーレポートをコピーしてカスタマーサクセスと共有し、さらなるデータ損失を防いでください。</string>
@@ -1153,19 +1148,20 @@
         <item quantity="other">Bitwardenは %1$d 個のボールトアイテムを復号化できませんでした。このエラーレポートをコピーしてカスタマーサクセスと共有し、さらなるデータ損失を防いでください。</item>
     </plurals>
     <string name="select_a_card_for_x">%s のカードを選択</string>
+    <string name="choose_an_identity">ID を選択してください</string>
     <string name="advanced_options">高度な設定</string>
     <string name="more_about_match_detection"><annotation link="moreAboutMatchDetection">一致検出の詳細</annotation></string>
     <string name="keep_your_credential_secure">資格情報を安全に保つ</string>
     <string name="learn_more_about_how_to_keep_credentirals_secure">“%1$s” を使用する際に認証情報を安全に保つ方法の詳細はこちら</string>
     <string name="are_you_sure_you_want_to_use">“%1$s” を使用してもよろしいですか？</string>
-    <string name="default_uri_match_detection_description_advanced_options_incorrectly">URI一致検出は、Bitwardenがオートフィルの候補をどのように識別するかを制御します。\n<annotation emphasis="bold">警告：</annotation> 「正規表現」は上級者向けオプションであり、誤って使用すると認証情報を露出させるリスクが高まります。</string>
-    <string name="default_uri_match_detection_description_advanced_options">URI一致検出は、Bitwardenがオートフィルの候補をどのように識別するかを制御します。\n<annotation emphasis="bold">警告：</annotation> 「前方一致」は上級者向けオプションであり、認証情報を露出させるリスクが高まります。</string>
+    <string name="default_uri_match_detection_description_advanced_options_incorrectly">URI 一致検出は、Bitwarden がオートフィルの候補をどのように識別するかを制御します。\n<annotation emphasis="bold">警告：</annotation> 「正規表現」は上級者向けオプションであり、誤って使用すると認証情報が漏洩するリスクが高まります。</string>
+    <string name="default_uri_match_detection_description_advanced_options">URI 一致検出は、Bitwarden がオートフィルの候補をどのように識別するかを制御します。\n<annotation emphasis="bold">警告：</annotation> 「前方一致」は上級者向けオプションであり、認証情報が漏洩するリスクが高まります。</string>
     <string name="advanced_option_with_increased_risk_of_exposing_credentials">「前方一致」は上級者向けオプションであり、認証情報を露出させるリスクが高まります。</string>
     <string name="advanced_option_increased_risk_exposing_credentials_used_incorrectly">「正規表現」は上級者向けオプションであり、誤って使用すると認証情報を露出させるリスクが高まります。</string>
     <string name="later">後で</string>
     <string name="encryption_settings_updated">暗号化設定が更新されました</string>
     <string name="update_your_encryption_settings">暗号化設定を更新</string>
-    <string name="the_new_recommended_encryption_settings_will_improve_your_account_desc_long">新しい推奨暗号化設定により、アカウントのセキュリティが向上します。今すぐ更新するには、マスターパスワードを入力してください。</string>
+    <string name="the_new_recommended_encryption_settings_will_improve_your_account_desc_long">新しい推奨暗号化設定により、アカウントのセキュリティが向上します。今すぐ更新するには、マスター パスワードを入力してください。</string>
     <string name="import_was_cancelled_in_the_selected_app">選択したアプリで認証情報のインポートがキャンセルされました。アイテムはインポートされていません。</string>
     <string name="import_cancelled">インポートがキャンセルされました</string>
     <string name="no_items_imported">インポートされたアイテムはありません</string>
@@ -1173,14 +1169,14 @@
     <string name="vault_sync_failed">保管庫の同期に失敗しました</string>
     <string name="vault_sync_unsuccessful">同期に失敗しました</string>
     <string name="vault_sync_failed_description">サーバーとあなたの保管庫を同期できませんでした。あなたの保管庫は最新の変更を反映していない可能性があります。 後で自動的に同期しますが、今すぐ再試行することもできます。</string>
-    <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">アイテムは正常にインポートされましたが、同期が実行されるまでボールトには表示されません。</string>
+    <string name="your_items_have_been_successfully_imported_but_could_not_sync_vault">アイテムのインポートは正常に完了しましたが、同期が完了するまで保管庫には表示されません。</string>
     <string name="there_was_a_problem_importing_your_items">アイテムのインポート中に問題が発生しました。もう一度お試しください。問題が解決しない場合は、サポートにお問い合わせください。</string>
     <string name="saving_items">アイテムを保存中…</string>
     <string name="unable_to_import_your_items">アイテムをインポートできません</string>
     <string name="import_from_computer">コンピューターからインポート</string>
     <string name="import_from_another_app">別のアプリからインポート</string>
     <plurals name="x_items_have_been_imported_to_your_vault">
-        <item quantity="other">%1$d 個のアイテムがボールトにインポートされました。</item>
+        <item quantity="other">%1$d 個のアイテムが保管庫にインポートされました。</item>
     </plurals>
     <string name="enable_browser_autofill_to_keep_filling_passwords">パスワード入力を続けるためにブラウザのオートフィルを有効にする</string>
     <string name="your_browser_recently_updated_how_autofill_works_singular">ブラウザが最近更新され、Bitwardenのオートフィルが無効になりました。Bitwardenでパスワード入力を続けるには、オートフィル設定でブラウザのオートフィルを有効にしてください。</string>
@@ -1188,12 +1184,12 @@
     <string name="import_from_bitwarden">Bitwarden からインポート</string>
     <string name="select_account">アカウントを選択</string>
     <string name="no_accounts_available">利用可能なアカウントがありません</string>
-    <string name="you_dont_have_any_accounts_you_can_import_from">インポート元となるアカウントがありません。組織のセキュリティポリシーにより、Bitwardenから別のアプリへのアイテムのインポートが制限されている可能性があります。</string>
+    <string name="you_dont_have_any_accounts_you_can_import_from">インポート元となるアカウントがありません。組織のセキュリティ ポリシーにより、Bitwarden から他のアプリへのアイテムのインポートが制限されている可能性があります。</string>
     <string name="import_restricted_unable_to_import_credit_cards">インポートが制限されています。このアカウントからカードをインポートできません。</string>
     <string name="verify_your_master_password">マスターパスワードの確認</string>
     <string name="having_trouble_with_autofill">自動入力に問題がありますか?</string>
     <string name="access_help_and_troubleshooting_documentation_here">ヘルプとトラブルシューティングのドキュメントにアクセスします</string>
-    <string name="import_passwords_passkeys_and_other_item_types_from_your_vault">Bitwardenボールトからパスワード、パスキー、その他のアイテムタイプをインポートします。</string>
+    <string name="import_passwords_passkeys_and_other_item_types_from_your_vault">Bitwarden 保管庫からパスワード、パスキー、その他のアイテムタイプをインポートします。</string>
     <string name="items_to_import">インポートするアイテム</string>
     <string name="exporting_items">アイテムをエクスポート中…</string>
     <string name="export_failed">エクスポート失敗</string>
@@ -1203,14 +1199,14 @@
     <string name="kdf_update_failed_active_account_not_found">KDFの更新に失敗しました。アクティブなアカウントが見つかりません。もう一度お試しいただくか、お問い合わせください。</string>
     <string name="an_error_occurred_while_trying_to_update_your_kdf_settings">KDF設定の更新中にエラーが発生しました。もう一度お試しいただくか、お問い合わせください。</string>
     <string name="the_import_request_could_not_be_processed">インポートリクエストを処理できませんでした。</string>
-    <string name="your_vault_may_be_empty_or_import_some_item_types_isnt_supported">ボールトが空であるか、一部のアイテムタイプのインポートがアカウントで許可されていません。</string>
+    <string name="your_vault_may_be_empty_or_import_some_item_types_isnt_supported">保管庫が空であるか、アカウントによっては一部のアイテムタイプのインポートが許可されていない可能性があります。</string>
     <string name="no_items_available_to_import">インポート可能なアイテムはありません</string>
     <string name="select_a_different_account">別のアカウントを選択</string>
     <string name="verify_your_account_email_address">アカウントのメールアドレスを確認する</string>
     <string name="enter_the_6_digit_code_that_was_emailed_to_the_address_below">以下のアドレスにメールで送信された6桁のコードを入力してください</string>
     <string name="lock_app">アプリをロック</string>
     <string name="use_your_devices_lock_method_to_unlock_the_app">デバイスのロック方法を使用してアプリのロックを解除</string>
-    <string name="loading_vault_data">ボールトデータを読み込み中…</string>
+    <string name="loading_vault_data">保管庫のデータを読み込み中…</string>
     <string name="resending">再送信中</string>
     <string name="you_left_the_organization">組織を退会しました</string>
     <string name="transfer_items_to_org">アイテムを %1$s に移行</string>
@@ -1230,7 +1226,7 @@
     <string name="archiving">アーカイブ中</string>
     <string name="unarchiving">アーカイブから戻しています</string>
     <string name="item_moved_to_archived">アイテムをアーカイブに移動しました</string>
-    <string name="item_moved_to_vault">アイテムをボールトに移動しました</string>
+    <string name="item_moved_to_vault">アイテムを保管庫に移動しました</string>
     <string name="archiving_items_is_a_premium_feature">アイテムのアーカイブはプレミアム機能です。現在のプランではこの機能にはアクセスできません。</string>
     <string name="totp_is_a_premium_feature">認証キー（TOTP）はプレミアム機能です。現在のプランにはこの機能へのアクセス権が含まれていません。</string>
     <string name="upgrade_to_premium">プレミアムにアップグレード</string>
@@ -1245,9 +1241,9 @@
     <string name="introducing_archive">アーカイブの紹介</string>
     <string name="keep_items_you_dont_need_right_now_safe_but_out_sight">今必要のないアイテムを安全に、しかし目につかないところに保管します。</string>
     <string name="go_to_archive">アーカイブへ移動</string>
-    <string name="this_item_is_archived_saving_changes_will_restore_it_to_your_vault">このアイテムはアーカイブされています。変更を保存すると、ボールトに復元されます。</string>
+    <string name="this_item_is_archived_saving_changes_will_restore_it_to_your_vault">このアイテムはアーカイブされています。変更を保存すると、保管庫に復元されます。</string>
     <string name="your_premium_subscription_ended">プレミアムサブスクリプションが終了しました</string>
-    <string name="to_regain_access_to_your_archive_restart_your_premium_subscription">アーカイブへのアクセスを回復するには、プレミアムサブスクリプションを再開してください。再開前にアーカイブされたアイテムの詳細を編集すると、ボールトに戻されます。</string>
+    <string name="to_regain_access_to_your_archive_restart_your_premium_subscription">アーカイブへのアクセスを回復するには、プレミアム サブスクリプションを再開してください。再開前にアーカイブされたアイテムの詳細を編集した場合、そのアイテムは保管庫に戻されます。</string>
     <string name="restart_premium">プレミアムを再開</string>
     <string name="items_transferred">アイテムを移行しました</string>
     <string name="updated_master_password">マスターパスワードを更新しました</string>
@@ -1433,4 +1429,13 @@
     <string name="only_allows_invited_users_to_create_accounts">%1$s は招待されたユーザーのみアカウントを作成できます。</string>
     <string name="stepper_decrement_format" comment="Used to announce the value that will be decremented when a button is pressed">%1$s を減らす</string>
     <string name="stepper_increment_format" comment="Used to announce the value that will be incremented when a button is pressed">%1$s を増やす</string>
+    <string name="use_this_passphrase">このパスフレーズを使用する</string>
+    <string name="use_this_password">このパスワードを使用する</string>
+    <string name="use_this_username">このユーザー名を使用する</string>
+    <string name="create_login">ログイン情報の作成</string>
+    <string name="keep_unlocking_with_biometrics">生体認証でロック解除を続ける</string>
+    <string name="weve_made_a_security_update">セキュリティを更新しました。生体認証を再度確認して、Bitwarden のロックを解除してください。</string>
+    <string name="turn_off">オフにする</string>
+    <string name="turn_off_biometric_question">生体認証をオフにしますか？</string>
+    <string name="unlocking_will_require_your_master_password">ロックを解除するにはマスターパスワードが必要です。設定で生体認証を再度有効にできます。</string>
 </resources>

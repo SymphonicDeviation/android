@@ -11,7 +11,7 @@ import com.bitwarden.policies.PolicyType
 import com.x8bit.bitwarden.data.auth.repository.model.PolicyInformation
 import com.x8bit.bitwarden.data.auth.repository.model.createMockOrganization
 import com.x8bit.bitwarden.data.auth.repository.model.createMockSdkProfileOrganization
-import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockPolicyView
+import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkPolicy
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -87,6 +87,18 @@ class SyncResponseJsonExtensionsTest {
         )
     }
 
+    @Test
+    fun `toSdkProfileOrganizations should filter out organizations with null user IDs`() {
+        assertEquals(
+            listOf(createMockSdkProfileOrganization(number = 1)),
+            listOf(
+                createMockOrganizationNetwork(number = 1),
+                createMockOrganizationNetwork(number = 2, userId = null),
+            )
+                .toSdkProfileOrganizations(),
+        )
+    }
+
     @Suppress("MaxLineLength")
     @Test
     fun `toSdkProfileOrganizations should return empty list when all organizations have null names`() {
@@ -119,7 +131,7 @@ class SyncResponseJsonExtensionsTest {
             requireSpecial = null,
             enforceOnLogin = true,
         )
-        val policy = createMockPolicyView(
+        val policy = createMockSdkPolicy(
             type = PolicyType.MASTER_PASSWORD,
             data = Json.encodeToString(policyInformation),
         )
@@ -145,7 +157,7 @@ class SyncResponseJsonExtensionsTest {
             capitalize = true,
             includeNumber = null,
         )
-        val policy = createMockPolicyView(
+        val policy = createMockSdkPolicy(
             type = PolicyType.PASSWORD_GENERATOR,
             data = Json.encodeToString(policyInformation),
         )
@@ -163,7 +175,7 @@ class SyncResponseJsonExtensionsTest {
             action = PolicyInformation.VaultTimeout.Action.LOCK,
             type = PolicyInformation.VaultTimeout.Type.CUSTOM,
         )
-        val policy = createMockPolicyView(
+        val policy = createMockSdkPolicy(
             type = PolicyType.MAXIMUM_VAULT_TIMEOUT,
             data = Json.encodeToString(policyInformation),
         )
@@ -184,13 +196,71 @@ class SyncResponseJsonExtensionsTest {
             deletionHours = 168,
             allowedSendTypes = listOf(SendTypeJson.TEXT),
         )
-        val policy = createMockPolicyView(
+        val policy = createMockSdkPolicy(
             type = PolicyType.SEND_CONTROLS,
             data = Json.encodeToString(policyInformation),
         )
 
         assertEquals(
             policyInformation,
+            policy.policyInformation,
+        )
+    }
+
+    @Test
+    fun `policyInformation drops unknown allowedSendTypes and keeps the SendControls policy`() {
+        val policy = createMockSdkPolicy(
+            type = PolicyType.SEND_CONTROLS,
+            data = """
+                {
+                  "disableSend": false,
+                  "disableHideEmail": true,
+                  "whoCanAccess": 2,
+                  "allowedDomains": "bitwarden.com",
+                  "deletionHours": 168,
+                  "allowedSendTypes": [0, 2]
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            PolicyInformation.SendControls(
+                disableSend = false,
+                disableHideEmail = true,
+                whoCanAccess = SendAccessTypeJson.SPECIFIC_PEOPLE,
+                allowedDomains = "bitwarden.com",
+                deletionHours = 168,
+                allowedSendTypes = listOf(SendTypeJson.TEXT),
+            ),
+            policy.policyInformation,
+        )
+    }
+
+    @Test
+    fun `policyInformation maps allowedSendTypes with only unknown types to an empty list`() {
+        val policy = createMockSdkPolicy(
+            type = PolicyType.SEND_CONTROLS,
+            data = """
+                {
+                  "disableSend": false,
+                  "disableHideEmail": true,
+                  "whoCanAccess": 2,
+                  "allowedDomains": "bitwarden.com",
+                  "deletionHours": 168,
+                  "allowedSendTypes": [2]
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            PolicyInformation.SendControls(
+                disableSend = false,
+                disableHideEmail = true,
+                whoCanAccess = SendAccessTypeJson.SPECIFIC_PEOPLE,
+                allowedDomains = "bitwarden.com",
+                deletionHours = 168,
+                allowedSendTypes = emptyList(),
+            ),
             policy.policyInformation,
         )
     }
@@ -204,7 +274,7 @@ class SyncResponseJsonExtensionsTest {
             buttonText = "buttonText",
             showAfterEveryLogin = true,
         )
-        val policy = createMockPolicyView(
+        val policy = createMockSdkPolicy(
             type = PolicyType.ORGANIZATION_USER_NOTIFICATION,
             data = Json.encodeToString(policyInformation),
         )
@@ -217,7 +287,7 @@ class SyncResponseJsonExtensionsTest {
 
     @Test
     fun `policyInformation returns null policy information for null data`() {
-        val masterPasswordPolicy = createMockPolicyView(
+        val masterPasswordPolicy = createMockSdkPolicy(
             type = PolicyType.MASTER_PASSWORD,
             data = null,
         )

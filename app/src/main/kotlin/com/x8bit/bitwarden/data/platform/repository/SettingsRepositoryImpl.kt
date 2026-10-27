@@ -5,8 +5,8 @@ import com.bitwarden.authenticatorbridge.util.generateSecretKey
 import com.bitwarden.core.data.manager.BuildInfoManager
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.data.manager.flightrecorder.FlightRecorderManager
+import com.bitwarden.policies.Policy
 import com.bitwarden.policies.PolicyType
-import com.bitwarden.policies.PolicyView
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppLanguage
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.x8bit.bitwarden.BuildConfig
@@ -22,6 +22,7 @@ import com.x8bit.bitwarden.data.platform.manager.PolicyManager
 import com.x8bit.bitwarden.data.platform.repository.model.BiometricsKeyResult
 import com.x8bit.bitwarden.data.platform.repository.model.ClearClipboardFrequency
 import com.x8bit.bitwarden.data.platform.repository.model.UriMatchType
+import com.x8bit.bitwarden.data.platform.repository.model.VaultSection
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeout
 import com.x8bit.bitwarden.data.platform.repository.model.VaultTimeoutAction
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
@@ -568,6 +569,33 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override val collapsedVaultSections: Set<VaultSection>
+        get() = activeUserId
+            ?.let { settingsDiskSource.getCollapsedVaultSections(userId = it) }
+            .orEmpty()
+
+    override fun getCollapsedVaultSectionsFlow(): Flow<Set<VaultSection>> {
+        val userId = activeUserId ?: return flowOf(emptySet())
+        return settingsDiskSource
+            .getCollapsedVaultSectionsFlow(userId = userId)
+            .map { it.orEmpty() }
+    }
+
+    override fun toggleVaultSectionCollapsed(section: VaultSection) {
+        val userId = activeUserId ?: return
+        val collapsedSections = settingsDiskSource
+            .getCollapsedVaultSections(userId = userId)
+            .orEmpty()
+        settingsDiskSource.storeCollapsedVaultSections(
+            userId = userId,
+            collapsedVaultSections = if (section in collapsedSections) {
+                collapsedSections - section
+            } else {
+                collapsedSections + section
+            },
+        )
+    }
+
     override fun getPremiumUpgradeBannerDismissedFlow(): StateFlow<Boolean> {
         val userId = activeUserId ?: return MutableStateFlow(value = false)
         return settingsDiskSource
@@ -723,7 +751,7 @@ class SettingsRepositoryImpl(
      * settings to determine whether to update the user's settings.
      */
     private fun updateVaultUnlockSettingsIfNecessary(
-        policies: List<PolicyView>,
+        policies: List<Policy>,
     ) {
         // The vault timeout policy can only be implemented in organizations that have
         // the single organization policy, meaning that if this is enabled, the user is
